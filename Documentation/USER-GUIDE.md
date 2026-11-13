@@ -206,14 +206,14 @@ first, then to do by priority -- since you have no Recent or Starred yet.
 
 Six groups, each one page, with a search box above them that finds a setting
 by its name or by the name it used to have -- *sync queue*, *priority*,
-*ceremonies*. **General** is a page of rows, each a name, one sentence and
-its control at the right -- a switch that says **On** or **Off**, a menu or
-a button; the other groups follow:
+*ceremonies*. **General** and **Account** are pages of rows, each a name,
+one sentence and its control at the right -- a switch that says **On** or
+**Off**, a menu or a button; the other groups follow:
 
 | Group | Holds |
 | :--- | :--- |
 | **General** | Start with Windows, when you close the window, the shortcuts, updates, **Set up again**, and **Show developer tools** |
-| **Account** | your task provider, its credentials, the tasks to fetch, the transitions, provider notifications, and the entries waiting to send |
+| **Account** | your account, with Refresh now and Change account; the tasks to fetch; what a start and a Done do there; its notifications; Advanced -- its state names, the key for tasks of your own, the entries waiting to send |
 | **My workday** | working days, the stand-up, lunch, the end of day |
 | **Desk devices** | the bar's status, task key color, connection, idle clock and use without a bar; with a bar, the Windows notifications it shows and what it shows first; the Stream Deck |
 | **Data** | export the logs; erase everything on this computer |
@@ -713,22 +713,36 @@ sent to your provider.
 
 ### 🔌 Settings: Account
 
-Credentials, the completion transitions, and which tasks to fetch — assigned to
-me, everything open, or your own query (JQL for Jira, a v3 filter array for
-OpenProject). **When I start a task** says how long a task is timed before it
-moves to In Progress and becomes yours -- right away, after one, two (the
-default) or five minutes -- or turns that off; it is hidden for a provider
-that can do neither. **When I mark a task done** is the completion
+A page of rows, as General. The first names your account -- *Jira ·
+studio.atlassian.net*, with your email, how many projects and tasks it
+fetched and when it last refreshed -- with **Refresh now** and **Change
+account**, which opens the provider, the site and the token under it. Then
+**Tasks to fetch** -- assigned to me, everything open, or your own query
+(JQL for Jira, a v3 filter array for OpenProject), typed under the row.
+**When I start a task** says how long a task is timed before it moves to In
+Progress and becomes yours -- right away, after one, two (the default) or
+five minutes -- or never; it is hidden for a provider that can do
+neither. **When I mark a task done** is the completion
 transition for all projects, and under it a list of your projects where any
 one can go elsewhere: a Jira state or transition name, typed, or an
 OpenProject status, chosen. A project left empty follows the choice for all.
 A state its workflow lacks moves nothing, and the time is sent all the same.
 
 <p align="center">
-  <img src="../docs/images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">
+  <img src="../docs/images/app-providers.png" width="80%" alt="Settings, Account: the account line with Refresh now and Change account, the tasks to fetch, when a start and a Done move the task, its notifications, and Advanced">
 </p>
 
-**Notifications from OpenProject** turns what happens on your work packages
+🔑 **When the provider refuses your token**, the page opens on a red banner
+that says how many entries wait, with one field for the new token: **Save
+and send** puts it in place and sends them at once.
+
+⚙️ **Advanced**, folded at the foot, holds the provider's state names -- the
+Jira transition or state each of *When I start a task*, *To test* and *To
+review* runs, or the OpenProject statuses, read from it with **Read the
+states from OpenProject** -- the key for tasks of your own, and every entry
+waiting to send.
+
+**OpenProject notifications**, behind **Choose…**, turns what happens on your work packages
 into Windows notifications: assigned to you, a mention, a comment, a status
 change, a date alert. Tick the ones you want. Clicking a notification opens the
 work package in your browser. With a bar, they can go there too, as a banner
@@ -740,7 +754,7 @@ replayed -- and one you have read in OpenProject before the next check is not
 shown either. **Send a test notification** shows what one looks like, and
 says where it went.
 
-**Notifications from Jira** does the same for Jira issues: assigned to you, a
+**Jira notifications** does the same for Jira issues: assigned to you, a
 status change, a comment, a mention in a comment. Clicking one opens the issue,
 or the comment. Jira Cloud has no notification feed for apps to read, so
 SprintTicker looks at the issues you are assigned, reported or watch at each
@@ -752,7 +766,7 @@ check, and works out what changed. That has edges worth knowing:
   mention in a description rather than a comment.
 - 📅 **Jira has no date alerts**, so that box is not offered.
 
-Below the credentials, folded under **Entries waiting to send**, is every worklog that has not reached
+In **Advanced**, under **Entries waiting to send**, is every worklog that has not reached
 the provider, with the server's own message, the attempt count against the
 ceiling, and when the next attempt is due. When the provider refuses your saved
 credentials, a Windows notification says **Sending time to Jira stopped** (or
@@ -1558,8 +1572,8 @@ the device accepts printable ASCII only. Emoji do not render.
 
 ### 📭 No notification from OpenProject or Jira
 
-- **Is it switched on, for that kind?** **Settings, Account** › Notifications from
-  OpenProject (or Jira). **Send a test notification**: if it says it was sent and nothing
+- **Is it switched on, for that kind?** **Settings, Account** › OpenProject (or
+  Jira) notifications › **Choose…**. **Send a test notification**: if it says it was sent and nothing
   appeared, the cause is on the Windows side.
 - **Windows may be holding it.** Do Not Disturb, Focus, or SprintTicker turned
   off in Windows Settings › System › Notifications all hide toasts without

@@ -741,9 +741,9 @@
       <h4>⚙️ Settings</h4>
       <p>Six groups, each one page, with a search box above them that finds a setting
       by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
-      <em>ceremonies</em>. <strong>General</strong> is a page of rows, each a name, one sentence and
-      its control at the right -- a switch that says <strong>On</strong> or <strong>Off</strong>, a menu or
-      a button; the other groups follow:</p>
+      <em>ceremonies</em>. <strong>General</strong> and <strong>Account</strong> are pages of rows, each a name,
+      one sentence and its control at the right -- a switch that says <strong>On</strong> or
+      <strong>Off</strong>, a menu or a button; the other groups follow:</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -757,7 +757,7 @@
       </tr>
       <tr>
       <td align="left"><strong>Account</strong></td>
-      <td align="left">your task provider, its credentials, the tasks to fetch, the transitions, provider notifications, and the entries waiting to send</td>
+      <td align="left">your account, with Refresh now and Change account; the tasks to fetch; what a start and a Done do there; its notifications; Advanced -- its state names, the key for tasks of your own, the entries waiting to send</td>
       </tr>
       <tr>
       <td align="left"><strong>My workday</strong></td>
@@ -1230,19 +1230,31 @@
       latest it can have run, so check it before copying it to a timesheet; it is not
       sent to your provider.</p>
       <h4>🔌 Settings: Account</h4>
-      <p>Credentials, the completion transitions, and which tasks to fetch — assigned to
-      me, everything open, or your own query (JQL for Jira, a v3 filter array for
-      OpenProject). <strong>When I start a task</strong> says how long a task is timed before it
-      moves to In Progress and becomes yours -- right away, after one, two (the
-      default) or five minutes -- or turns that off; it is hidden for a provider
-      that can do neither. <strong>When I mark a task done</strong> is the completion
+      <p>A page of rows, as General. The first names your account -- <em>Jira ·
+      studio.atlassian.net</em>, with your email, how many projects and tasks it
+      fetched and when it last refreshed -- with <strong>Refresh now</strong> and <strong>Change
+      account</strong>, which opens the provider, the site and the token under it. Then
+      <strong>Tasks to fetch</strong> -- assigned to me, everything open, or your own query
+      (JQL for Jira, a v3 filter array for OpenProject), typed under the row.
+      <strong>When I start a task</strong> says how long a task is timed before it moves to In
+      Progress and becomes yours -- right away, after one, two (the default) or
+      five minutes -- or never; it is hidden for a provider that can do
+      neither. <strong>When I mark a task done</strong> is the completion
       transition for all projects, and under it a list of your projects where any
       one can go elsewhere: a Jira state or transition name, typed, or an
       OpenProject status, chosen. A project left empty follows the choice for all.
       A state its workflow lacks moves nothing, and the time is sent all the same.</p>
       <p align="center">
-        <img src="images/app-providers.png" width="80%" alt="Settings, Account: the active provider, its domain and API key, and the status mappings">
-      </p><p><strong>Notifications from OpenProject</strong> turns what happens on your work packages
+        <img src="images/app-providers.png" width="80%" alt="Settings, Account: the account line with Refresh now and Change account, the tasks to fetch, when a start and a Done move the task, its notifications, and Advanced">
+      </p><p>🔑 <strong>When the provider refuses your token</strong>, the page opens on a red banner
+      that says how many entries wait, with one field for the new token: <strong>Save
+      and send</strong> puts it in place and sends them at once.</p>
+      <p>⚙️ <strong>Advanced</strong>, folded at the foot, holds the provider&#39;s state names -- the
+      Jira transition or state each of <em>When I start a task</em>, <em>To test</em> and <em>To
+      review</em> runs, or the OpenProject statuses, read from it with <strong>Read the
+      states from OpenProject</strong> -- the key for tasks of your own, and every entry
+      waiting to send.</p>
+      <p><strong>OpenProject notifications</strong>, behind <strong>Choose…</strong>, turns what happens on your work packages
       into Windows notifications: assigned to you, a mention, a comment, a status
       change, a date alert. Tick the ones you want. Clicking a notification opens the
       work package in your browser. With a bar, they can go there too, as a banner
@@ -1253,7 +1265,7 @@
       replayed -- and one you have read in OpenProject before the next check is not
       shown either. <strong>Send a test notification</strong> shows what one looks like, and
       says where it went.</p>
-      <p><strong>Notifications from Jira</strong> does the same for Jira issues: assigned to you, a
+      <p><strong>Jira notifications</strong> does the same for Jira issues: assigned to you, a
       status change, a comment, a mention in a comment. Clicking one opens the issue,
       or the comment. Jira Cloud has no notification feed for apps to read, so
       SprintTicker looks at the issues you are assigned, reported or watch at each
@@ -1265,7 +1277,7 @@
       mention in a description rather than a comment.</li>
       <li>📅 <strong>Jira has no date alerts</strong>, so that box is not offered.</li>
       </ul>
-      <p>Below the credentials, folded under <strong>Entries waiting to send</strong>, is every worklog that has not reached
+      <p>In <strong>Advanced</strong>, under <strong>Entries waiting to send</strong>, is every worklog that has not reached
       the provider, with the server&#39;s own message, the attempt count against the
       ceiling, and when the next attempt is due. When the provider refuses your saved
       credentials, a Windows notification says <strong>Sending time to Jira stopped</strong> (or
@@ -2179,8 +2191,8 @@
       the device accepts printable ASCII only. Emoji do not render.</p>
       </details><h4>📭 No notification from OpenProject or Jira</h4>
       <ul>
-      <li><strong>Is it switched on, for that kind?</strong> <strong>Settings, Account</strong> › Notifications from
-      OpenProject (or Jira). <strong>Send a test notification</strong>: if it says it was sent and nothing
+      <li><strong>Is it switched on, for that kind?</strong> <strong>Settings, Account</strong> › OpenProject (or
+      Jira) notifications › <strong>Choose…</strong>. <strong>Send a test notification</strong>: if it says it was sent and nothing
       appeared, the cause is on the Windows side.</li>
       <li><strong>Windows may be holding it.</strong> Do Not Disturb, Focus, or SprintTicker turned
       off in Windows Settings › System › Notifications all hide toasts without

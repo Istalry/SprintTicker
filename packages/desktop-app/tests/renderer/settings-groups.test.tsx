@@ -52,7 +52,7 @@ describe('settings groups', () => {
 
   it.each([
     ['General', /Start with Windows/],
-    ['Account', /Provider Selection & Credentials/],
+    ['Account', /Tasks to fetch from OpenProject/],
     ['My workday', /Working Days/],
     ['Desk devices', /Task key color/],
     ['Data', /Danger Zone/]

@@ -191,7 +191,7 @@ Local **ad-hoc tasks** cover work that has no ticket. Their time stays in your
 history and is never sent to the provider.
 
 <p align="center">
-  <img src="docs/images/app-providers.png" width="70%" alt="Settings, Account: OpenProject domain, API key and status mappings">
+  <img src="docs/images/app-providers.png" width="70%" alt="Settings, Account: the account line, the tasks to fetch, when a start and a Done move the task, and Advanced">
 </p>
 
 ### 🟦 Jira Cloud integration

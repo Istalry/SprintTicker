@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { AutoSaveIndicator } from './AutoSaveIndicator';
+import { SettingProblem } from './SettingRow';
 import {
   DEFAULT_PROVIDER_EVENT_SETTINGS,
   MAX_PROVIDER_EVENT_POLL_SECONDS,
@@ -25,7 +24,8 @@ export interface ProviderEventsSectionProps {
 
 /**
  * What the user is told about activity on their tasks in the provider, and
- * how: a Windows toast, a banner on the bar, or both.
+ * how: a Windows toast, a banner on the bar, or both. Behind the Account
+ * row's "Choose…" (S20), so the row names it and this holds no title.
  *
  * Saves itself, like the panel around it. Its settings are not the
  * provider's credentials and live under their own key, so it owns its load
@@ -80,14 +80,7 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
   const disabled = !settings.enabled;
 
   return (
-    <div className="bg-dark-800 rounded-xl border border-border-dark p-6 shadow-xl space-y-4 max-w-xl">
-      <div className="flex items-center justify-between border-b border-border-dark pb-3">
-        <h3 className="text-md font-bold text-white flex items-center space-x-2">
-          <Bell className="w-4 h-4 text-text-primary" />
-          <span>Notifications from {providerName}</span>
-        </h3>
-        <AutoSaveIndicator status={saveStatus} />
-      </div>
+    <div aria-label={`Notifications from ${providerName}`} className="space-y-4 rounded-lg border border-border-dark bg-dark-900 p-4">
 
       <label className="flex items-center space-x-3 text-xs text-white cursor-pointer select-none">
         <input
@@ -173,6 +166,7 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
         Only what happens after you turn this on. Nothing {providerName} already had is replayed.
       </p>
       {note && <p className="text-xs text-text-secondary">{note}</p>}
+      {saveStatus === 'error' && <SettingProblem>Could not save these choices. They apply once saved.</SettingProblem>}
     </div>
   );
 };

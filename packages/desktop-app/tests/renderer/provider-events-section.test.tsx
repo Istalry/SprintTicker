@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { SettingsView } from '../../src/renderer/views/Settings/SettingsView';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { AccountSettings } from '../../src/renderer/views/Settings/AccountSettings';
 import { ProviderEventsSection } from '../../src/renderer/components/ProviderEventsSection';
 import { DEFAULT_PROVIDER_EVENT_SETTINGS } from '../../src/shared/provider-events';
 import { installElectronApi } from './electron-api-mock';
@@ -11,35 +11,42 @@ import { installElectronApi } from './electron-api-mock';
  * about the bar and is hidden without one -- and toasts matter most there.
  */
 describe('provider notifications', () => {
-  it('SettingsView_OpenProject_OffersThem', async () => {
-    installElectronApi();
-    render(<SettingsView />);
+  const choose = async (name: string) => fireEvent.click(
+    await within(await screen.findByRole('group', { name: `${name} notifications` })).findByRole('button', { name: 'Choose…' })
+  );
 
-    expect(await screen.findByText('Notifications from OpenProject')).toBeTruthy();
+  it('Account_OpenProject_OffersThem_BehindChoose', async () => {
+    installElectronApi();
+    render(<AccountSettings />);
+
+    await choose('OpenProject');
+
+    expect(await screen.findByLabelText('Notifications from OpenProject')).toBeTruthy();
   });
 
-  it('SettingsView_Jira_OffersOnlyWhatJiraCanReport', async () => {
+  it('Account_Jira_OffersOnlyWhatJiraCanReport', async () => {
     installElectronApi({
       getProviders: vi.fn().mockResolvedValue({ activeProviderId: 'jira', fallbackTicketKey: 'MISC-1' })
     });
-    render(<SettingsView />);
+    render(<AccountSettings />);
 
-    expect(await screen.findByText('Notifications from Jira')).toBeTruthy();
-    expect(screen.getByText('Mentions')).toBeTruthy();
+    await choose('Jira');
+
+    expect(await screen.findByText('Mentions')).toBeTruthy();
     // Jira has no date alerts; a checkbox for one would do nothing.
     expect(screen.queryByText('Date alerts')).toBeNull();
     expect(screen.getByText(/Jira has no notification feed/)).toBeTruthy();
   });
 
-  it('SettingsView_ProviderWithoutEvents_OffersNothing', async () => {
+  it('Account_ProviderWithoutEvents_OffersNothing', async () => {
     const bridge = installElectronApi({
       getProviders: vi.fn().mockResolvedValue({ activeProviderId: 'adhoc', fallbackTicketKey: 'MISC-1' })
     });
-    render(<SettingsView />);
+    render(<AccountSettings />);
 
     await waitFor(() => expect(bridge.api.getProviders).toHaveBeenCalled());
-    await screen.findByDisplayValue('This computer');
-    expect(screen.queryByText(/Notifications from/)).toBeNull();
+    expect(await screen.findByRole('group', { name: 'This computer' })).toBeTruthy();
+    expect(screen.queryByText(/notifications$/)).toBeNull();
   });
 
   it('Section_NoBar_DoesNotOfferTheBar', async () => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import { SettingsView } from './SettingsView';
+import { AccountSettings } from './AccountSettings';
 import { CeremoniesView } from '../Ceremonies/CeremoniesView';
 import { DeviceDiagnosticsView } from '../Device/DeviceDiagnosticsView';
 import { NotificationSettingsView } from '../Notifications/NotificationSettingsView';
@@ -9,7 +9,6 @@ import { CloseToTraySetting } from '../../components/CloseToTraySetting';
 import { LaunchAtLoginSetting } from '../../components/LaunchAtLoginSetting';
 import { ShortcutSettings } from '../../components/ShortcutSettings';
 import { SettingButton, SettingRow, SettingsList, SettingSwitch } from '../../components/SettingRow';
-import { StartSideEffectsCard } from '../../components/StartSideEffectsCard';
 import { UpdateCheckSetting } from '../../components/UpdateNotice';
 import { BarRemotePad } from '../../components/BarRemotePad';
 import {
@@ -117,12 +116,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange
         {current === 'general' && (
           <GeneralGroup showDeveloper={showDeveloper} onShowDeveloper={setShowDeveloper} onRunSetup={onRunSetup} />
         )}
-        {current === 'account' && (
-          <div className="space-y-6">
-            <StartSideEffectsCard />
-            <SettingsView hasBar={hasBar} />
-          </div>
-        )}
+        {current === 'account' && <AccountSettings hasBar={hasBar} />}
         {current === 'workday' && <CeremoniesView />}
         {current === 'devices' && <DevicesGroup hasBar={hasBar} />}
         {current === 'data' && <DeviceDiagnosticsView part="data" />}

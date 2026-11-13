@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CircleAlert, Download, Plug, RefreshCw, UserRound, WifiOff } from 'lucide-react';
-import { DeviceStatusDTO, SyncQueueSnapshotDTO, WorklogDTO } from '../../shared/dtos';
+import { DeviceStatusDTO, WorklogDTO } from '../../shared/dtos';
 import { refusalReason } from '../../shared/refused-entry';
 import { keepOffLabel, Verb } from '../../shared/words';
 import { useEntryActions } from './EntryActions';
@@ -8,6 +8,7 @@ import { NoticeKind, NoticesDTO, releasePageOf } from '../../shared/sync-health'
 import { ProviderId, providerDisplayName } from '../../shared/provider-names';
 import { formatHoursAndMinutes, formatHoursMinutes, countOf } from '../utils/formatters';
 import { useSyncHealth } from '../hooks/usePrompts';
+import { useSyncQueue, waitingText } from '../hooks/useSyncQueue';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { SettingsGroupId } from '../views/Settings/settings-groups';
 
@@ -45,25 +46,6 @@ function useOnline(): boolean {
   return online;
 }
 
-/** The queue, read again when time is logged or a sync ends: the entries a card says wait. */
-function useQueue(): SyncQueueSnapshotDTO | null {
-  const [queue, setQueue] = useState<SyncQueueSnapshotDTO | null>(null);
-  const read = useCallback(() => {
-    window.electronAPI?.getSyncQueue?.().then(setQueue, warn('Reading the queue'));
-  }, []);
-  useEffect(() => {
-    read();
-    const api = window.electronAPI;
-    const offLogs = api?.onWorklogsUpdated?.(() => read());
-    const offSync = api?.onProjectsUpdated?.(() => read());
-    return () => {
-      offLogs?.();
-      offSync?.();
-    };
-  }, [read]);
-  return queue;
-}
-
 /** The entries their provider refused for good (P11c), read again when time is logged or changed. */
 function useRefused(): { refused: WorklogDTO[]; read: () => void } {
   const [refused, setRefused] = useState<WorklogDTO[]>([]);
@@ -76,17 +58,6 @@ function useRefused(): { refused: WorklogDTO[]; read: () => void } {
     return () => { off?.(); };
   }, [read]);
   return { refused, read };
-}
-
-/** "2 entries" or "3 entries (2h 05m)": what waits to be sent, new entries counted by their time. */
-function waitingText(queue: SyncQueueSnapshotDTO | null, withTime: boolean): string | null {
-  if (!queue) return null;
-  // A refused entry does not wait: no retry sends it (P11c).
-  const waiting = queue.items.filter(item => item.status !== 'SYNCED' && !item.refused);
-  if (waiting.length === 0) return null;
-  const seconds = waiting.filter(item => item.operation === 'CREATE').reduce((sum, item) => sum + item.durationSeconds, 0);
-  const count = countOf(waiting.length, 'entry', 'entries');
-  return withTime && seconds > 0 ? `${count} (${formatHoursAndMinutes(seconds)})` : count;
 }
 
 /**
@@ -103,7 +74,7 @@ export const StatusCards: React.FC<{
 }> = ({ device, onOpenSettings }) => {
   const health = useSyncHealth();
   const online = useOnline();
-  const queue = useQueue();
+  const queue = useSyncQueue();
   const { capabilities } = useProviderCapabilities();
   const [notices, setNotices] = useState<NoticesDTO | null>(null);
   const { refused, read: readRefused } = useRefused();

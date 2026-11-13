@@ -2490,6 +2490,38 @@ setting; the Tasks view's filters, stars and delete-asks.
   and Check now, Run setup and the developer switch, each through the bridge.
 - No picture shows General; none was remade.
 
+**As landed: P16b, Account (2026-11-13).**
+
+- `AccountSettings` replaces `SettingsView` (the "TASK PROVIDERS & ACCOUNT
+  CONFIGURATION" panel), in S20's order: the refused-token banner (health
+  `refused`: the entries waiting, a token field, **Save and send** -- the
+  token saved alone, then `syncProviderNow`); the account line (provider ·
+  host; the Jira email, the provider's projects and every open task in them,
+  the last refresh of this run; **Refresh now**, **Change account** opening
+  the provider choice and credentials under the row); **Tasks to fetch**,
+  the custom query under the row when chosen; **When I start a task**;
+  **When I mark a task done** (all projects, named by the states typed or
+  read; the per-project list under it); the provider's notifications behind
+  **Choose…**; and **Advanced** -- the state names, the key for tasks of my
+  own, the entries waiting to send. For *This computer*, only the account
+  line and Advanced.
+- One deviation from S20: the custom query sits under *Tasks to fetch* when
+  chosen, not in Advanced, so the row that needs it shows it.
+- The fields still save through one debounced `setActiveProvider`: each save
+  reconnects the provider and syncs, so they share one debounce, as before.
+- `StartSideEffectsSetting`: the checkbox and the wait became one menu,
+  *never* among the waits. `ProviderEventsSection` lost its card and title:
+  the row names it. `useSyncQueue` and `waitingText` moved out of
+  `StatusCards` into `hooks/useSyncQueue.ts`, shared with the banner.
+- Not yet: `SyncQueuePanel` keeps its old card ("Worklog Sync Queue") inside
+  Advanced; it is the queue's own view, restyled in P16e with the rest of
+  the old panels.
+- Tests: `settings-account.test.tsx` (the rows for Jira, the account line's
+  counts, Refresh now's failure, Change account saving, the custom query,
+  Done's names, the banner's Save and send, *This computer*, every search
+  entry of the group on the page); the notifications tests moved behind
+  Choose…; the start setting's menu.
+
 ---
 
 ## 20. P15 -- Documents, pictures, release
@@ -2605,4 +2637,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
-| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General) done | P16a (2026-11-13) |
+| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General) and P16b (Account) done | P16a `0a36d40`, P16b (2026-11-13) |

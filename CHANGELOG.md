@@ -249,6 +249,14 @@
   the window, a row per shortcut with its chord and **Change keys**, Check
   for updates, Set up again and Show developer tools. Switches say On or
   Off. The other groups follow.
+- **Settings · Account is a page of rows too**: your account in one line --
+  site, email, projects, tasks, last refresh -- with **Refresh now** and
+  **Change account**; the tasks to fetch, with a custom query typed under
+  the row; when a start moves the task (now one menu, *never* among the
+  waits); where a Done goes; the provider's notifications behind
+  **Choose…**; and **Advanced** for the state names, the key for tasks of
+  your own and the entries waiting to send. When the provider refuses your
+  token, a banner on top takes the new one: **Save and send**.
 - **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
   given to someone else reads **MG-12 > RIN**; interruptions waiting to be
   placed show as **3 TO PLACE** in amber on a task's screen, the time
