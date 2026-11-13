@@ -2729,9 +2729,10 @@ user's to try; before it, what REVIEW §8 left for P15d:
 - The deck's A key says **END MY DAY**, then CONFIRM / *end my day*, where
   it said WRAP UP. Plugin 0.6.4, so the pack installs over 0.6.3; the
   installer carries it.
-- The stand-up scene's MEETING stays, for the user to decide: it is drawn
-  into the scene, and STAND-UP is 54 px in Bold 9 where its title has 46
-  beside the table.
+- **The stand-up scene keeps MEETING** (the user, 2026-11-13). STAND-UP is
+  54 px in either bold face, and 49 are free right of the table; STAND- over
+  UP in Bold 7 fitted, and did not look good. Room on one line would take
+  the people below the style guide's icon size.
 - The checks before a release: typecheck, lint, coverage, the studio's and
   the plugin's tests, Elgato's validator, `fonts:check`, and
   `STRESS_RUNS=2000` clean; `package:win` and `verify:packed` build the
@@ -3021,5 +3022,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d: the agent's part done (the last words, the checks, the candidate), the user's trial next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d`, P15c `b6b6b94` |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d: the agent's part done (the last words, the checks, the candidate), the user's trial next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d`, P15c `b6b6b94`, P15d `98ffbda` |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |
