@@ -43,7 +43,7 @@ export const EntryRow: React.FC<{
   <tr className={`transition-colors ${log.fromInterruption ? 'bg-accent-amber/5 hover:bg-accent-amber/10' : 'hover:bg-dark-700/50'}`}>
     <td className={`${ENTRY_CELL} font-mono font-bold text-text-primary whitespace-nowrap`}>
       <span className="inline-flex items-center gap-1.5">
-        {log.fromInterruption && <span title="Started as an interruption" className="text-accent-amber">⚡</span>}
+        {log.fromInterruption && <span title="Started as an interruption" className="text-accent-amber"><span aria-hidden="true">⚡</span><span className="sr-only">Started as an interruption:</span></span>}
         {log.taskKey ?? log.taskId}
         {log.hasTaskPage && <TaskPageButton taskId={log.taskId} taskKey={log.taskKey ?? log.taskId} />}
       </span>

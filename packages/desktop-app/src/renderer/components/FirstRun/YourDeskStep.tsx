@@ -134,13 +134,17 @@ export const YourDeskStep: React.FC<{ onBack: () => void; onNext: () => void }> 
                 Mine is on Wi-Fi
               </button>
             ) : (
-              <label className="block text-xs text-text-secondary">
-                Its address on your network
-                <input className={`${fieldClass} mt-1`} value={address} onChange={e => setAddress(e.target.value)} placeholder="192.168.1.42" />
+              <div>
+                <label className="block text-xs text-text-secondary">
+                  Its address on your network
+                  <input className={`${fieldClass} mt-1`} value={address} onChange={e => setAddress(e.target.value)} placeholder="192.168.1.42"
+                    aria-invalid={!addressValid && address.trim() !== ''}
+                    aria-describedby={!addressValid && address.trim() !== '' ? 'first-run-address-error' : undefined} />
+                </label>
                 {!addressValid && address.trim() !== '' && (
-                  <span role="alert" className="block mt-1 text-accent-red">An address is letters, digits, dots and dashes only.</span>
+                  <span id="first-run-address-error" role="alert" className="block mt-1 text-xs text-accent-red">An address is letters, digits, dots and dashes only.</span>
                 )}
-              </label>
+              </div>
             )}
           </div>
         )}

@@ -3,6 +3,7 @@ import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 import { ProviderId } from '../../../shared/provider-names';
 import { ipcErrorMessage } from '../../utils/formatters';
 import { SettingButton, SettingProblem, SettingRow, SettingsList } from '../../components/SettingRow';
+import { useAnnounce } from '../../components/LiveAnnouncer';
 
 /** Where the erase stands: it asks twice before anything goes. */
 type EraseStep = 'idle' | 'first' | 'second' | 'erasing';
@@ -15,6 +16,7 @@ type EraseStep = 'idle' | 'first' | 'second' | 'erasing';
 export const DataSettings: React.FC = () => {
   const { capabilities, providerName } = useProviderCapabilities();
   const [exported, setExported] = useState<string | null>(null);
+  useAnnounce(exported, exported ?? '');
   const [step, setStep] = useState<EraseStep>('idle');
   // Each question replaces the button that asked it: Keep them takes the
   // focus, and Erase… gets it back when the answer is no (REVIEW-2026-11 A4).
@@ -31,6 +33,7 @@ export const DataSettings: React.FC = () => {
     }
   }, [step]);
   const [eraseResult, setEraseResult] = useState<{ ok: boolean; text: string } | null>(null);
+  useAnnounce(eraseResult?.ok ? eraseResult.text : null, eraseResult?.text ?? '');
 
   const exportLogs = () => {
     setExported(null);
@@ -62,7 +65,7 @@ export const DataSettings: React.FC = () => {
         description="A file to attach to a bug report. Your tokens are removed from it."
         control={<SettingButton onClick={exportLogs}>Export…</SettingButton>}
       >
-        {exported && <p role="status" className="text-xs text-text-secondary">{exported}</p>}
+        {exported && <p className="text-xs text-text-secondary">{exported}</p>}
       </SettingRow>
 
       <SettingRow
@@ -93,7 +96,7 @@ export const DataSettings: React.FC = () => {
           </div>
         )}
         {eraseResult && (eraseResult.ok
-          ? <p role="status" className="text-xs text-text-secondary">{eraseResult.text}</p>
+          ? <p className="text-xs text-text-secondary">{eraseResult.text}</p>
           : <SettingProblem>{eraseResult.text}</SettingProblem>)}
       </SettingRow>
     </SettingsList>

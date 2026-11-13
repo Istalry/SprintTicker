@@ -77,6 +77,7 @@ export const AppShell: React.FC<AppShellProps> = ({ place, onNavigate, device, t
                 .catch(err => console.warn('[AppShell] Could not toggle the mini timer:', err));
             }}
             title={isMiniOpen ? 'Close the mini timer' : 'Open the mini timer: an always-on-top timer'}
+            aria-label={isMiniOpen ? 'Close the mini timer' : 'Mini timer'}
             aria-pressed={isMiniOpen}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border font-semibold text-xs transition-colors shrink-0 ${
               isMiniOpen ? 'bg-select text-text-primary border-focus/40' : 'bg-dark-700 hover:bg-dark-600 text-text-secondary border-border-dark'
@@ -90,6 +91,7 @@ export const AppShell: React.FC<AppShellProps> = ({ place, onNavigate, device, t
             type="button"
             onClick={onEndDay}
             title="End my day: check today's time and send it"
+            aria-label="End my day"
             className="flex items-center gap-1.5 bg-dark-700 hover:bg-dark-600 text-text-primary px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors shrink-0"
           >
             <Moon className="w-3.5 h-3.5 shrink-0" />
@@ -147,11 +149,11 @@ const PlaceButton: React.FC<{
       {badge !== undefined && (
         <span
           className="flex items-center gap-0.5 rounded bg-accent-amber/15 px-1.5 py-0.5 text-xs font-semibold text-accent-amber"
-          title={`${badge} interruption${badge === 1 ? '' : 's'} to place on a task`}
-          aria-label={`${badge} to place`}
+          // No title here: jsdom, and some screen readers, then take it for
+          // the badge's name instead of its text.
         >
-          <Zap className="w-3 h-3" />
-          {badge}
+          <Zap aria-hidden="true" className="w-3 h-3" />
+          <span aria-hidden="true">{badge}</span><span className="sr-only">, {badge} to place</span>
         </span>
       )}
     </button>

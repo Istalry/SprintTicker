@@ -3,6 +3,7 @@ import { CeremonyPromptDTO, ForgottenSessionReviewDTO, ReminderDTO, ResumePrompt
 import { Verb } from '../../shared/words';
 import { reminderView } from './ReminderPrompt';
 import { askAgain, forgottenHeading, forgottenStanding } from './ForgottenSessionModal';
+import { useAnnounce } from './LiveAnnouncer';
 
 const MS_PER_MINUTE = 60_000;
 
@@ -131,8 +132,15 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
       </>
     );
   } else {
-    return null;
+    heading = '';
+    question = '';
+    buttons = null;
   }
+  // Keyed by the prompt, not the text: "6 min not timed" ticks.
+  const promptKey = resume ? `resume:${resume.after}:${resume.taskKey}` : ceremony ? `ceremony:${ceremony.type}:${ceremony.at}`
+    : forgotten ? 'forgotten' : reminder ? `reminder:${reminder.id}` : null;
+  useAnnounce(promptKey, `${heading}. ${question}`);
+  if (!promptKey) return null;
 
   return (
     // A group, not an alertdialog: a question here never takes the focus

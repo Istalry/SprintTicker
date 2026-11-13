@@ -67,6 +67,8 @@ export const TodayView: React.FC<TodayViewProps> = ({
   };
   return (
   <div className="space-y-6">
+    {/* The page's own heading (A20): its cards are h3 under it. */}
+    <h2 className="sr-only">Today</h2>
     <ForgottenSessionCard />
     {device && onOpenSettings && <StatusCards device={device} onOpenSettings={onOpenSettings} />}
     {morning && !session && <MorningCard morning={morning} now={openedAt} onOpenPicker={() => onOpenPicker('start')} onPutAway={putMorningAway} />}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import type { ActiveSessionDTO, ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { matchesSearch } from '../../shared/task-picker';
@@ -50,6 +50,7 @@ const PaletteDialog: React.FC<CommandPaletteProps> = ({ onClose, session, toPlac
   const [visibility] = useTaskVisibility();
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY);
   const [query, setQuery] = useState('');
+  const listId = useId();
   const [selected, setSelected] = useState(0);
   const [showDeveloper] = useState<boolean>(readShowDeveloper);
 
@@ -137,6 +138,11 @@ const PaletteDialog: React.FC<CommandPaletteProps> = ({ onClose, session, toPlac
           <input
             autoFocus
             aria-label="Command"
+            role="combobox"
+            aria-expanded="true"
+            aria-autocomplete="list"
+            aria-controls={listId}
+            aria-activedescendant={actions.length + tasks.length > 0 ? `${listId}-opt-${current}` : undefined}
             value={query}
             onChange={e => { setQuery(e.target.value); setSelected(0); }}
             placeholder="An action, a setting or a task"
@@ -144,13 +150,15 @@ const PaletteDialog: React.FC<CommandPaletteProps> = ({ onClose, session, toPlac
           />
         </div>
 
-        <div role="listbox" aria-label="Commands" className="overflow-y-auto p-2">
-          {actions.length > 0 && <div className="px-3 pt-1 pb-1 text-[11px] font-semibold text-text-secondary">Actions</div>}
+        <div id={listId} role="listbox" aria-label="Commands" className="overflow-y-auto p-2">
+          {actions.length > 0 && <div role="presentation" className="px-3 pt-1 pb-1 text-[11px] font-semibold text-text-secondary">Actions</div>}
           {actions.map((action, i) => (
             <button
               key={`${action.id}:${action.label}`}
               type="button"
               role="option"
+              id={`${listId}-opt-${i}`}
+              tabIndex={-1}
               aria-selected={i === current}
               onMouseEnter={() => setSelected(i)}
               onClick={() => run({ kind: 'action', action })}
@@ -162,7 +170,7 @@ const PaletteDialog: React.FC<CommandPaletteProps> = ({ onClose, session, toPlac
             </button>
           ))}
 
-          {tasks.length > 0 && <div className="px-3 pt-3 pb-1 text-[11px] font-semibold text-text-secondary">Tasks</div>}
+          {tasks.length > 0 && <div role="presentation" className="px-3 pt-3 pb-1 text-[11px] font-semibold text-text-secondary">Tasks</div>}
           {tasks.map((task, j) => {
             const i = actions.length + j;
             return (
@@ -170,6 +178,8 @@ const PaletteDialog: React.FC<CommandPaletteProps> = ({ onClose, session, toPlac
                 key={task.id}
                 type="button"
                 role="option"
+                id={`${listId}-opt-${i}`}
+                tabIndex={-1}
                 aria-selected={i === current}
                 onMouseEnter={() => setSelected(i)}
                 onClick={() => run({ kind: 'task', task })}

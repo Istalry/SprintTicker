@@ -209,14 +209,16 @@ export const HardwareDisplayEmulator: React.FC = () => {
     : 'none';
 
   return (
-    <div className="flex items-center gap-4 min-w-0 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner select-none">
+    // Hidden from screen readers: it mirrors what Today already says, and its
+    // canvas and captions read as stray text in the header (REVIEW-2026-11 A18).
+    <div aria-hidden="true" className="flex items-center gap-4 min-w-0 bg-dark-900 px-4 py-2 rounded-xl border border-border-dark shadow-inner select-none">
       {/* The matrix and its status LED take the slack; everything to the right
           of them is fixed width and drops out at a breakpoint instead. */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {/* Physical Status RGB LED Light Bar */}
         <div className="flex flex-col items-center shrink-0">
           <div
-            className={`w-3.5 h-3.5 rounded-full transition-all duration-300 shadow-md ${isAlert ? 'animate-pulse' : ''
+            className={`w-3.5 h-3.5 rounded-full transition-all duration-300 shadow-md ${isAlert ? 'motion-safe:animate-pulse' : ''
               }`}
             style={{ backgroundColor: ledColor, boxShadow: `0 0 10px ${ledColor}` }}
             title={`Status LED (${displayState?.ledMode || 'SOLID'})`}

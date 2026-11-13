@@ -4,6 +4,7 @@ import { ActiveSessionDTO, CeremonyPromptDTO, UserMode } from '../../shared/dtos
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { formatHoursMinutes } from '../utils/formatters';
 import { Verb } from '../../shared/words';
+import { useAnnounce } from './LiveAnnouncer';
 
 const STANDUP_REMIND_MINUTES = 10;
 /** "joined ▾": how long ago, in minutes; the minutes come off the task it replaces. */
@@ -33,6 +34,7 @@ export const StandupCard: React.FC<{ prompt: CeremonyPromptDTO; session: ActiveS
   const running = session && !session.interruption && session.status === 'TRACKING' ? session.taskKey : null;
   // S25: joining during an interruption ends it, and it waits to be placed.
   const interruption = session?.interruption ? session.taskTitle || 'the interruption' : null;
+  useAnnounce(`standup:${prompt.at}`, `Stand-up at ${prompt.at}. Join, or skip it today.`);
   return (
     <section aria-label="The stand-up" className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 space-y-3 select-none">
       <div className="flex items-center gap-2">
@@ -104,6 +106,7 @@ export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | n
 }) => {
   const lunch = mode === 'LUNCH';
   const lunchEnd = useLunchEnd(lunch);
+  useAnnounce(mode === 'WORK' ? null : mode, lunch ? 'Lunch. Your task is paused.' : 'Away. Your task is paused.');
   if (mode === 'WORK') return null;
   const api = window.electronAPI;
   const held = session?.status === 'PAUSED' && !session.interruption ? session : null;
@@ -164,6 +167,7 @@ export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | n
 export const LunchQuestionCard: React.FC<{ prompt: CeremonyPromptDTO }> = ({ prompt }) => {
   const api = window.electronAPI;
   const name = prompt.endsInterruption ?? 'the interruption';
+  useAnnounce(`lunch:${prompt.at}`, `Lunch time. Start lunch? It ends ${name}.`);
   return (
     <section aria-label="Lunch time" className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 space-y-3 select-none">
       <div className="flex items-center gap-2">

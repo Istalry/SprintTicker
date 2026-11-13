@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { WindowsNotificationEventDTO } from '../../shared/dtos';
 import { ipcErrorMessage } from '../utils/formatters';
 import { SettingButton } from './SettingRow';
+import { useAnnounce } from './LiveAnnouncer';
 
 /**
  * Fake Windows notifications (S24, Developer), sent through the listener's
@@ -28,6 +29,7 @@ const TESTS: ReadonlyArray<{ label: string; event: WindowsNotificationEventDTO }
 
 export const TestNotifications: React.FC = () => {
   const [sent, setSent] = useState<string | null>(null);
+  useAnnounce(sent, sent ?? '');
 
   const send = (label: string, event: WindowsNotificationEventDTO) => {
     setSent(null);
@@ -43,7 +45,7 @@ export const TestNotifications: React.FC = () => {
           <SettingButton key={label} onClick={() => send(label, event)}>{label}</SettingButton>
         ))}
       </div>
-      {sent && <p role="status" className="text-xs text-text-secondary">{sent}</p>}
+      {sent && <p className="text-xs text-text-secondary">{sent}</p>}
     </div>
   );
 };

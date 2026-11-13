@@ -56,6 +56,7 @@ import { existsSync } from 'fs';
 import { TrayManager } from './tray/tray-manager';
 import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
 import { PickerWindowManager } from './windows/picker-window-manager';
+import { enableZoom } from './windows/window-zoom';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
 import { PickerWindowMode, pickerWindowHash } from '../shared/picker-window';
 import { IPCChannel } from '../shared/ipc-channels';
@@ -240,6 +241,8 @@ const createWindow = (hidden: boolean = false): void => {
   });
 
   mainWindow.setMenu(null);
+  // The menu held the zoom keys; the dashboard keeps them (A11).
+  enableZoom(mainWindow.webContents);
   secureAndLoad(mainWindow);
 
   mainWindow.on('close', event => {

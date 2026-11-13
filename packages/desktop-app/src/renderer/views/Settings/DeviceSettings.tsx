@@ -9,6 +9,7 @@ import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../
 import { NotificationAppRules } from '../../components/NotificationAppRules';
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
 import { ipcErrorMessage } from '../../utils/formatters';
+import { useAnnounce } from '../../components/LiveAnnouncer';
 import {
   SETTING_SELECT_CLASS, SettingButton, SettingProblem, SettingRow, SettingSwitch, SettingsList
 } from '../../components/SettingRow';
@@ -258,6 +259,7 @@ const ConnectionFields: React.FC<{
   const [tokenVisible, setTokenVisible] = useState(false);
   const [applying, setApplying] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  useAnnounce(saved, saved ?? '');
 
   const addressValid = isValidDeviceHost(address.trim());
   const dirty = address.trim() !== config.ipAddress || token !== config.apiToken;
@@ -286,16 +288,23 @@ const ConnectionFields: React.FC<{
           spellCheck={false}
           onChange={e => { setAddress(e.target.value); setSaved(null); }}
           placeholder={DEFAULT_USB_IP}
+          aria-invalid={address.length > 0 && !addressValid}
+          aria-describedby={address.length > 0 && !addressValid ? 'device-address-error' : undefined}
           className={`${fieldClass} mt-1 font-mono ${address.length > 0 && !addressValid ? 'border-accent-red' : 'border-border-field'}`}
         />
       </label>
       {address.length > 0 && !addressValid && (
-        <SettingProblem>An IPv4 address or a host name only: no http://, port or path.</SettingProblem>
+        <div id="device-address-error">
+          <SettingProblem>An IPv4 address or a host name only: no http://, port or path.</SettingProblem>
+        </div>
       )}
-      <label className="block text-[11px] text-text-secondary">
+      <label htmlFor="device-token" className="block text-[11px] text-text-secondary">
         Token, for a bar on Wi-Fi with access protection; empty over USB
+      </label>
+      <div>
         <span className="mt-1 flex items-center gap-2">
           <input
+            id="device-token"
             type={tokenVisible ? 'text' : 'password'}
             value={token}
             spellCheck={false}
@@ -308,7 +317,7 @@ const ConnectionFields: React.FC<{
             {tokenVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </span>
-      </label>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <SettingButton tone="primary" disabled={!dirty || !addressValid || applying} onClick={() => { void apply(); }}>
           {applying ? 'Reconnecting…' : 'Save and reconnect'}
@@ -317,7 +326,7 @@ const ConnectionFields: React.FC<{
           <SettingButton tone="ghost" onClick={() => { setAddress(DEFAULT_USB_IP); setSaved(null); }}>Back to USB default</SettingButton>
         )}
       </div>
-      {saved && <p role="status" className="text-[11px] text-accent-green">{saved}</p>}
+      {saved && <p className="text-[11px] text-accent-green">{saved}</p>}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border-dark pt-3 text-[11px] text-text-secondary">
         <label className="flex items-center gap-2">
@@ -343,6 +352,7 @@ const ConnectionFields: React.FC<{
 const DeckBlock: React.FC = () => {
   const [desk, setDesk] = useState<DeskDetectionDTO | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  useAnnounce(note, note ?? '');
 
   useEffect(() => {
     const api = window.electronAPI;
@@ -381,7 +391,7 @@ const DeckBlock: React.FC = () => {
         description={desk ? row.description : ''}
         control={desk ? <SettingButton tone={row.tone} onClick={install}>{row.button}</SettingButton> : undefined}
       >
-        {note && <p role="status" className="text-[11px] text-text-secondary">{note}</p>}
+        {note && <p className="text-[11px] text-text-secondary">{note}</p>}
       </SettingRow>
     </SettingsList>
   );

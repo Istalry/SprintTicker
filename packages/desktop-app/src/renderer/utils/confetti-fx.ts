@@ -3,6 +3,8 @@
  * Spawns a 60-frame colorful confetti particle explosion overlay in the desktop app UI when completing a task session.
  */
 export function triggerDesktopConfetti(containerId: string = 'app-root'): void {
+  // Windows' "Animation effects" off (REVIEW-2026-11 A22).
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   const container = document.getElementById(containerId) || document.body;
   const canvas = document.createElement('canvas');
   canvas.style.position = 'fixed';

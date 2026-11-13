@@ -193,8 +193,9 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
                     const currentAction = m === 'LUNCH' ? rule.actionOnLunch : m === 'AWAY' ? rule.actionOnAway : rule.actionOnWork;
                     return (
                       <div key={m} className="flex items-center space-x-2">
-                        <span className="text-text-secondary">{m}:</span>
+                        <span aria-hidden="true" className="text-text-secondary">{m}:</span>
                         <select
+                          aria-label={`${def.label} in ${m === 'WORK' ? 'Work' : m === 'LUNCH' ? 'Lunch' : 'Away'}`}
                           value={currentAction || 'DISPLAY'}
                           onChange={e => updateRuleAction(rule.eventName, m, e.target.value as PriorityAction)}
                           className="bg-dark-800 border border-border-field rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-focus"

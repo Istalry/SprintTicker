@@ -196,9 +196,9 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
                       Once it has run {Math.round(afterSeconds / MINUTE)} minutes: move it to In Progress, and make it yours if
                       nobody has it.
                     </p>
-                    <div role="radiogroup" aria-label={`Change it in ${name}?`} className="flex gap-2">
+                    <div role="group" aria-label={`Change it in ${name}?`} className="flex gap-2">
                       {([[true, `Yes, update ${name}`], [false, 'No, only time it']] as const).map(([value, label]) => (
-                        <button key={label} type="button" role="radio" aria-checked={startUpdates === value}
+                        <button key={label} type="button" aria-pressed={startUpdates === value}
                           onClick={() => setStartUpdates(value)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
                             startUpdates === value ? 'bg-select text-text-primary border-focus' : 'border-border-dark text-text-secondary hover:text-white'

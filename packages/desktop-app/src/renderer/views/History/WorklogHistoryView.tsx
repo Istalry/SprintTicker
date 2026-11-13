@@ -231,7 +231,7 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
         </div>
 
         {named.length > 0 && (
-          <p aria-label="Time by task" className="text-xs text-text-secondary">
+          <p role="group" aria-label="Time by task" className="text-xs text-text-secondary">
             {named.map((share, i) => (
               <React.Fragment key={share.taskId}>
                 {i > 0 && ' · '}

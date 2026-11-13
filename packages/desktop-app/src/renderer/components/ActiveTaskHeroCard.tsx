@@ -111,7 +111,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
     : `sent to ${destination} when you stop, after 10 s to undo`;
 
   const timer = (
-    <div className="text-4xl font-extrabold font-mono text-white tracking-widest" aria-label="Elapsed time">
+    <div role="timer" className="text-4xl font-extrabold font-mono text-white tracking-widest" aria-label="Elapsed time">
       {formatSeconds(session?.elapsedSeconds || 0)}
     </div>
   );
@@ -131,11 +131,11 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
                 : 'bg-dark-700 text-text-secondary border border-border-dark'
             }`}
           >
-            ● {state}
+            <span aria-hidden="true">●</span> {state}
           </span>
           {session && (
             <span className="flex items-center gap-1 text-text-secondary min-w-0">
-              {interruption ? <span className="text-accent-amber">⚡ Interruption</span> : <span className="font-mono">{session.taskKey}</span>}
+              {interruption ? <span className="text-accent-amber"><span aria-hidden="true">⚡</span> Interruption</span> : <span className="font-mono">{session.taskKey}</span>}
               {!interruption && hasTaskPage(session.isAdHoc ? ADHOC_PROJECT_ID : session.projectId, session.providerId) && (
                 <TaskPageButton taskId={session.taskId} taskKey={session.taskKey} />
               )}
@@ -149,7 +149,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         <InterruptionDetails key={interruption.id} interruption={interruption} timer={timer} />
       ) : (
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">
+        <h3 className="text-xl font-bold text-white tracking-tight">
           {session ? (
             <SessionTitle
               session={session}
@@ -159,7 +159,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           ) : (
             'What are you working on?'
           )}
-        </h2>
+        </h3>
         {session?.unsorted && (
           <div className="mt-1 text-xs text-accent-amber">
             Interruption: name it, or {Verb.PLACE.toLowerCase()} it on a task so {destination ?? 'your provider'} gets its time.

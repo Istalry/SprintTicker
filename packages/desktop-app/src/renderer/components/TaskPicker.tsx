@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import { ArrowLeft, ChevronRight, Download, PlusCircle, RefreshCw, Search, Star, X } from 'lucide-react';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
@@ -119,6 +119,8 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   const [visibility, setVisibility] = useTaskVisibility();
   const [data, setData] = useState<PickerDataDTO | null>(null);
   const [query, setQuery] = useState('');
+  const listId = useId();
+  const optionId = (index: number) => `${listId}-opt-${index}`;
   const [projectId, setProjectId] = useState<string | null>(null);
   const [view, setView] = useState<'groups' | 'mine'>('groups');
   const [naming, setNaming] = useState(false);
@@ -410,6 +412,13 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                 key={projectId ?? 'all'}
                 autoFocus
                 aria-label="Search tasks"
+                // A combobox over the list: the arrows move a row the screen
+                // reader is pointed at, while the focus stays here (A6).
+                role="combobox"
+                aria-expanded="true"
+                aria-autocomplete="list"
+                aria-controls={listId}
+                aria-activedescendant={actionable[current] ? optionId(current) : undefined}
                 value={query}
                 onChange={e => changeQuery(e.target.value)}
                 placeholder={placeholder}
@@ -430,7 +439,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-3 py-2" role="listbox" aria-label="Tasks">
+          <div id={listId} className="flex-1 overflow-y-auto px-3 py-2" role="listbox" aria-label="Tasks">
             {data === null ? (
               <p className="px-2 py-6 text-center text-xs text-text-secondary">Reading your tasks…</p>
             ) : rows.length === 0 ? (
@@ -439,7 +448,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
               rows.map((row, i) => {
                 if (row.kind === 'heading') {
                   return (
-                    <div key={`h-${i}`} className="px-2 pt-3 pb-1 text-[11px] text-text-secondary">
+                    <div key={`h-${i}`} role="presentation" className="px-2 pt-3 pb-1 text-[11px] text-text-secondary">
                       <div className="flex items-baseline gap-2 font-bold">
                         <span>{row.label}</span>
                         {row.count !== undefined && <span className="font-normal">{row.count}</span>}
@@ -460,8 +469,8 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                     const p = projectOf.get(t.projectId);
                     const free = (t.ownership ?? TaskOwnership.MINE) === TaskOwnership.UNASSIGNED && capabilities?.canAssign && (mode === 'start' || mode === 'switch');
                     return (
-                      <div key={`t-${t.id}-${i}`} role="option" aria-selected={active} className={`group ${base}`} onMouseEnter={focus}>
-                        <button type="button" className="flex-1 min-w-0 flex items-baseline gap-2 text-left" onClick={() => pick({ task: t })}>
+                      <div key={`t-${t.id}-${i}`} role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`group ${base}`} onMouseEnter={focus}>
+                        <button type="button" tabIndex={-1} className="flex-1 min-w-0 flex items-baseline gap-2 text-left" onClick={() => pick({ task: t })}>
                           <span className="font-mono font-bold shrink-0">{t.key}</span>
                           <span className="truncate">{t.title}</span>
                           <span className="ml-auto pl-2 text-[11px] text-text-secondary shrink-0 truncate">
@@ -475,6 +484,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                           <button
                             type="button"
                             aria-label={`${starred ? 'Unstar' : 'Star'} ${t.key}`}
+                            tabIndex={-1}
                             onClick={() => toggleStar(t)}
                             className={`p-0.5 rounded ${starred ? 'text-accent-amber' : 'text-text-secondary opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
                           >
@@ -486,7 +496,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                   }
                   case 'project':
                     return (
-                      <button key={`p-${row.project.id}`} type="button" role="option" aria-selected={active} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
+                      <button key={`p-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
                         <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
                         <span className="truncate">{row.project.name}</span>
                         <span className="ml-auto text-[11px] text-text-secondary">{row.note}</span>
@@ -494,21 +504,21 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                     );
                   case 'mine':
                     return (
-                      <button key="mine" type="button" role="option" aria-selected={active} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
+                      <button key="mine" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
                         <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
                         <span>all {row.count} of my open tasks</span>
                       </button>
                     );
                   case 'own':
                     return (
-                      <button key="own" type="button" role="option" aria-selected={active} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
+                      <button key="own" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
                         <PlusCircle className="w-3.5 h-3.5" />
                         <span>{row.title ? <>A task of my own named &quot;{row.title}&quot;</> : 'A task of my own…'}</span>
                       </button>
                     );
                   case 'fetch':
                     return (
-                      <button key="fetch" type="button" role="option" aria-selected={active} disabled={busy === 'fetch'} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
+                      <button key="fetch" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} disabled={busy === 'fetch'} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
                         <Download className="w-3.5 h-3.5 text-text-secondary" />
                         <span>Fetch <span className="font-mono">{row.key}</span> from {providerName}</span>
                         <span className="ml-auto text-[11px] text-text-secondary">{busy === 'fetch' ? 'reading…' : 'not fetched yet'}</span>

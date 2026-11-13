@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, CloudOff, Loader2 } from 'lucide-react';
 import { AutoSaveStatus } from '../hooks/auto-save-scheduler';
+import { useAnnounce } from './LiveAnnouncer';
 
 export interface AutoSaveIndicatorProps {
   status: AutoSaveStatus;
@@ -19,9 +20,12 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
   status,
   idleLabel = 'Changes save automatically'
 }) => {
+  // "Saved" is said through the window's region (A14): the indicator swaps
+  // elements, which a screen reader does not read. A failure is an alert.
+  useAnnounce(status === 'saved' ? status : null, 'Saved.');
   if (status === 'error') {
     return (
-      <div className="flex items-center space-x-2 px-3 py-2 text-xs rounded-lg bg-accent-red/10 border border-accent-red/30 text-accent-red">
+      <div role="alert" className="flex items-center space-x-2 px-3 py-2 text-xs rounded-lg bg-accent-red/10 border border-accent-red/30 text-accent-red">
         <CloudOff className="w-4 h-4" />
         <span>Not saved. Change it again to retry; if it still fails, restart SprintTicker.</span>
       </div>

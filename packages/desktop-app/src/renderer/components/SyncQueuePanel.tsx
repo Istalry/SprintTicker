@@ -3,6 +3,7 @@ import { RefreshCw, RotateCcw, Loader2 } from 'lucide-react';
 import { SettingButton } from './SettingRow';
 import { SyncQueueItemDTO, SyncQueueSnapshotDTO } from '../../shared/dtos';
 import { countOf, formatClockTime, formatHoursAndMinutes } from '../utils/formatters';
+import { useAnnounce } from './LiveAnnouncer';
 
 /**
  * What the worklog sync queue holds, and why anything in it has not arrived.
@@ -33,6 +34,7 @@ export const SyncQueuePanel: React.FC = () => {
   const [read, setRead] = useState<QueueRead | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  useAnnounce(notice, notice ?? '');
 
   // A promise chain rather than an async body: the effect below calls this,
   // and state set in an async function's body reads to the hooks linter as set
@@ -121,7 +123,7 @@ export const SyncQueuePanel: React.FC = () => {
         </div>
       </div>
 
-      {notice && <p role="status" className="text-xs text-text-secondary">{notice}</p>}
+      {notice && <p className="text-xs text-text-secondary">{notice}</p>}
 
       {items.length === 0 ? (
         <p className="text-xs text-text-secondary">Nothing outstanding: every entry recorded has been sent.</p>

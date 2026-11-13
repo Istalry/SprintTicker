@@ -174,6 +174,10 @@ beside Today counts the interruptions you have not placed on a task yet.
 
 ⌨️ Everything works from the keyboard. Escape closes any dialog or menu and
 puts you back on the button that opened it; the arrow keys move in a menu.
+🔍 **Ctrl+=** and **Ctrl+-** (or Ctrl and the mouse wheel) make the window's
+text larger or smaller; **Ctrl+0** puts it back. A screen reader hears a
+question -- the stand-up, Back to MG-12? -- when it arrives, without the
+window taking the focus.
 
 Across the top, the header:
 

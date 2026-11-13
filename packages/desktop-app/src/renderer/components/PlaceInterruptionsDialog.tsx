@@ -148,11 +148,11 @@ export const PlaceInterruptionsDialog: React.FC<PlaceInterruptionsDialogProps> =
           : 'w-full max-w-2xl max-h-[85vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col'}
       >
         <div className="px-5 pt-4 pb-3 border-b border-border-dark">
-          <h4 className="text-sm font-bold text-white">
+          <h2 className="text-sm font-bold text-white">
             {waiting.length === 1
               ? <>{Verb.PLACE} &ldquo;{nameOf(waiting[0])}&rdquo; · {formatHoursAndMinutes(total)}</>
               : <>{Verb.PLACE} {waiting.length} interruptions · {formatHoursAndMinutes(total)}</>}
-          </h4>
+          </h2>
           <p className="text-[11px] text-text-secondary mt-1">
             Name {waiting.length === 1 ? 'it' : 'each'} and choose a task, or keep {waiting.length === 1 ? 'it' : 'one'} as its own entry. Leave {waiting.length === 1 ? 'it' : 'one'}, and it waits on Today.
           </p>

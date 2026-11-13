@@ -143,7 +143,7 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ day, entries, schedule
             onClick={() => onGap(gap)}
             className="hover:text-white underline-offset-2 hover:underline"
           >
-            ▨ {clock(gap.startMs)}–{clock(gap.endMs)} not timed · add time
+            <span aria-hidden="true">▨</span> {clock(gap.startMs)}–{clock(gap.endMs)} not timed · add time
           </button>
         ))}
         <span className="ml-auto">Each block names its task · ⚡ marks an interruption · hatched is not timed</span>

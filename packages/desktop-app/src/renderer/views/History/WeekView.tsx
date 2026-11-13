@@ -151,7 +151,7 @@ export const WeekView: React.FC<{ monday: string; revision: number; onOpenDay: (
               </tr>
               {sheet.toPlaceTotal > 0 && (
                 <tr aria-label="To place">
-                  <td className="py-2 px-3 text-accent-amber">⚡ To place</td>
+                  <td className="py-2 px-3 text-accent-amber"><span aria-hidden="true">⚡</span> To place</td>
                   {sheet.days.map(day => <td key={day.dateKey} className={`${cell} text-accent-amber`}>{time(day.toPlaceSeconds)}</td>)}
                   <td className={`${cell} text-accent-amber`}>{formatHoursAndMinutes(sheet.toPlaceTotal)}</td>
                 </tr>

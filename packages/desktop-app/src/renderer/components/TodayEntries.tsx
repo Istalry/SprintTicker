@@ -75,7 +75,7 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
               <tr className="bg-select">
                 <td className={`${cell} font-mono font-bold text-text-primary`}>
                   <span className="inline-flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${session.status === 'TRACKING' ? 'bg-accent-green animate-pulse' : 'bg-accent-amber'}`} />
+                    <span className={`w-2 h-2 rounded-full ${session.status === 'TRACKING' ? 'bg-accent-green motion-safe:animate-pulse' : 'bg-accent-amber'}`} />
                     {session.interruption ? '⚡' : session.taskKey}
                   </span>
                 </td>

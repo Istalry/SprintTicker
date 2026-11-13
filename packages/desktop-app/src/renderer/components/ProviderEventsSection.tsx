@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { SettingProblem } from './SettingRow';
+import { useAnnounce } from './LiveAnnouncer';
 import {
   DEFAULT_PROVIDER_EVENT_SETTINGS,
   MAX_PROVIDER_EVENT_POLL_SECONDS,
@@ -36,6 +37,7 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
   // Nothing to wait for without the bridge.
   const [loaded, setLoaded] = useState<boolean>(() => !window.electronAPI?.getProviderEventSettings);
   const [testResult, setTestResult] = useState<string | null>(null);
+  useAnnounce(testResult, testResult ?? '');
 
   useEffect(() => {
     if (!window.electronAPI?.getProviderEventSettings) return;
@@ -159,7 +161,7 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
             Send a test notification
           </button>
         </div>
-        {testResult && <p className="text-xs text-text-secondary" role="status">{testResult}</p>}
+        {testResult && <p className="text-xs text-text-secondary">{testResult}</p>}
       </fieldset>
 
       <p className="text-xs text-text-secondary">

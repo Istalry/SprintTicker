@@ -164,6 +164,7 @@ export const NotificationListenerView: React.FC = () => {
           <div className="flex items-center space-x-3">
             <input
               type="text"
+              aria-label="App ID"
               placeholder="App ID (e.g. chrome, outlook)"
               value={newAppId}
               onChange={e => setNewAppId(e.target.value)}
@@ -171,12 +172,14 @@ export const NotificationListenerView: React.FC = () => {
             />
             <input
               type="text"
+              aria-label="Display name"
               placeholder="Display Name (e.g. Google Chrome)"
               value={newAppName}
               onChange={e => setNewAppName(e.target.value)}
               className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus flex-1"
             />
             <select
+              aria-label="Icon on the bar"
               value={newIconId}
               onChange={e => setNewIconId(e.target.value as BitmapIconId)}
               className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus"
@@ -190,6 +193,7 @@ export const NotificationListenerView: React.FC = () => {
               <option value="windows">Icon: Windows</option>
             </select>
             <select
+              aria-label="Priority"
               value={newPriorityMode}
               onChange={e => setNewPriorityMode(e.target.value as NotificationPriorityMode)}
               className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus"
@@ -255,6 +259,7 @@ export const NotificationListenerView: React.FC = () => {
             <button
               onClick={fetchStatusAndLogs}
               title="Refresh Logs & Status"
+              aria-label="Refresh the logs"
               className="p-1 text-text-secondary hover:text-white transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -264,6 +269,7 @@ export const NotificationListenerView: React.FC = () => {
             <button
               onClick={() => setLogs([])}
               title="Clear Logs"
+              aria-label="Clear the logs"
               className="p-1 text-text-secondary hover:text-accent-red transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />

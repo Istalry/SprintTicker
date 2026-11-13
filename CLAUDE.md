@@ -1135,6 +1135,17 @@ first item and does the arrows. Not the native `<dialog>`: jsdom has no
   card main put on Today keeps §5's rule, and is announced
   instead.
 
+**A screen reader hears a question; it never gets the focus** (P15a5).
+Every window has one polite live region, `LiveAnnouncer`, mounted in
+`main.tsx`; `useAnnounce(key, text)` says `text` once each time `key`
+changes. A card main puts on Today, the Undo bar and a setting's "Saved"
+go through it: a `role="status"` mounted together with its text is
+skipped by most screen readers, and §5 forbids taking the focus to make
+them heard. Key it by the prompt, not by its words -- "6 min not timed"
+ticks. The pickers are comboboxes: the focus stays in the field and
+`aria-activedescendant` names the row the arrows reach, so an option is
+never a Tab stop.
+
 **The window's colours are tokens, and colour means something.** Green is
 running, amber is paused or waiting on the user, red is danger; everything
 else is grey (`tailwind.config.js`). There is no blue or purple token, and

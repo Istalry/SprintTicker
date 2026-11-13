@@ -17,7 +17,6 @@ import { EndMyDayDialog } from './views/EOD/EndMyDayDialog';
 import { WeekEndedNotice } from './components/WeekEndedNotice';
 import { FirstRunDialog } from './components/FirstRun/FirstRunDialog';
 import { ForgottenSessionModal } from './components/ForgottenSessionModal';
-import { ToastNotification, ToastMessage } from './components/ToastNotification';
 import { UpdateBanner } from './components/UpdateNotice';
 import { UndoBar } from './components/UndoBar';
 import { useToPlaceCount } from './hooks/useToPlaceCount';
@@ -47,7 +46,6 @@ export const App: React.FC = () => {
   const [settingsGroup, setSettingsGroup] = useState<SettingsGroupId>('general');
   // Check my week asked for by the week's notice: History remounts on each (`n`).
   const [weekCheck, setWeekCheck] = useState<{ monday: string; n: number } | null>(null);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const { session, pause, resume, complete, discard, startTask, interrupt, back, stopInterruption } = useSession();
   const device = useDeviceStatus();
@@ -241,7 +239,6 @@ export const App: React.FC = () => {
 
       <UndoBar />
 
-      <ToastNotification toasts={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />
     </>
   );
 };

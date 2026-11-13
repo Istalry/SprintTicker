@@ -47,10 +47,11 @@ describe('the app shell', () => {
     const bridge = installElectronApi({ getInterruptionsToPlace: async () => [one, { ...one, id: 'int_2' }] });
     render(<App />);
 
-    expect(await screen.findByLabelText('2 to place')).toBeTruthy();
+    const places = screen.getByRole('navigation', { name: 'Places' });
+    expect(await within(places).findByRole('button', { name: 'Today, 2 to place' })).toBeTruthy();
     // One more ends on the bar: main sends the list.
     act(() => bridge.emit('onInterruptionsUpdated', [one, { ...one, id: 'int_2' }, { ...one, id: 'int_3' }]));
-    expect(await screen.findByLabelText('3 to place')).toBeTruthy();
+    expect(await within(places).findByRole('button', { name: 'Today, 3 to place' })).toBeTruthy();
   });
 
   it('ModeChip_Choose_WritesTheModeMainKeeps', async () => {

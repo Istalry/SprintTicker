@@ -1,6 +1,7 @@
 import React from 'react';
 import { BellRing } from 'lucide-react';
 import { ReminderDTO } from '../../shared/dtos';
+import { useAnnounce } from './LiveAnnouncer';
 
 const warn = (what: string) => (err: unknown) => console.warn(`[ReminderPrompt] ${what} failed:`, err);
 
@@ -102,6 +103,7 @@ export const ReminderCard: React.FC<{ reminder: ReminderDTO; openPicker: () => v
   onAnswered
 }) => {
   const view = reminderView(reminder, openPicker, onAnswered);
+  useAnnounce(reminder.id, `${view.heading}. ${view.question}`);
   return (
     <section aria-label={view.question} className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 space-y-3 select-none">
       <div className="flex items-center gap-2">

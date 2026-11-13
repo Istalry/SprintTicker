@@ -438,7 +438,7 @@ describe('mini timer: the states of S25', () => {
     installElectronApi({ isWorkingNow: async () => true, getInterruptionsToPlace: vi.fn().mockResolvedValue([{}, {}, {}]) });
     render(<MiniBar />);
 
-    expect(await screen.findByText('⚡ 3 to place')).toBeTruthy();
+    expect(await screen.findByText('3 to place', { exact: false })).toBeTruthy();
     await waitFor(() => expect(screen.getByText('Nothing timing').className).toContain('text-accent-amber'));
     expect(screen.getByLabelText('Start a task')).toBeTruthy();
   });
@@ -501,7 +501,7 @@ describe('mini timer: the states of S25', () => {
     });
     render(<MiniBar />);
 
-    expect(await screen.findByLabelText('The buttons')).toBeTruthy();
+    expect(await screen.findByText(/pause · stop · interrupt/)).toBeTruthy();
     fireEvent.click(screen.getByText('Got it'));
 
     expect(bridge.api.saveFlowSetting).toHaveBeenCalledWith('mini_tour_seen', true);

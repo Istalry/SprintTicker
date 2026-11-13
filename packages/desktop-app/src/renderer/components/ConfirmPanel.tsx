@@ -46,7 +46,7 @@ export const ConfirmPanel: React.FC<ConfirmPanelProps> = ({
   <div role="alertdialog" aria-label={title} className="space-y-4">
     <div className="flex items-center space-x-2">
       <AlertTriangle className={`w-4 h-4 ${tone === 'danger' ? 'text-accent-red' : 'text-accent-amber'}`} />
-      <h4 className="text-sm font-bold text-white">{title}</h4>
+      <h3 className="text-sm font-bold text-white">{title}</h3>
     </div>
     <div className="text-xs text-text-secondary leading-relaxed">{message}</div>
     <div className="flex justify-end space-x-3 pt-1">

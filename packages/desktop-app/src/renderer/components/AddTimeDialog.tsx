@@ -191,17 +191,19 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
         <h3 className="text-sm font-bold text-white border-b border-border-dark pb-3">Add time</h3>
 
         <div className="space-y-1 text-xs">
-          <span className="text-text-secondary">Task</span>
-          <button type="button" onClick={() => setPicking(true)} className={`${field} text-left`}>
+          <span id="add-time-task" className="text-text-secondary">Task</span>
+          <button type="button" aria-labelledby="add-time-task add-time-task-value" onClick={() => setPicking(true)} className={`${field} text-left`}>
+            <span id="add-time-task-value">
             {task
               ? <><span className="font-mono font-bold">{task.key}</span> <span className="text-text-secondary">{task.title}</span></>
-              : <span className="text-text-secondary">⌕ Search, or pick a recent task</span>}
+              : <span className="text-text-secondary"><span aria-hidden="true">⌕</span> Search, or pick a recent task</span>}
+            </span>
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="space-y-1">
-            <span className="text-text-secondary">Duration</span>
+          <div role="group" aria-labelledby="add-time-duration" className="space-y-1">
+            <span id="add-time-duration" className="text-text-secondary">Duration</span>
             <div className="flex items-center gap-2">
               <input aria-label="Hours" type="number" min={0} value={hours} onChange={e => { setHours(e.target.value); setNow(Date.now()); }} className={field} />
               <span className="text-text-secondary">h</span>

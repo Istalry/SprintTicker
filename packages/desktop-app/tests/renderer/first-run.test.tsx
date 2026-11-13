@@ -43,7 +43,7 @@ describe('First run', () => {
       const { bridge } = open();
       await chooseJira();
       click('Test connection');
-      fireEvent.click(await screen.findByRole('radio', { name: 'No, only time it' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'No, only time it' }));
 
       fireEvent.click(continueButton());
 

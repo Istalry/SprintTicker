@@ -226,13 +226,13 @@ export const MiniBar: React.FC = () => {
       return (
         <>
           <div className={workingNow ? 'text-sm font-bold text-accent-amber' : 'text-xs text-text-secondary'}>Nothing timing</div>
-          {toPlace > 0 && <div className="text-[11px] text-accent-amber truncate">⚡ {toPlaceLabel(toPlace)}</div>}
+          {toPlace > 0 && <div className="text-[11px] text-accent-amber truncate"><span aria-hidden="true">⚡</span> {toPlaceLabel(toPlace)}</div>}
         </>
       );
     }
     let top: React.ReactNode;
     if (standup) {
-      top = <span className="truncate text-text-primary">☷ {session.taskTitle}</span>;
+      top = <span className="truncate text-text-primary"><span aria-hidden="true">☷</span> {session.taskTitle}</span>;
     } else if (interruption) {
       const from = FROM[interruption.source];
       top = (
@@ -240,7 +240,7 @@ export const MiniBar: React.FC = () => {
           {from && interruption.index === 1 ? (
             // S25's "⚡ from the deck · started now ▾": set when it began, or leave it.
             <>
-              <span className="truncate">⚡ {from} · started</span>
+              <span className="truncate"><span aria-hidden="true">⚡</span> {from} · started</span>
               <select
                 aria-label="When it started"
                 value={startedChoice}
@@ -272,7 +272,7 @@ export const MiniBar: React.FC = () => {
         </span>
       );
     } else if (paused) {
-      top = <span className="truncate text-accent-amber">❚❚ Paused · <span className="font-mono">{session.taskKey}</span></span>;
+      top = <span className="truncate text-accent-amber"><span aria-hidden="true">❚❚</span> Paused · <span className="font-mono">{session.taskKey}</span></span>;
     } else {
       top = <span className="font-mono truncate text-text-primary">{session.taskKey}</span>;
     }
@@ -285,7 +285,7 @@ export const MiniBar: React.FC = () => {
               {standup.returnsToKey ? `then back to ${standup.returnsToKey}, as it was` : 'nothing to go back to after it'}
             </span>
           ) : tourSeen === false ? (
-            <span className="flex items-center gap-2 text-[11px] text-text-secondary" aria-label="The buttons">
+            <span className="flex items-center gap-2 text-[11px] text-text-secondary">
               <span className="truncate">pause · stop · interrupt · switch · previous · hide →</span>
               <button type="button" className="shrink-0 underline hover:text-white" onClick={putTourAway}>Got it</button>
             </span>
@@ -495,6 +495,7 @@ export const MiniBar: React.FC = () => {
           {/* The tour takes the timer's room for the one first open: the words need it. */}
           {session && !choosing && tourSeen !== false && (
             <div
+              role="timer"
               className={`text-lg font-bold font-mono tabular-nums ${tracking ? 'text-white' : 'text-text-secondary'}`}
               aria-label="Elapsed time"
             >

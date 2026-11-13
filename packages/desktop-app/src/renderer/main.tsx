@@ -7,6 +7,7 @@ import { MINI_WINDOW_HASH } from '../shared/mini-window';
 import { readPickerWindowHash, readPickerWindowIds } from '../shared/picker-window';
 import { PickerWindow } from './components/PickerWindow';
 import './index.css';
+import { LiveAnnouncer } from './components/LiveAnnouncer';
 
 // One bundle, three windows: main loads the mini timer and the picker
 // window at their hashes.
@@ -23,6 +24,7 @@ const render = () =>
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
       {root()}
+      <LiveAnnouncer />
     </React.StrictMode>
   );
 

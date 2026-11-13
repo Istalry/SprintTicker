@@ -227,6 +227,17 @@
 
 ### Changed
 
+- **Usable with a screen reader and at a larger size.** The dashboard zooms
+  again -- Ctrl+= and Ctrl+- or Ctrl+wheel, Ctrl+0 to reset -- which went
+  with the hidden menu. A screen reader now hears the stand-up, Lunch, Away,
+  a reminder and "Back to MG-12?" when they arrive, without the window
+  taking the focus, and the Undo bar once rather than every second. In the
+  task picker and Ctrl+K the arrows say which row they reached; every
+  control has a name, Add time's fields are labelled, an invalid bar
+  address says so to the screen reader, and the LED preview, which repeats
+  Today, is left out. With Windows' animation effects off, Done throws no
+  confetti.
+
 - **Easier to read, and colour means one thing.** **Pause** is grey: a
   running task no longer looks paused, amber being the paused state's
   colour. Red text and the Discard and Delete buttons, the quiet grey text

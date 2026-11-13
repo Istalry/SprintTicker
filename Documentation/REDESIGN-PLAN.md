@@ -2785,6 +2785,29 @@ left once the screens are real:
   primary token for checkboxes and radios (C13). "nobody" is muted, the
   Developer note plain (C17, C22); `text-md` is `text-base` (C21).
 
+**As landed: P15a5, screen reader and zoom (2026-11-13).**
+
+- `LiveAnnouncer` (one polite region per window, in `main.tsx`) and
+  `useAnnounce(key, text)`: the Undo bar (A9), the cards main puts on Today
+  and the mini timer's row (A10), and the settings' results (A14); a
+  failed auto-save is an alert.
+- `windows/window-zoom.ts`: Ctrl+= / Ctrl+- / Ctrl+0 and Ctrl+wheel on the
+  dashboard, -3 to +5 (about 50-250 %); the mini timer and the picker are
+  fixed-size and keep 100 % (A11).
+- The picker and Ctrl+K are comboboxes with `aria-activedescendant`; no
+  option is a Tab stop, captions are presentation (A6). The star inside a
+  task's option stays, by mouse only.
+- Names: the priority panel's per-mode selects, the Developer source's
+  fields, the header's icon buttons, the Today badge as text; `role="timer"`
+  for the elapsed time; Add time's Task and Duration label their fields;
+  `aria-invalid` and `aria-describedby` on a bad bar address (A13, A15-A17).
+  `ToastNotification`, which nothing fed, is deleted.
+- The LED preview is `aria-hidden` (A18); glyphs are hidden or spelled out
+  (A19); Today has an `h2`, cards `h3`, Place's dialog `h2` (A20); the
+  first run's "Change it?" is two toggle buttons (A21); no confetti and no
+  pulse under reduced motion (A22).
+- Tests: `screen-reader.test.tsx` (4), `window-zoom.test.ts` (5).
+
 ---
 
 ## 21. Verification, all phases
@@ -2860,5 +2883,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours) done | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 (2026-11-13) |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom) done | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 (2026-11-13) |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

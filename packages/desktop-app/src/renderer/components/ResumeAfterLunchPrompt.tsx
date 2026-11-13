@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState } from 'react';
 import { Verb } from '../../shared/words';
 import { useResumePrompt } from '../hooks/usePrompts';
+import { useAnnounce } from './LiveAnnouncer';
 
 const MS_PER_MINUTE = 60_000;
 
@@ -39,6 +40,9 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
     return () => clearInterval(timer);
   }, [counting]);
 
+  useAnnounce(prompt ? `${prompt.after}:${prompt.taskKey}` : null, prompt
+    ? prompt.held ? `Back at your desk? ${prompt.taskKey} is paused.` : prompt.after === 'interruption' ? `${Verb.BACK} to ${prompt.taskKey}?` : `${Verb.RESUME} ${prompt.taskKey}?`
+    : '');
   if (!prompt) return null;
   const key = prompt.taskKey;
   // After Lunch or Away the task is paused, not stopped (P8b).

@@ -10,6 +10,7 @@ import { DEFAULT_PROMPT_DELAYS, FlowSettingKey, PromptDelaysSetting } from '../.
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 import { ProviderId } from '../../../shared/provider-names';
 import { StandupSetting } from '../../components/StandupSetting';
+import { useAnnounce } from '../../components/LiveAnnouncer';
 import {
   SETTING_SELECT_CLASS, SettingButton, SettingProblem, SettingRow, SettingSwitch, SettingsList
 } from '../../components/SettingRow';
@@ -62,6 +63,7 @@ export const WorkdaySettings: React.FC = () => {
   const [delays, setDelays] = useState<PromptDelaysSetting | null>(null);
   const [delayProblem, setDelayProblem] = useState<string | null>(null);
   const [shown, setShown] = useState<string | null>(null);
+  useAnnounce(shown, shown ?? '');
 
   useEffect(() => {
     if (window.electronAPI?.getScheduleSettings) {
@@ -256,7 +258,7 @@ export const WorkdaySettings: React.FC = () => {
         </SettingRow>
       </SettingsList>
 
-      {shown && <p role="status" className="text-xs text-text-secondary">{shown}</p>}
+      {shown && <p className="text-xs text-text-secondary">{shown}</p>}
       {delayProblem && <SettingProblem>{delayProblem}</SettingProblem>}
       {saveStatus === 'error' && !refusal && <SettingProblem>Could not save your workday. Nothing changed.</SettingProblem>}
     </div>

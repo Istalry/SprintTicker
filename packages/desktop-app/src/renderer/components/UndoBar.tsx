@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { UndoStateDTO } from '../../shared/dtos';
 import { undoCountdown, Verb } from '../../shared/words';
+import { useAnnounce } from './LiveAnnouncer';
 
 /** How often the seconds left are redrawn. */
 const COUNTDOWN_TICK_MS = 250;
@@ -60,6 +61,8 @@ export const UndoBar: React.FC = () => {
   useEffect(() => window.electronAPI?.onOpenRoute?.(route => {
     if (route === 'undo') button.current?.focus();
   }), []);
+  // Said once per action; the countdown beside it is never read (A9).
+  useAnnounce(state ? `${state.label}:${state.expiresAtUtc}` : null, state ? `${state.label}. ${Verb.UNDO} for ${secondsLeft} seconds.` : '');
   if (!state) return null;
   return (
     <div
@@ -69,7 +72,7 @@ export const UndoBar: React.FC = () => {
     >
       {/* Announced once; the countdown beside it is not, or a screen
           reader read it out every second for ten (REVIEW-2026-11 A9). */}
-      <span role="status" className="text-sm text-text-primary">{state.label}</span>
+      <span className="text-sm text-text-primary">{state.label}</span>
       <span aria-hidden="true" className="text-xs text-text-muted">{undoCountdown(state.outcome, secondsLeft)}</span>
       <button
         ref={button}

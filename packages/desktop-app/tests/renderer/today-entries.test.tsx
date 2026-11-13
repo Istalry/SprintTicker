@@ -50,7 +50,7 @@ describe('Today entries', () => {
     render(<TodayEntries session={null} worklogs={[PF, OPS]} />);
 
     const rows = within(screen.getByRole('region', { name: "Today's entries" })).getAllByRole('row').slice(1);
-    expect(rows[0].textContent).toMatch(/^⚡OPS-4/);
+    expect(rows[0].textContent).toMatch(/^⚡Started as an interruption:OPS-4/);
     expect(within(rows[0]).getByText('Waiting to send')).toBeTruthy();
     expect(rows[1].textContent).toMatch(/^PF-31Hammer and quench sounds1h 40m/);
     expect(within(rows[1]).getByText('Sent')).toBeTruthy();

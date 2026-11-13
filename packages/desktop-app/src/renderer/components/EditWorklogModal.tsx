@@ -157,8 +157,8 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="space-y-1 col-span-2">
-                <span className="text-text-secondary">Duration</span>
+              <div role="group" aria-labelledby="correct-duration" className="space-y-1 col-span-2">
+                <span id="correct-duration" className="text-text-secondary">Duration</span>
                 <div className="flex items-center gap-2">
                   <input
                     aria-label="Hours"

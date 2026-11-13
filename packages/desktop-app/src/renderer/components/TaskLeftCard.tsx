@@ -5,6 +5,7 @@ import { Verb } from '../../shared/words';
 import { formatClockTime, formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { TaskPicker } from './TaskPicker';
+import { useAnnounce } from './LiveAnnouncer';
 
 /** Where "Keep timing on it" is remembered, for this session and this reason: the window reopened does not ask again. */
 const keptKey = (session: ActiveSessionDTO) => `task-left-kept:${session.sessionId}:${session.taskLeftBecause ?? 'reassigned'}`;
@@ -50,6 +51,7 @@ export const TaskLeftCard: React.FC<{ session: ActiveSessionDTO; onSwitch: () =>
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { providerName } = useProviderCapabilities();
+  useAnnounce(kept ? null : `${session.sessionId}:${session.taskLeftBecause ?? 'reassigned'}`, taskLeftHeading(session, providerName));
   if (kept) return null;
 
   const soFar = formatHoursAndMinutes(session.elapsedSeconds);

@@ -220,7 +220,7 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ onJu
                   onClick={() => { setError(null); setPlacingRows([item]); }}
                   className={small}
                 >
-                  ↳ {Verb.PLACE}…
+                  <span aria-hidden="true">↳</span> {Verb.PLACE}…
                 </button>
                 <RowMenu
                   name={item.title}
