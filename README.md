@@ -666,6 +666,10 @@ builds it and runs Elgato's own validator on it, as CI does.
   straight from `Animations/`. Close SprintTicker first: the capture's own
   instance needs the app's local port, and the running app drives a real bar.
   Needs Python with Pillow, as compiling an animation does.
+- **The dry run at scale** -- `pnpm dryrun:scale` runs the app the same way
+  against a fake OpenProject of 20 projects of 50 tasks, with 60 working
+  days of history and a day played through it, and times every screen from
+  the action to the paint. Close SprintTicker first, for the same reason.
 
 Windows batch shortcuts for the common commands sit in the repository root:
 `install.bat`, `run_editor.bat`, `package-win.bat`, `test-coverage.bat`.

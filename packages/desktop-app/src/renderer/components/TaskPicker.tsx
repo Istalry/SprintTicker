@@ -8,6 +8,8 @@ import { TaskOwnership } from '../../shared/task-ownership';
 import { orderTasksForSelection } from '../../shared/task-order';
 import {
   PICKER_MINE_PREVIEW,
+  PICKER_SEARCH_PER_PROJECT,
+  PICKER_SEARCH_SHOWN,
   PickerDataDTO,
   PickerMode,
   countProject,
@@ -97,6 +99,7 @@ type Row =
   | { kind: 'task'; task: TaskDTO; note?: string }
   | { kind: 'project'; project: ProjectDTO; note: string }
   | { kind: 'mine' ; count: number }
+  | { kind: 'more'; project: ProjectDTO; count: number }
   | { kind: 'own'; title: string }
   | { kind: 'fetch'; key: string };
 
@@ -181,9 +184,15 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     // how many of each status.
     pushTasks(orderTasksForSelection(tasks.filter(t => t.projectId === project.id && matchesSearch(t, trimmed, project))));
   } else if (trimmed) {
-    for (const group of searchByProject(tasks, trimmed, projects)) {
+    const groups = searchByProject(tasks, trimmed, projects);
+    const many = groups.reduce((n, g) => n + g.tasks.length, 0) > PICKER_SEARCH_SHOWN;
+    for (const group of groups) {
       rows.push({ kind: 'heading', label: group.project.name, count: group.tasks.length });
-      pushTasks(group.tasks);
+      pushTasks(many ? group.tasks.slice(0, PICKER_SEARCH_PER_PROJECT) : group.tasks);
+      // The rest is one press away, in the project, with the search kept.
+      if (many && group.tasks.length > PICKER_SEARCH_PER_PROJECT) {
+        rows.push({ kind: 'more', project: group.project, count: group.tasks.length - PICKER_SEARCH_PER_PROJECT });
+      }
     }
     const found = rows.some(r => r.kind === 'task');
     if (!found && looksLikeTaskKey(trimmed) && capabilities?.canFetchByKey) rows.push({ kind: 'fetch', key: trimmed.toUpperCase() });
@@ -289,6 +298,10 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
         return;
       case 'mine':
         setView('mine');
+        setSelected(0);
+        return;
+      case 'more':
+        setProjectId(row.project.id);
         setSelected(0);
         return;
       case 'own':
@@ -506,6 +519,13 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                         <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
                         <span className="truncate">{row.project.name}</span>
                         <span className="ml-auto text-[11px] text-text-secondary">{row.note}</span>
+                      </button>
+                    );
+                  case 'more':
+                    return (
+                      <button key={`m-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                        <span>{row.count} more in {row.project.name}</span>
                       </button>
                     );
                   case 'mine':

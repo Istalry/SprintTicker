@@ -836,7 +836,13 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('[capture]', err.message);
-  process.exit(1);
-});
+// Imported by the dry run at scale (P15b) for its launch and CDP pieces:
+// one way of driving the app, so the two cannot drift.
+if (require.main === module) {
+  main().catch(err => {
+    console.error('[capture]', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { launch, Page, openDb, reload, backdateSession, portAnswers, sleep, APP_DIR, WEBHOOK };

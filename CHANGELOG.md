@@ -227,6 +227,12 @@
 
 ### Changed
 
+- **The picker stays quick with a thousand tasks.** A search that finds
+  many shows eight tasks of each project and *N more in …*, which opens the
+  project with the search kept: the first letter typed used to draw every
+  match. Measured with a dry run of 20 projects of 50 tasks and two months
+  of history, where every other screen answered within a tenth of a second.
+
 - **A second look at every screen.** With no account set up, the session
   card no longer says the time will be sent: it is kept here until you set
   one up, and the status says so in amber rather than red. The first run

@@ -31,6 +31,7 @@
     "probe:busybar": "node scripts/busybar-probe.js",
     "docs:build": "node scripts/build-docs.js",
     "docs:check": "node scripts/build-docs.js --check",
+    "dryrun:scale": "pnpm build && node scripts/dry-run-scale.js",
     "docs:images": "pnpm build && node scripts/doc-images/capture-app.js && python -I scripts/doc-images/make-images.py --only scenes,icons",
     "fonts:build": "node tools/glyphs-to-ts.js",
     "fonts:check": "node tools/glyphs-to-ts.js --check",

@@ -50,6 +50,17 @@ export function pickerUsageSince(now: Date): string {
 /** Rows of "Assigned to me" shown before "all N of my open tasks". */
 export const PICKER_MINE_PREVIEW = 5;
 
+/**
+ * A search that finds more than this many tasks shows `PICKER_SEARCH_PER_PROJECT`
+ * of each project, then "N more in <project>". At 1,000 tasks the first
+ * letter typed matched nearly all of them, and drawing 881 rows froze the
+ * picker for 130 ms on that keystroke (the dry run at scale, P15b).
+ */
+export const PICKER_SEARCH_SHOWN = 60;
+
+/** Tasks shown per project while a search finds more than `PICKER_SEARCH_SHOWN`. */
+export const PICKER_SEARCH_PER_PROJECT = 8;
+
 /** Whether a mode puts time on a real task, so ad-hoc work is never offered. */
 export function needsRealTask(mode: PickerMode): boolean {
   return mode === 'assign' || mode === 'place' || mode === 'move';

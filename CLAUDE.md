@@ -35,6 +35,7 @@ pnpm lint             # 0 errors expected; renderer floating-promise warnings ar
 pnpm package:win      # electron-builder, unsigned
 pnpm editor           # pixel editor for 16x16 bitmaps
 pnpm studio           # animation studio on http://127.0.0.1:5180
+pnpm dryrun:scale     # 20 projects x 50 tasks, 60 days, every screen timed (P15b)
 pnpm deck:validate    # build the Stream Deck plugin, run Elgato's validator on it -- in CI
 pnpm deck:pack        # build it into dist/*.streamDeckPlugin
 pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/fonts/

@@ -48,6 +48,33 @@ const listed = () =>
 const search = (text: string) => fireEvent.change(screen.getByLabelText('Search tasks'), { target: { value: text } });
 
 describe('TaskPicker', () => {
+  it('Search_ManyMatches_EightPerProject_ThenMoreKeepsTheSearchInTheProject', async () => {
+    // P15b: a first letter matched 881 of 1,000 tasks, all drawn.
+    const many = [PF, MG].flatMap(p => Array.from({ length: 40 }, (_, i) => task(`${p.key}-${100 + i}`, p, `Lantern ${i}`)));
+    const { onPick } = open({}, { getPickerData: vi.fn().mockResolvedValue({ ...DATA, tasks: many }) });
+    await screen.findByText(/previous task/);
+
+    search('lantern');
+
+    const list = screen.getByRole('listbox', { name: 'Tasks' });
+    expect(within(list).getAllByText(/^(PF|MG)-1\d\d$/)).toHaveLength(16);
+    fireEvent.click(within(list).getByRole('option', { name: /32 more in Pixel Forge/ }));
+
+    expect(within(list).getAllByText(/^PF-1\d\d$/)).toHaveLength(40);
+    expect((screen.getByLabelText('Search tasks') as HTMLInputElement).value).toBe('lantern');
+    fireEvent.click(within(list).getByText('PF-139'));
+    expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ task: expect.objectContaining({ key: 'PF-139' }) }));
+  });
+
+  it('Search_FewMatches_EveryOneShown', async () => {
+    open();
+    await screen.findByText(/previous task/);
+
+    search('PF');
+
+    expect(screen.queryByText(/more in/)).toBeNull();
+  });
+
   it('Switch_TheRunningTask_IsLeftOut_TheHighlightOnTheFirstRealOption', async () => {
     open({ runningTaskId: MG15.id });
     await screen.findByText(/previous task/);

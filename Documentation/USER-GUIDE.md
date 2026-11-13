@@ -333,7 +333,9 @@ all.
 **Start a task**, **Switch task**, **Place on a task…**, **Place…** and
 **Move** all open the same picker. Type, and it searches every task of every
 project at once -- key, title, description or project name -- grouped by
-project. Before you type, it offers:
+project. When it finds many, it shows eight of each project and **N more in
+…**, which opens that project with your search kept. Before you type, it
+offers:
 
 - **the previous task**, first, when you are switching: one click back;
 - **Recent**, the last six tasks you timed;
