@@ -2618,6 +2618,39 @@ setting; the Tasks view's filters, stars and delete-asks.
   queue's counts and Retry failed; the wipe of interruptions and stars.
 - No picture shows Data or Developer; none was remade.
 
+**As landed: P16f, Tasks (2026-11-13).**
+
+- `ProjectTaskManagerView` rewritten as S13. The projects column: a search
+  (name or key), *Starred* and *All · N* with **hide empty** and its note,
+  each row a ☆ and the project with its open count (`openTasksShown`,
+  which `hasOpenTask` now reads), and "+ A project of my own".
+- The panel: a header (name · origin · N open tasks); a search of the
+  project; the pills *✓ mine*, *unassigned*, *teammates'* with "N hidden"
+  (the task visibility of P2); an *Open* state select (In progress, To do,
+  Done, All); the table ☆ · Key · Title · Status · Who · Start / Switch /
+  Stop, sortable by its headers (`aria-sort`), in `orderTasksForSelection`
+  until one is clicked; and a line counting what the search and the state
+  leave out. A refusal shows in the panel (`role="alert"`).
+- Project stars are new storage: the flow setting `starred_projects`
+  (`MAX_STARRED_PROJECTS` 50), shown at once and put back if refused
+  (`useStars`); task stars are P4's `tasks:star`, so the picker and the
+  deck see the same ones.
+- The import parser left the view: `utils/task-import.ts`, tested on its
+  own; a JSON entry without a title refuses the whole import.
+- Deviations from S13, decided while building it:
+  - Status shows the app's three states (To do / In progress / Done), not
+    the provider's own names, which are not stored.
+  - ⋯ (Import, Rename, Delete), "+ Task of my own" and deleting a task are
+    a project of the user's own only: on a provider's project the next
+    sync would undo them, as it always did.
+  - The "N more · scroll" line is a scrolling column.
+- Tests: `tasks-view.test.tsx` (14: the header and table, the searches, a
+  project starred and a star refused, a task starred, the state and the
+  sort, the pills, a refused start, rename, delete, import, a project made);
+  `task-import.test.ts`; `project-filter`, `task-visibility`, `layout-pass`
+  and the smoke test moved to the new controls.
+- `app-projects.png` remade.
+
 ---
 
 ## 20. P15 -- Documents, pictures, release
@@ -2733,4 +2766,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
-| P16 | in progress: split P16a-P16f (§19b); P16a-P16e (the row, General, Account, My workday, Desk devices, Data and Developer) done | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e (2026-11-13) |
+| P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

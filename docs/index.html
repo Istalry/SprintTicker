@@ -899,7 +899,7 @@
       too.</li>
       </ul>
       <p>The picker shows the same tasks in the same order as Tasks and the bar&#39;s
-      picker, and follows the same <strong>Unassigned</strong> and <strong>Teammates&#39;</strong> switches.</p>
+      picker, and follows the same <strong>unassigned</strong> and <strong>teammates&#39;</strong> pills.</p>
       <p><strong>From the tray, the mini timer and the Stream Deck, the picker opens as its
       own small window</strong>, in the middle of the screen your pointer is on, over
       whatever you were doing -- the dashboard stays where it was. It is the same
@@ -1041,10 +1041,10 @@
       </tr>
       </tbody></table></div>
       <h4>📁 Tasks</h4>
-      <p>Your cached projects and their tasks, refreshed from the provider. Create local
-      ad-hoc tasks here for work that has no ticket, or a project of your own: the
-      next sync leaves it alone, and time on its tasks stays on this machine like
-      ad-hoc time.</p>
+      <p>Your projects in a column on the left, the selected one&#39;s tasks in a table
+      on the right, refreshed from the provider. Make a project of your own here
+      for work that has no ticket: the next sync leaves it alone, and time on its
+      tasks stays on this machine like ad-hoc time.</p>
       <div class="note"><span class="label">Ad-hoc time stays on this machine.</span>
       <p>It is in History like any other
       time, but it is never sent to your provider, which has no ticket to put it
@@ -1052,41 +1052,58 @@
       (<code>MISC-1</code> by default); the bar shows the task&#39;s name alone.</p>
       </div>
       <p align="center">
-        <img src="images/app-projects.png" width="80%" alt="Tasks: Moonlight Garden's tasks with their status, one marked Unassigned and one assigned to a teammate, under the Unassigned and Teammates' switches">
-      </p><p>Each task has <strong>Start</strong>, or <strong>Switch</strong> while something runs -- the same as
-      picking it in the picker. During an interruption it is greyed: end the
-      interruption first. The task being timed has <strong>Stop</strong>, one click as on Today:
-      the time is logged, the task stays open, and Undo takes it back for ten
-      seconds. Done and Discard are on Today&#39;s session card.</p>
-      <p>A task from Jira or OpenProject shows the start of its description under its
-      title, on one line. The task picker searches it too, so you can find a task by
-      what it is about.</p>
-      <p>🔎 <strong>Only projects with tasks</strong> -- the switch above the project list, on by
-      default -- hides every project with no open task. A provider lists every
-      project you can see, while the tasks it fetches are yours and the team&#39;s free
-      or ongoing work, so most projects held nothing to pick. A project is listed again as soon as it
-      has a task to do or in progress. The switch says how many projects it hides,
-      and turning it off lists them all. The task picker always lists only the
-      projects with a task. The project you have
-      selected stays listed even when it is empty, so one you have just created does
-      not vanish before its first task. If no project has a task for you -- before
-      the first sync, or on a day nothing is assigned to you -- every project is
-      listed, and the switch says so: <em>none has a task: showing all</em>. Ad-hoc work
-      does not count for this, since an ad-hoc task stays in progress until you
-      finish it as done.</p>
-      <p>👥 <strong>Unassigned and Teammates&#39;</strong> -- two switches above each task list --
-      decide whose tasks it shows besides yours, which are always there.
-      <strong>Unassigned</strong>, on by default, lists the open tasks nobody is assigned: work
-      free to take. <strong>Teammates&#39;</strong>, off by default, lists a teammate&#39;s task while it
-      is in progress. A task that is not yours carries <em>Unassigned</em> or the
-      assignee&#39;s name beside its key, and the switches say how many tasks they hide.
-      They are one setting: the task picker and Tasks
-      both follow it, and <strong>Only projects with tasks</strong> counts what they
-      show -- a project holding only unassigned work is listed while unassigned work
-      is. The task you are tracking stays listed whoever&#39;s it is. Every list keeps
-      one order: yours in progress, yours to do, unassigned to do, unassigned in
-      progress, teammates&#39; in progress, then finished work -- yours, then
-      unassigned.</p>
+        <img src="images/app-projects.png" width="80%" alt="Tasks: the projects column with Starred and All, and Moonlight Garden's tasks in a table with their status and who has each: me, nobody, a teammate">
+      </p><p><strong>The projects column.</strong> A search box finds a project by name or key. ☆
+      stars a project: the starred ones are listed first, under <em>Starred</em>. Below,
+      <em>All</em> lists the rest, each with its count of open tasks, and
+      <strong>+ A project of my own</strong> makes one -- a key and a name.</p>
+      <p><strong>The table.</strong> The header says where the project comes from (<em>from Jira</em>,
+      <em>kept on this computer</em>) and how many tasks are open. Each row is ☆, the
+      key, the title, the status, <strong>Who</strong> has it -- <em>me</em>, a teammate&#39;s name, or
+      <em>nobody</em> in amber -- and <strong>Start</strong>, or <strong>Switch</strong> while something runs, the
+      same as picking it in the picker. During an interruption it is greyed: end
+      the interruption first. The task being timed has <strong>Stop</strong>, one click as on
+      Today: the time is logged, the task stays open, and Undo takes it back for
+      ten seconds. Done and Discard are on Today&#39;s session card. A task&#39;s ☆ is the
+      picker&#39;s and the Stream Deck&#39;s star.</p>
+      <p>Above the table: a search of this project&#39;s tasks, by key, title or
+      description; the pills described below; and the state, <strong>Open</strong> by default
+      (In progress, To do, Done or All). A line under the table says how many
+      tasks the search or the state leaves out. Click a column&#39;s name to sort by
+      it, and again to reverse; until then the table keeps the order every list
+      uses (below).</p>
+      <p>A project of your own also has <strong>+ Task of my own</strong>, a delete button on each
+      task, and <strong>⋯</strong>: <strong>Import tasks…</strong>, <strong>Rename…</strong> and <strong>Delete…</strong>. Deleting
+      asks first. A provider&#39;s projects and tasks have none of these: the next
+      sync would undo them. Import takes lines of <code>KEY, Title, status</code> -- or a
+      title alone -- or a JSON list of <code>{ &quot;key&quot;, &quot;title&quot;, &quot;status&quot; }</code>; a status
+      it does not know is <em>to do</em>, and a list it cannot read imports nothing.</p>
+      <p>A task from Jira or OpenProject shows the start of its description when you
+      point at its title. The search above the table and the task picker search
+      it too, so you can find a task by what it is about.</p>
+      <p>🔎 <strong>Hide empty</strong> -- the box beside <em>All</em>, ticked by default -- hides every
+      project with no open task. A provider lists every project you can see, while
+      the tasks it fetches are yours and the team&#39;s free or ongoing work, so most
+      projects held nothing to pick. A project is listed again as soon as it has a
+      task to do or in progress. The column says how many projects it hides, and
+      unticking it lists them all. The task picker always lists only the projects
+      with a task. The project you have selected stays listed even when it is
+      empty, so one you have just created does not vanish before its first task.
+      If no project has a task for you -- before the first sync, or on a day
+      nothing is assigned to you -- every project is listed, and the column says
+      so: <em>None has an open task: showing all.</em> Ad-hoc work does not count for
+      this, since an ad-hoc task stays in progress until you finish it as done.</p>
+      <p>👥 <strong>Whose tasks</strong> -- the pills above the table -- decide whose tasks are
+      shown besides yours, which always are (<em>✓ mine</em>). <strong>unassigned</strong>, on by
+      default, lists the open tasks nobody is assigned: work free to take.
+      <strong>teammates&#39;</strong>, off by default, lists a teammate&#39;s task while it is in
+      progress. The pills say how many tasks they hide. They are one setting: the
+      task picker and Tasks both follow it, and <strong>Hide empty</strong> counts what they
+      show -- a project holding only unassigned work is listed while unassigned
+      work is. The task you are tracking stays listed whoever&#39;s it is. Every list
+      keeps one order: yours in progress, yours to do, unassigned to do,
+      unassigned in progress, teammates&#39; in progress, then finished work -- yours,
+      then unassigned.</p>
       <p>↗️ <strong>Open a task on its provider</strong> -- the small arrow beside a task&#39;s key in
       Today, Tasks and History opens it in
       your browser, on Jira or OpenProject, to comment, attach a picture or read
@@ -3997,7 +4014,7 @@
       </tr>
       <tr>
       <td align="left"><code>flow-settings:get</code></td>
-      <td align="left">A setting of the redesigned flows (<code>shared/flow-settings.ts</code>: <code>start_side_effects</code>, <code>done_state_by_project</code>, <code>prompt_delays</code>, <code>shortcuts</code>, <code>close_to_tray</code>, <code>standup_task</code>, <code>provider_display_name</code>, <code>first_interruption_seen</code>), read through its reader -- whole and valid, the default when unset. Another key throws</td>
+      <td align="left">A setting of the redesigned flows (<code>shared/flow-settings.ts</code>: <code>start_side_effects</code>, <code>done_state_by_project</code>, <code>prompt_delays</code>, <code>shortcuts</code>, <code>close_to_tray</code>, <code>standup_task</code>, <code>provider_display_name</code>, <code>first_interruption_seen</code>, <code>starred_projects</code>), read through its reader -- whole and valid, the default when unset. Another key throws</td>
       </tr>
       <tr>
       <td align="left"><code>flow-settings:save</code></td>
@@ -4058,7 +4075,7 @@
       </tr>
       <tr>
       <td align="left"><code>projects:get-only-with-tasks</code> / <code>projects:set-only-with-tasks</code></td>
-      <td align="left">The &quot;only projects with tasks&quot; switch, on by default. The setter takes a boolean and throws <code>ArgumentException</code> on anything else</td>
+      <td align="left">Tasks&#39; &quot;hide empty&quot; box (once &quot;only projects with tasks&quot;), on by default. The setter takes a boolean and throws <code>ArgumentException</code> on anything else</td>
       </tr>
       <tr>
       <td align="left"><code>projects:on-only-with-tasks</code></td>
@@ -4757,7 +4774,7 @@
       user is someone else. An adapter that cannot read the user throws rather than
       file every task under the wrong owner.</p>
       <p>The scope decides which tasks are fetched; it does not touch the project list,
-      which a provider returns whole. &quot;Only projects with tasks&quot;
+      which a provider returns whole. &quot;Hide empty&quot;
       (<code>src/shared/project-filter.ts</code>) is what hides the projects the scope left
       empty, in the window&#39;s lists and the bar&#39;s picker alike. It counts the open
       tasks the lists would show: <code>openTaskCount</code> always, and <code>openUnassignedCount</code>

@@ -10,7 +10,9 @@ import {
   readProviderDisplayName,
   readShortcuts,
   readStandupTask,
-  readStartSideEffects
+  readStarredProjects,
+  readStartSideEffects,
+  MAX_STARRED_PROJECTS
 } from '../src/shared/flow-settings';
 
 /** What the redesigned flows read from `settings`: never a throw, always a whole value. */
@@ -61,5 +63,13 @@ describe('flow settings', () => {
     expect(readStandupTask({ taskId: 'T-4', taskKey: 'OPS-4', title: 'Team ceremonies' }))
       .toEqual({ taskId: 'T-4', taskKey: 'OPS-4', title: 'Team ceremonies' });
     expect(readCloseToTray(false)).toBe(false);
+  });
+
+  it('ReadStarredProjects_Junk_KeepsTheIdsOnceAndCapsThem', () => {
+    expect(readStarredProjects(undefined)).toEqual([]);
+    expect(readStarredProjects('P-1')).toEqual([]);
+    expect(readStarredProjects(['P-1', 4, '', 'P-2', 'P-1', null])).toEqual(['P-1', 'P-2']);
+    const many = Array.from({ length: MAX_STARRED_PROJECTS + 5 }, (_, i) => `P-${i}`);
+    expect(readStarredProjects(many)).toHaveLength(MAX_STARRED_PROJECTS);
   });
 });

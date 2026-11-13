@@ -156,9 +156,10 @@ bar -- the session, a notification, a prompt, lunch:
   </tr>
 </table>
 
-🔎 **Only projects with tasks**, on by default, keeps every project list short:
+🔎 **Hide empty**, on by default, keeps every project list short:
 Tasks and the task picker hide the
-projects with nothing to do that the lists would show.
+projects with nothing to do that the lists would show. Tasks stars the
+projects you use most, above the rest.
 
 👥 **Unassigned and teammates' tasks**: every task list also shows the open
 tasks nobody is assigned, and on request a teammate's task in progress, each

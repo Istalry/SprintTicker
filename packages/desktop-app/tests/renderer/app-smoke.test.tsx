@@ -14,7 +14,7 @@ import { installElectronApi, TRACKING_SESSION } from './electron-api-mock';
 describe('App', () => {
   // Settings' groups are mounted one by one in settings-groups.test.tsx.
   const places: Array<[string, RegExp]> = [
-    ['Tasks', /Project & Task Manager/],
+    ['Tasks', /No project yet| · /],
     ['History', /^History$/],
     ['Settings', /^General$/]
   ];

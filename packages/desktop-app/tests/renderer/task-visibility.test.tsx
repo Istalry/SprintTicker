@@ -88,11 +88,11 @@ describe('ProjectTaskManagerView task visibility', () => {
     render(<ProjectTaskManagerView />);
     await screen.findByText('Free todo');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Unassigned/ }));
+    fireEvent.click(screen.getByRole('button', { name: /unassigned/ }));
 
     expect(screen.queryByText('Free todo')).toBeNull();
     expect(titlesInOrder()).toEqual(['Mine todo']);
-    expect(screen.getByText('(2 hidden)')).toBeTruthy();
+    expect(screen.getByText('2 hidden')).toBeTruthy();
     expect(bridge.api.setTaskVisibility).toHaveBeenCalledWith({ unassigned: false, others: false });
   });
 });

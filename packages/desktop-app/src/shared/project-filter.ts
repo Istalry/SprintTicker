@@ -47,12 +47,19 @@ const OWN_WORK_ONLY: Readonly<TaskVisibility> = Object.freeze({ unassigned: fals
  * counts as open: hiding on a guess would lose a project.
  */
 function hasOpenTask(project: ProjectDTO, visibility: TaskVisibility): boolean {
-  if (project.openTaskCount === undefined) return true;
-  const shown =
-    project.openTaskCount +
+  const shown = openTasksShown(project, visibility);
+  return shown === null || shown > 0;
+}
+
+/**
+ * How many open tasks of a project the lists show under `visibility`, or
+ * null for a project straight from a provider, whose count is not known.
+ */
+export function openTasksShown(project: ProjectDTO, visibility: TaskVisibility = OWN_WORK_ONLY): number | null {
+  if (project.openTaskCount === undefined) return null;
+  return project.openTaskCount +
     (visibility.unassigned ? project.openUnassignedCount ?? 0 : 0) +
     (visibility.others ? project.openOthersCount ?? 0 : 0);
-  return shown > 0;
 }
 
 /**

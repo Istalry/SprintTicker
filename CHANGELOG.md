@@ -280,6 +280,14 @@
   notification listener and the bar's health, each behind **Open**, one at a
   time. The entries waiting to send, in Account › Advanced, lost their old
   card: one line counts them, with **Sync now** and **Retry failed**.
+- **Tasks, rebuilt.** The projects are a column -- a search, *Starred*
+  first, then *All* with **Hide empty** and each project's open count --
+  and the tasks a table: ☆, key, title, status, who has it (*me*, a name,
+  *nobody*), and Start, Switch or Stop. Above it, a search of the project,
+  the pills *mine*, *unassigned* and *teammates'*, and a state, **Open** by
+  default; a column sorts when clicked. Making, renaming, importing into
+  and deleting from a project are offered only on a project of your own,
+  behind its **⋯**: on a provider's, the next sync undid them.
 - **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
   given to someone else reads **MG-12 > RIN**; interruptions waiting to be
   placed show as **3 TO PLACE** in amber on a task's screen, the time

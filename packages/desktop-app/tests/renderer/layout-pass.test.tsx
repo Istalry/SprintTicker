@@ -40,7 +40,8 @@ describe('the task list rows', () => {
 
     expect(await screen.findByRole('button', { name: 'Switch' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Delete SPR-143' })).toBeTruthy();
+    // A provider's task is the provider's: the next sync would bring it back.
+    expect(screen.queryByRole('button', { name: 'Delete SPR-143' })).toBeNull();
   });
 
   it('Stop_OneClick_StopsAndLeavesTheTaskOpen_NoSecondDialog', async () => {

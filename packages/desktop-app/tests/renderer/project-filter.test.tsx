@@ -16,40 +16,40 @@ const PROJECTS: ProjectDTO[] = [
   { id: 'P-3', key: 'OLD', name: 'Finished', openTaskCount: 0 }
 ];
 
-const toggle = () => screen.getByRole('checkbox', { name: /Only projects with tasks/ });
+const toggle = () => screen.getByRole('checkbox', { name: /hide empty/ });
 
 describe('ProjectTaskManagerView project filter', () => {
-  /** The sidebar, so a project's name in the task panel's header does not count. */
-  const sidebar = async () => {
-    const heading = await screen.findByText(/^Projects \(\d+\)$/);
-    return within(heading.parentElement!.parentElement!);
+  /** The projects column, so a project's name in the task panel's header does not count. */
+  const column = async () => {
+    const nav = await screen.findByRole('navigation', { name: 'Projects' });
+    return within(nav);
   };
 
   it('Mount_SwitchOn_OpensOnAProjectWithTasksAndHidesTheEmptyOnes', async () => {
     installElectronApi({ getProjects: vi.fn().mockResolvedValue(PROJECTS) });
     render(<ProjectTaskManagerView />);
 
-    const list = await sidebar();
+    const list = await column();
 
-    expect(list.getByText('Projects (1)')).toBeTruthy();
+    expect(await list.findByText('All · 1')).toBeTruthy();
     expect(list.getByText('Sprint')).toBeTruthy();
     expect(list.queryByText('Empty')).toBeNull();
-    expect(list.getByText('(2 hidden)')).toBeTruthy();
+    expect(list.getByText('2 empty hidden')).toBeTruthy();
   });
 
   it('Mount_NothingAssigned_ListsEveryProjectAndSaysWhy', async () => {
     // The selected project used to count as "something left", so this showed
-    // the first project alone with "(2 hidden)" -- every other project gone.
+    // the first project alone with "2 hidden" -- every other project gone.
     const empty = PROJECTS.map(p => ({ ...p, openTaskCount: 0 }));
     installElectronApi({ getProjects: vi.fn().mockResolvedValue(empty) });
     render(<ProjectTaskManagerView />);
 
-    const list = await sidebar();
+    const list = await column();
 
-    expect(list.getByText('Projects (3)')).toBeTruthy();
+    expect(await list.findByText('All · 3')).toBeTruthy();
     expect(list.getByText('Empty')).toBeTruthy();
     expect(list.getByText('Finished')).toBeTruthy();
-    expect(list.getByText('(none has a task: showing all)')).toBeTruthy();
+    expect(list.getByText('None has an open task: showing all.')).toBeTruthy();
     expect(list.queryByText(/hidden/)).toBeNull();
   });
 
@@ -61,29 +61,30 @@ describe('ProjectTaskManagerView project filter', () => {
       getOnlyProjectsWithTasks: vi.fn().mockResolvedValue(false)
     });
     render(<ProjectTaskManagerView />);
-    let list = await sidebar();
+    let list = await column();
     fireEvent.click(await list.findByText('Empty'));
 
     fireEvent.click(toggle());
 
-    list = await sidebar();
+    list = await column();
     expect(list.getByText('Empty')).toBeTruthy();
     expect(list.queryByText('Finished')).toBeNull();
-    expect(list.getByText('(1 hidden)')).toBeTruthy();
+    expect(list.getByText('1 empty hidden')).toBeTruthy();
   });
 
-  it('TaskAdded_ToAnEmptyProject_RefreshesItsCount', async () => {
+  it('TaskAdded_ToAProjectOfMyOwn_RefreshesItsCount', async () => {
     // The count comes back with every task change; a stale one hid a project
     // whose first task had just been added once another was selected.
-    const getProjects = vi.fn().mockResolvedValue(PROJECTS);
+    const own = PROJECTS.map(p => ({ ...p, providerId: 'sprintticker' }));
+    const getProjects = vi.fn().mockResolvedValue(own);
     installElectronApi({ getProjects });
     render(<ProjectTaskManagerView />);
-    await sidebar();
+    await column();
     const readsBefore = getProjects.mock.calls.length;
 
-    fireEvent.click(screen.getByText('Add Task'));
-    fireEvent.change(screen.getByPlaceholderText('P-2-101'), { target: { value: 'SPR-9' } });
-    const title = screen.getByPlaceholderText('Implement Inventory System');
+    fireEvent.click(await screen.findByRole('button', { name: /Task of my own/ }));
+    fireEvent.change(screen.getByPlaceholderText('SPR-101'), { target: { value: 'SPR-9' } });
+    const title = screen.getByPlaceholderText('Expense report');
     fireEvent.change(title, { target: { value: 'New work' } });
     fireEvent.submit(title.closest('form')!);
 

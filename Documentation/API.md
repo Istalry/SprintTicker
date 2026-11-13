@@ -79,7 +79,7 @@ Everything else is a request/response `invoke`.
 | `undo:get` | The last action Undo can take back -- `{ kind, label, expiresAtUtc }`, `kind` one of `stop`, `discard`, `correct`, `move`, `delete`, `end-day` -- or null |
 | `undo:run` | Takes it back: a stop or discard reopens the session as it was, an edit puts the worklog and its queue rows back. `false` when its ten seconds are over, a row was sent meanwhile, or (for a stop) another session runs |
 | `undo:on-changed` | **Event** -- an action was offered, undone or became final |
-| `flow-settings:get` | A setting of the redesigned flows (`shared/flow-settings.ts`: `start_side_effects`, `done_state_by_project`, `prompt_delays`, `shortcuts`, `close_to_tray`, `standup_task`, `provider_display_name`, `first_interruption_seen`), read through its reader -- whole and valid, the default when unset. Another key throws |
+| `flow-settings:get` | A setting of the redesigned flows (`shared/flow-settings.ts`: `start_side_effects`, `done_state_by_project`, `prompt_delays`, `shortcuts`, `close_to_tray`, `standup_task`, `provider_display_name`, `first_interruption_seen`, `starred_projects`), read through its reader -- whole and valid, the default when unset. Another key throws |
 | `flow-settings:save` | Stores one, made whole and valid by the same reader, and answers what was stored |
 | `session:on-updated` | **Event** — the session changed |
 
@@ -97,7 +97,7 @@ Everything else is a request/response `invoke`.
 | `provider:get-sync-queue` | Everything undelivered, with attempt counts and the server's own message. Each row's `operation` says what it asks: `CREATE` a worklog, `UPDATE` or `DELETE` one already sent |
 | `provider:retry-failed-worklogs` | Un-park `FAILED` rows |
 | `projects:on-updated` | **Event** — the cached project list changed: after every committed sync, the periodic one included, and after a manual or credentials-triggered one that failed, carrying its result |
-| `projects:get-only-with-tasks` / `projects:set-only-with-tasks` | The "only projects with tasks" switch, on by default. The setter takes a boolean and throws `ArgumentException` on anything else |
+| `projects:get-only-with-tasks` / `projects:set-only-with-tasks` | Tasks' "hide empty" box (once "only projects with tasks"), on by default. The setter takes a boolean and throws `ArgumentException` on anything else |
 | `projects:on-only-with-tasks` | **Event** — the switch changed, so every view showing it follows |
 | `tasks:get-visibility` / `tasks:set-visibility` | Whether the task lists show unassigned tasks and teammates' tasks: `{ unassigned, others }`, `{ true, false }` by default. The setter takes exactly two booleans and throws `ArgumentException` on anything else; a damaged stored value reads its missing fields as their defaults |
 | `tasks:on-visibility` | **Event** — the task visibility changed, so every list follows |
@@ -562,7 +562,7 @@ user is someone else. An adapter that cannot read the user throws rather than
 file every task under the wrong owner.
 
 The scope decides which tasks are fetched; it does not touch the project list,
-which a provider returns whole. "Only projects with tasks"
+which a provider returns whole. "Hide empty"
 (`src/shared/project-filter.ts`) is what hides the projects the scope left
 empty, in the window's lists and the bar's picker alike. It counts the open
 tasks the lists would show: `openTaskCount` always, and `openUnassignedCount`

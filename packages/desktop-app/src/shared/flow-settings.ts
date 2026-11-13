@@ -30,7 +30,9 @@ export const FlowSettingKey = {
   /** Whether the first interruption's explanation was put away (S9): it shows once. */
   FIRST_INTERRUPTION_SEEN: 'first_interruption_seen',
   /** Whether the mini timer's one-line tour of its buttons was put away (S25): it shows once. */
-  MINI_TOUR_SEEN: 'mini_tour_seen'
+  MINI_TOUR_SEEN: 'mini_tour_seen',
+  /** The projects starred in Tasks (S13), by id, in the order they were starred. */
+  STARRED_PROJECTS: 'starred_projects'
 } as const;
 
 export interface StartSideEffectsSetting {
@@ -182,6 +184,16 @@ export function readStandupTask(stored: unknown): StandupTaskDTO | null {
   return { taskId, taskKey, title: stored.title };
 }
 
+/** How many projects can be starred: a star marks a few, never the whole list. */
+export const MAX_STARRED_PROJECTS = 50;
+
+/** Project ids, each once, strings only, at most `MAX_STARRED_PROJECTS`. */
+export function readStarredProjects(stored: unknown): string[] {
+  if (!Array.isArray(stored)) return [];
+  const ids = stored.filter((id): id is string => typeof id === 'string' && id.trim() !== '');
+  return [...new Set(ids)].slice(0, MAX_STARRED_PROJECTS);
+}
+
 /** Each flow setting's value, as its reader answers it. */
 export interface FlowSettingValues {
   provider_display_name: string | null;
@@ -193,6 +205,7 @@ export interface FlowSettingValues {
   standup_task: StandupTaskDTO | null;
   first_interruption_seen: boolean;
   mini_tour_seen: boolean;
+  starred_projects: string[];
 }
 
 export type FlowSettingKeyValue = keyof FlowSettingValues;
@@ -206,7 +219,8 @@ const FLOW_READERS: { [K in FlowSettingKeyValue]: (stored: unknown) => FlowSetti
   close_to_tray: readCloseToTray,
   standup_task: readStandupTask,
   first_interruption_seen: stored => stored === true,
-  mini_tour_seen: stored => stored === true
+  mini_tour_seen: stored => stored === true,
+  starred_projects: readStarredProjects
 };
 
 export function isFlowSettingKey(key: unknown): key is FlowSettingKeyValue {
