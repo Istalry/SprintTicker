@@ -1138,15 +1138,19 @@ cup and a moon taken from their scenes' sprites.
 
 ## 6. The 2026-11 redesign
 
-**Status (2026-11-13):** under way. P0-P14 are done: the new face, the
-undo and the held sends, interruptions as fragments, the picker window,
-prompts without focus, History's week and Check my week, End my day, the
-first run, the tray and the mini timer, the Stream Deck plugin on protocol
-2 with its shipped profiles, and the bar rethought with the user (Pause is
-yes and Pause again stops, the wheel's click interrupts or says no, Back is
-unused, turning opens a short menu, the ⚡ icon, and its words: STAND-UP,
-3 TO PLACE, MG-12 > RIN, NOTHING TIMING). Next P16 (Tasks and Settings as
-their screens), then P15 (the review and the release).
+**Status (2026-11-13):** release candidate. P0-P14 and P16 are done: the
+new face, the undo and the held sends, interruptions as fragments, the
+picker window, prompts without focus, History's week and Check my week, End
+my day, the first run, the tray and the mini timer, the Stream Deck plugin
+on protocol 2 with its shipped profiles, the bar rethought with the user
+(Pause is yes and Pause again stops, the wheel's click interrupts or says
+no, Back is unused, turning opens a short menu, the ⚡ icon, STAND-UP,
+3 TO PLACE, MG-12 > RIN, NO TASK), and Tasks and Settings as their
+screens. P15 -- the review, a dry run at 20 projects of 50 tasks, the
+documents -- is done up to the candidate: rc2 is installed, and the
+user's day of real work on the bar and Stream Deck Mobile is Monday
+2026-11-16 (the checklist is `Documentation/REDESIGN-PLAN.md`, P15d). Then
+the fixes it finds, the user's 2.0.0 tag, and P15e, the motion video.
 
 A new face and new flows for every surface: the window, the mini timer,
 the tray, the bar and the Stream Deck. The target is drawn in

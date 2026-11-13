@@ -2774,9 +2774,21 @@ user's to try; before it, what REVIEW §8 left for P15d:
 on the real bar and Stream Deck Mobile. Install over 1.4.0 and keep the
 database: the update keeps it, and a copy first costs nothing.
 
+**Where it stands (Friday 2026-11-13, evening).** rc2
+(`SprintTicker-2.0.0-rc2-win-x64-setup.exe`, built from `d72eb14`,
+`verify:packed` clean) is installed and running from
+`%LOCALAPPDATA%\Programs\SprintTicker`, over the real database; plugin
+0.6.4 is installed from Desk devices; the probe passed. Done of the list
+below: the install and the plugin (1), the probe (8). The first hour's
+findings are fixed in rc2 (the switch, Bar health, Discord's icon, the NO
+TASK scene). **Monday 2026-11-16 is the day of real work**: items 2-7 in
+that order, as the day brings them -- 2 to 5 at the desk in the first
+minutes, 6 with the deck, 7 through the day. Run the installed copy, never
+`dist-electron\win-unpacked`: a running build folder locks the next build.
+
 1. **First start after the update.** The tray icon; ✕ hides the window to
    the tray; Quit from the tray clears the bar. The plugin 0.6.4 offered
-   by the first run installs over 0.6.3.
+   by the first run installs over 0.6.3. *Done 2026-11-13.*
 2. **The bar's buttons (P14b),** in each state: Pause pauses and resumes;
    Pause twice within 4 s stops (AGAIN=STOP on row 1); during an
    interruption one Pause goes back after 2 s and two stop it; the wheel's
@@ -2788,14 +2800,18 @@ database: the update keeps it, and a copy first costs nothing.
    OPEN APP; the menu turned to under a notification.
 4. **The ⚡ icon (P14d):** its shape and colour at 16 px, and whether its
    light reads as running or as flicker.
-5. **The words (P14e):** NOTHING TIMING's width and amber, Pause and the
-   click on it; 3 TO PLACE with a long key, timing and paused; STAND-UP
-   after Join; RESUME? after lunch (new here).
+5. **The words (P14e):** NO TASK's scene (the empty chair, new in rc2),
+   Pause and the click on it; 3 TO PLACE with a long key, timing and
+   paused; STAND-UP after Join; RESUME? after lunch (new here).
+   **Settings › Desk devices › Bar health** charts every press while you
+   try 2 to 5: a hollow mark is a press that arrived and did nothing.
 6. **The deck:** END MY DAY then CONFIRM at the wrap-up; one interruption
    placed from the Place window; the Session key held for the picker.
 7. **The day:** the stand-up, lunch and *Back at your desk?*, an
    interruption placed on a task, End my day with Undo, the entries at
-   OpenProject or Jira the next morning, split at lunch.
+   OpenProject or Jira the next morning, split at lunch. Notifications:
+   Discord, Slack and Gmail with our drawn icon on every message; any
+   other app whose icon looks wrong, named, with a screenshot.
 8. **Asked first, one at a time:** `pnpm probe:busybar` with the app
    closed, the plain run only: never `--compositing` or a soak flag.
    **Passed 2026-11-13** on firmware 1.3.1, every check, the bar 9.5 s
@@ -2803,6 +2819,19 @@ database: the update keeps it, and a copy first costs nothing.
 
 What the trial finds is fixed here, as its own commit; then the user
 raises the version and tags 2.0.0.
+
+**Open, outside the trial's list** (each its own change, none blocks 2.0):
+- Notification icons for apps we never drew: the first message after a
+  start shows the bell, the icon lookup being cached only after it; which
+  apps look wrong beyond that is the user's to name from the trial.
+- The studio's *Export* failed to compile the new scene
+  (`seq2anim failed`, empty stderr), though both compilers ran cleanly by
+  hand: compiled by hand, cause not found.
+- `verify:packed` force-closes every running SprintTicker
+  (`taskkill /IM`), the user's too, and needs port 39123 free.
+- The tray's **Switch task…** shows with nothing running; `renderTaskStarted`
+  (GO!) is dead code (REVIEW §8).
+- Then **P15e**, the motion video.
 
 **As landed: P15a1, the review (2026-11-13).**
 
@@ -3052,5 +3081,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d: the agent's part done (the last words, the checks, the candidate), the user's trial next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d`, P15c `b6b6b94`, P15d `98ffbda` |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d: the agent's part done (the last words, the checks, the candidate), the first hour's fixes in rc2, the probe passed; the user's day on the bar and deck Monday 2026-11-16 | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d`, P15c `b6b6b94`, P15d `98ffbda`, MEETING kept `e7f0166`, probe `ac12f1d`, first hour `08c7d18`, NO TASK `d72eb14` |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |
