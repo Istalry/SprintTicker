@@ -365,6 +365,9 @@
 
 ### Fixed
 
+- **End my day's Later lets go of the bar.** Putting off the wrap-up closed
+  the question in the window but left EOD WRAP-UP on the bar for the
+  rest of the day; the stand-up's Remind me did the same with its prompt.
 - **The task key's color is kept.** It was forgotten at every restart, the bar
   going back to blue, and the window's list always showed the first entry. The
   list now names the colors it draws: blue, pink, amber, pale cyan.

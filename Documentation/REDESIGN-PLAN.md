@@ -2690,6 +2690,44 @@ left once the screens are real:
   the real screens and the bar's own animations, on the invented data of
   `pnpm docs:images` -- never the real profile.
 
+**Split** (2026-11-13), each its own commit, in the order the user asked:
+
+- **P15a, the design review.** Every screen captured on a throwaway
+  profile (`capture-app.js --screens <dir>`), then read with
+  `design-critique`, `ux-writing` and `accessibility-audit`. The findings
+  and their status are `REVIEW-2026-11.md`; fixing them is split again:
+  - P15a1: the capture, the review, two bugs it found;
+  - P15a2: dialogs, menus and the focus (C4/A1-A5);
+  - P15a3: the words (W*, C1-C3, C9, C10, C12);
+  - P15a4: colours and contrast (A7, A8, A12, C13, C17, C21);
+  - P15a5: what a screen reader hears, and zoom (A6, A9-A22);
+  - P15a6: the rest of the critique's behaviour (C6, C8, C11, C14, C16,
+    C18, C20, the Place window's size).
+- **P15b, the dry run at scale.** 20 projects of 50 tasks, simulated days,
+  measured.
+- **P15c, the documents.** The guide read end to end, the README, a
+  CHANGELOG per release, every picture remade.
+- **P15d, the release candidate**, on the real bar and Stream Deck Mobile:
+  the user's day, with the bar trials of P14b-P14e still owed.
+- **P15e, the motion video.**
+
+**As landed: P15a1, the review (2026-11-13).**
+
+- `capture-app.js --screens <dir>`: every screen, 31 of them, into a folder
+  instead of `docs/images` -- for the review, and later the video. Each
+  step is tried on its own (a label that moved costs one picture), and a
+  DevTools call answers within 20 s: a window closed by the Escape it was
+  sent never answers it, and the run used to wait forever.
+- Three reviews, each by its own agent and skill, merged into
+  `REVIEW-2026-11.md`: 22 critique, 30 words, 22 accessibility findings, 63
+  once merged. CLAUDE.md §9 lists it with `AUDIT.md`: statuses move, the
+  findings' text does not.
+- Two bugs the capture showed, fixed here: End my day's **Later**
+  (`snoozeCeremony`) closed the prompt but kept its lock, so the bar showed
+  the wrap-up for the rest of the day -- it now releases it, and the IPC
+  handler no longer draws the session after it (one end, one render); an
+  own project's delete button spilled out of the Tasks table.
+
 ---
 
 ## 21. Verification, all phases
@@ -2765,5 +2803,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | not started | |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review) done | P15a1 (2026-11-13) |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

@@ -7,6 +7,13 @@
  * or, on a build that is already current, `node scripts/doc-images/capture-app.js`.
  * Close SprintTicker first (see below).
  *
+ *   node scripts/doc-images/capture-app.js --screens <dir>
+ *
+ * captures every screen instead -- the places, Settings' groups, the prompts,
+ * the picker and Place windows, the first run -- into <dir>, for a design
+ * review or a video (P15). Nothing in docs/images is touched, and no clip is
+ * rendered.
+ *
  * Runs the app on a throwaway profile, under `--mock-hardware`, filled with
  * invented projects and tasks, and drives it over the Chrome DevTools
  * Protocol: screenshots of each panel, with a bar and in no-bar mode, and the
@@ -47,11 +54,18 @@ const APP_DIR = path.join(ROOT, 'packages', 'desktop-app');
 const IMAGES = path.join(ROOT, 'docs', 'images');
 const CDP_PORT = 9334;
 const WEBHOOK = 'http://127.0.0.1:39123';
+// `--screens <dir>`: every screen into <dir>, nothing into docs/images.
+const SCREENS = (() => {
+  const at = process.argv.indexOf('--screens');
+  return at > 0 && process.argv[at + 1] ? path.resolve(process.argv[at + 1]) : null;
+})();
 
 // How long a new screen takes to reach the emulator after the event behind it.
 const SETTLE_MS = 700;
 // The tracked time the pictures show: a timer at 00:00 says nothing.
 const SESSION_MINUTES = 84;
+// The longest a DevTools call may take; the slowest is a screenshot.
+const SEND_TIMEOUT_MS = 20000;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const log = (...args) => console.log('[capture]', ...args);
@@ -132,7 +146,17 @@ class Page {
   send(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, msg => (msg.error ? reject(new Error(`${method}: ${msg.error.message}`)) : resolve(msg.result)));
+      // A window that closes on the key it was sent never answers it: the
+      // wait would be forever, and the run with it.
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`${method}: no answer in ${SEND_TIMEOUT_MS} ms`));
+      }, SEND_TIMEOUT_MS);
+      this.pending.set(id, msg => {
+        clearTimeout(timer);
+        if (msg.error) reject(new Error(`${method}: ${msg.error.message}`));
+        else resolve(msg.result);
+      });
       this.ws.send(JSON.stringify({ id, method, params }));
     });
   }
@@ -158,7 +182,7 @@ class Page {
     await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 });
     await sleep(150);
     const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
-    const file = path.join(IMAGES, `${name}.png`);
+    const file = path.join(SCREENS ?? IMAGES, `${name}.png`);
     fs.writeFileSync(file, Buffer.from(data, 'base64'));
     log('screenshot', path.relative(ROOT, file));
   }
@@ -175,6 +199,38 @@ class Page {
     })()`);
     if (!found) throw new Error(`no button "${label}" on screen`);
     await sleep(300);
+  }
+
+  /**
+   * Clicks the first button or menu item named `label` -- by its accessible
+   * label, its text, or a text that ends or starts with it (an icon's glyph
+   * first, a count after).
+   */
+  async press(label) {
+    const found = await this.eval(`(() => {
+      const want = ${JSON.stringify(label)};
+      const all = [...document.querySelectorAll('button, [role=menuitem], [role=tab]')];
+      const text = b => b.textContent.replace(/\\s+/g, ' ').trim();
+      const button = all.find(b => b.getAttribute('aria-label') === want)
+        ?? all.find(b => text(b) === want)
+        ?? all.find(b => text(b).endsWith(want))
+        ?? all.find(b => text(b).startsWith(want));
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!found) throw new Error(`nothing named "${label}" on screen`);
+    await sleep(400);
+  }
+
+  /** A key press the page receives as the user's: Escape, or Ctrl+K. */
+  async key(key, { ctrl = false } = {}) {
+    const codes = { Escape: ['Escape', 27], k: ['KeyK', 75] };
+    const [code, vk] = codes[key];
+    const base = { key, code, windowsVirtualKeyCode: vk, modifiers: ctrl ? 2 : 0 };
+    await this.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...base });
+    await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
+    await sleep(400);
   }
 
   /** Scrolls the settings row named `title` to the top (P16: rows, not <details>). */
@@ -518,7 +574,7 @@ async function captureWithBar(page, framesDir, profile) {
  * panel's first picture stops above the log, where the badges and the pencil
  * are. Cancelled afterwards, so nothing is corrected.
  */
-async function shootCorrection(page) {
+async function shootCorrection(page, name = 'app-history-edit') {
   const opened = await page.eval(`(() => {
     const pencil = document.querySelector('button[aria-label^="Correct "]');
     if (!pencil) return false;
@@ -527,8 +583,181 @@ async function shootCorrection(page) {
     return true;
   })()`);
   if (!opened) throw new Error('no worklog to correct in History');
-  await page.shot('app-history-edit');
+  await page.shot(name);
   await page.click('Cancel');
+}
+
+// --- every screen (--screens) ---------------------------------------------
+
+/**
+ * Every screen, for a review or a video: each step is tried on its own and
+ * reported when it fails, so one label that moved costs one picture, not the
+ * run. The order matters where a step leaves state behind.
+ */
+async function captureEveryScreen(page, profile) {
+  const step = async (name, run) => {
+    try {
+      await run();
+    } catch (err) {
+      log(`skipped ${name}: ${err.message}`);
+    }
+  };
+  const top = () => page.eval(`(() => { const m = document.querySelector('main'); if (m) m.scrollTop = 0; })()`);
+  const place = async (...steps) => {
+    for (const s of steps) await page.press(s);
+    await top();
+  };
+  const other = async (match, name, close = true) => {
+    const win = await Page.open(match);
+    await win.shot(name);
+    // Escape closes the window, so its own key-up may never be answered.
+    if (close) await win.key('Escape').catch(() => undefined);
+    win.close();
+  };
+
+  await step('today idle', () => page.shot('s01-today-idle'));
+  await page.api(`startTask('demo-mg_MG-12')`);
+  backdateSession(profile, SESSION_MINUTES);
+  await sleep(2000);
+  await step('today tracking', () => page.shot('s02-today-tracking'));
+  await step('today paused', async () => {
+    await page.api('pauseSession()');
+    await page.shot('s03-today-paused');
+  });
+  await page.api('resumeSession()');
+  await sleep(1000);
+  await step('ctrl+k', async () => {
+    await page.key('k', { ctrl: true });
+    await page.shot('s04-ctrl-k');
+    await page.key('Escape');
+  });
+  await step('picker window', async () => {
+    await page.api('openTaskPicker()');
+    await other(url => url.includes('#picker'), 's05-picker-window');
+  });
+  // The mini timer stays open through the interruption.
+  await step('mini timer', async () => {
+    await page.api('toggleMiniWindow()');
+    await other(url => url.includes('#mini'), 's06-mini-timer', false);
+  });
+  await step('interruption', async () => {
+    await page.api('interrupt()');
+    await sleep(1500);
+    await page.shot('s07-today-interruption');
+    const mini = await Page.open(url => url.includes('#mini'));
+    await mini.shot('s08-mini-interruption');
+    mini.close();
+    // Stop opens the Place window (P13c), raised.
+    await page.api('stopInterruption()');
+    await other(url => url.includes('#picker'), 's09-place-window');
+    await sleep(800);
+    await page.shot('s10-today-to-place');
+  });
+  await step('mini off', () => page.api('toggleMiniWindow()'));
+  await step('stand-up prompt', async () => {
+    await page.api('triggerStandupPrompt()');
+    await sleep(1500);
+    await page.shot('s11-today-standup-prompt');
+    await page.api('cancelStandupPrompt()');
+  });
+  await step('end my day', async () => {
+    await page.press('End my day');
+    await page.shot('s12-end-my-day');
+    await page.press('Later');
+  });
+
+  await step('tasks', async () => {
+    await place('Tasks');
+    await page.shot('s13-tasks');
+  });
+  await step('tasks, own project', async () => {
+    await page.api(`createProject({ id: 'ADMIN', key: 'ADMIN', name: 'Studio admin', providerId: 'sprintticker' })`);
+    await page.api(`importTasks('ADMIN', [{ key: 'ADMIN-1', title: 'Expense report' }, { key: 'ADMIN-2', title: 'Order a new drawing tablet' }])`);
+    await page.press('Today');
+    await place('Tasks');
+    await page.press('Studio admin');
+    await page.press('More for Studio admin');
+    await page.shot('s14-tasks-own-project');
+    await page.key('Escape');
+  });
+
+  await step('history day', async () => {
+    await page.press('Today');
+    await place('History');
+    await page.shot('s15-history-day');
+  });
+  await step('history correction', () => shootCorrection(page, 's16-history-correct'));
+  await step('add time', async () => {
+    await page.press('Add time');
+    await page.shot('s17-history-add-time');
+    await page.key('Escape');
+  });
+  await step('history week', async () => {
+    await page.press('Week');
+    await page.shot('s18-history-week');
+  });
+  await step('check my week', async () => {
+    await page.press('Check my week');
+    await page.shot('s19-check-my-week');
+    await page.key('Escape');
+  });
+
+  const groups = [
+    ['General', 's20-settings-general'],
+    ['Account', 's21-settings-account'],
+    ['My workday', 's22-settings-workday'],
+    ['Desk devices', 's23-settings-devices'],
+    ['Data', 's24-settings-data']
+  ];
+  for (const [group, name] of groups) {
+    await step(name, async () => {
+      await page.press('Today');
+      await place('Settings', group);
+      await page.shot(name);
+    });
+  }
+  await step('settings search', async () => {
+    await page.eval(`(() => {
+      const box = document.querySelector('input[aria-label="Search settings"]');
+      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      set.call(box, 'lunch');
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await page.shot('s25-settings-search');
+  });
+  await step('developer', async () => {
+    await page.eval(`localStorage.setItem('sprintticker.showDeveloperTools', 'true')`);
+    await reload(page);
+    await place('Settings', 'Developer');
+    await page.shot('s26-settings-developer');
+    await page.press('Open Bar health');
+    await page.shot('s27-settings-bar-health');
+  });
+
+  await step('first run', async () => {
+    await page.press('Today');
+    await place('Settings', 'General');
+    await page.press('Run setup');
+    await page.shot('s28-first-run-account');
+    await page.eval(`[...document.querySelectorAll('input[type=radio]')]
+      .find(r => r.closest('label')?.textContent.includes('No account'))?.click()`);
+    await sleep(300);
+    await page.press('Continue');
+    await sleep(500);
+    await page.shot('s29-first-run-devices');
+  });
+  // Closed by a reload: the desk's answer must not be saved.
+  await reload(page);
+
+  await step('without a bar', async () => {
+    const config = await page.api('getDeviceConfig()');
+    await page.api(`setDeviceConfig(${JSON.stringify({ ...config, enabled: false })})`);
+    await sleep(1500);
+    await reload(page);
+    await page.shot('s30-nobar-today');
+    await place('Settings', 'Desk devices');
+    await page.shot('s31-nobar-devices');
+  });
 }
 
 async function captureWithoutBar(page) {
@@ -564,7 +793,7 @@ async function main() {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sprintticker-docs-'));
   const framesDir = path.join(profile, 'frames');
   fs.mkdirSync(framesDir);
-  fs.mkdirSync(IMAGES, { recursive: true });
+  fs.mkdirSync(SCREENS ?? IMAGES, { recursive: true });
   log('profile', profile);
 
   const child = launch(profile);
@@ -578,6 +807,11 @@ async function main() {
     await reload(page);
     await page.eval(RECORDER);
 
+    if (SCREENS) {
+      await captureEveryScreen(page, profile);
+      log('screens in', SCREENS);
+      return;
+    }
     await captureWithBar(page, framesDir, profile);
     await captureWithoutBar(page);
 

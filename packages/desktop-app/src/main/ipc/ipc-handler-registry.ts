@@ -1001,9 +1001,9 @@ export class IPCHandlerRegistry {
     });
 
     ipcMain.handle(IPCChannel.SNOOZE_CEREMONY, async (_event, payload: { type: 'STANDUP' | 'EOD'; minutes: number }) => {
+      // The release inside hands the display back; drawing the session here
+      // as well would be a second render of one end (CLAUDE.md §5).
       this.contextScheduleService.snoozeCeremony(payload.type, payload.minutes);
-      const activeSession = this.engine.getCurrentSession();
-      this.renderer.renderActiveSession(activeSession);
       return true;
     });
 

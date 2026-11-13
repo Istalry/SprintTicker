@@ -309,7 +309,7 @@ export const ProjectTaskManagerView: React.FC = () => {
                     <SortHeader label="Title" by="title" sort={sort} onSort={sortBy} />
                     <SortHeader label="Status" by="status" sort={sort} onSort={sortBy} width="w-24" />
                     <SortHeader label="Who" by="who" sort={sort} onSort={sortBy} width="w-28" />
-                    <th className="w-24 px-3 py-2"><span className="sr-only">Actions</span></th>
+                    <th className={`${ownProject ? 'w-32' : 'w-24'} px-3 py-2`}><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-dark">

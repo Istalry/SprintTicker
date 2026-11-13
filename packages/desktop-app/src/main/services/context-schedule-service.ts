@@ -630,6 +630,10 @@ export class ContextScheduleService {
   /// </summary>
   public snoozeCeremony(type: 'STANDUP' | 'EOD', minutes: number = 10): void {
     this.closeCeremony(type);
+    // Put off, the prompt leaves the bar too: its lock is released, which
+    // hands the display back (CLAUDE.md §5). Only closed, End my day's Later
+    // left EOD WRAP-UP on the bar for the rest of the day (P15a).
+    this._priorityEngine.releaseActiveLock(type === 'EOD' ? 'eodWrapUpPriority' : 'standupPromptPriority');
     const until = Date.now() + minutes * 60 * 1000;
     if (type === 'STANDUP') {
       this._standupSnoozeUntilTimestamp = until;

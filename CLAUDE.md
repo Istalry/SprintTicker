@@ -1609,7 +1609,7 @@ coverage section — four places, and only the first one fails a build when it i
 wrong. Treat a figure quoted in two places as the same hazard as a duplicated
 constant, because it is one.
 
-Two documents are **deliberately not maintained**, and neither should be
+Three documents are **deliberately not maintained**, and none should be
 "corrected" to match the code:
 
 - `Documentation/design-history/` — the pre-implementation design documents.
@@ -1619,6 +1619,9 @@ Two documents are **deliberately not maintained**, and neither should be
   (fixed, deferred, withdrawn, closed-as-documented); the finding text itself
   stays as it was written, because rewriting the evidence destroys the record of
   what was actually wrong.
+- `REVIEW-2026-11.md` — the design review of P15a, kept the same way: a
+  finding's status moves (fixed, to fix, decision, listed), its text does not.
+  Every screen it judged is re-captured by `capture-app.js --screens <dir>`.
 
 ## 10. Reference material
 

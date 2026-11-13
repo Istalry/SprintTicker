@@ -8,7 +8,7 @@ import { TimeTrackingEngine } from '../src/main/engine/time-tracking-engine';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 
 describe('Standup & Ceremony Snooze Unit Tests', () => {
-  let mockPriorityEngine: { getUserMode: ReturnType<typeof vi.fn>; setUserMode: ReturnType<typeof vi.fn> };
+  let mockPriorityEngine: { getUserMode: ReturnType<typeof vi.fn>; setUserMode: ReturnType<typeof vi.fn>; releaseActiveLock: ReturnType<typeof vi.fn> };
   let mockSettingsRepo: { getSetting: ReturnType<typeof vi.fn> };
   let mockEngine: { getCurrentSession: ReturnType<typeof vi.fn>; pauseSession: ReturnType<typeof vi.fn>; resumeSession: ReturnType<typeof vi.fn> };
   let mockRenderer: { renderLunchMode: ReturnType<typeof vi.fn>; renderAwayMode: ReturnType<typeof vi.fn>; renderActiveSession: ReturnType<typeof vi.fn>; renderCeremonyPrompt: ReturnType<typeof vi.fn> };
@@ -17,7 +17,8 @@ describe('Standup & Ceremony Snooze Unit Tests', () => {
   beforeEach(() => {
     mockPriorityEngine = {
       getUserMode: vi.fn().mockReturnValue('WORK'),
-      setUserMode: vi.fn()
+      setUserMode: vi.fn(),
+      releaseActiveLock: vi.fn()
     };
     mockSettingsRepo = {
       getSetting: vi.fn().mockReturnValue({
@@ -83,6 +84,16 @@ describe('Standup & Ceremony Snooze Unit Tests', () => {
 
     svc.dispose();
     vi.useRealTimers();
+  });
+
+  it.each([
+    ['STANDUP', 'standupPromptPriority'],
+    ['EOD', 'eodWrapUpPriority']
+  ] as const)('SnoozeCeremony_%s_LetsGoOfTheBar', (type, lock) => {
+    service.snoozeCeremony(type, 10);
+
+    expect(mockPriorityEngine.releaseActiveLock).toHaveBeenCalledWith(lock);
+    expect(mockPriorityEngine.releaseActiveLock).toHaveBeenCalledTimes(1);
   });
 
   it('SnoozeCeremony_StandupSnoozed_DelaysNextPromptEvaluation', () => {
