@@ -10,7 +10,7 @@ import { useAnnounce } from './LiveAnnouncer';
 /** Where "Keep timing on it" is remembered, for this session and this reason: the window reopened does not ask again. */
 const keptKey = (session: ActiveSessionDTO) => `task-left-kept:${session.sessionId}:${session.taskLeftBecause ?? 'reassigned'}`;
 
-function wasKept(session: ActiveSessionDTO): boolean {
+export function wasKept(session: ActiveSessionDTO): boolean {
   try {
     return window.sessionStorage.getItem(keptKey(session)) === '1';
   } catch {
@@ -46,7 +46,7 @@ export function taskLeftHeading(session: ActiveSessionDTO, providerName: string)
  * Mounted per session and reason (its key), so "Keep timing on it" is
  * final for that one only.
  */
-export const TaskLeftCard: React.FC<{ session: ActiveSessionDTO; onSwitch: () => void }> = ({ session, onSwitch }) => {
+export const TaskLeftCard: React.FC<{ session: ActiveSessionDTO; onSwitch: () => void; onKept?: () => void }> = ({ session, onSwitch, onKept }) => {
   const [kept, setKept] = useState(() => wasKept(session));
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +57,7 @@ export const TaskLeftCard: React.FC<{ session: ActiveSessionDTO; onSwitch: () =>
   const soFar = formatHoursAndMinutes(session.elapsedSeconds);
   const keep = () => {
     setKept(true);
+    onKept?.();
     try {
       window.sessionStorage.setItem(keptKey(session), '1');
     } catch {

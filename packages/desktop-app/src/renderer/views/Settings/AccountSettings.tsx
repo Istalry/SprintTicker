@@ -233,7 +233,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
     ? 'Tasks of your own, kept on this computer. Nothing is sent anywhere.'
     : site
       ? `${isJira && jiraEmail ? `${jiraEmail}. ` : ''}${own.length} ${own.length === 1 ? 'project' : 'projects'}, ${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}. ${refreshed}`
-      : `Enter your ${name} site and token to fetch your tasks.`;
+      : `Enter your ${name} ${isJira ? 'site and API token' : 'address and API key'} to fetch your tasks.`;
 
   return (
     <div className="space-y-4">
@@ -263,7 +263,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
                 </SettingButton>
               )}
               <SettingButton tone="ghost" aria-expanded={changingAccount} onClick={() => setChangingAccount(open => !open)}>
-                Change account
+                {remote && !site ? 'Set up' : 'Change account'}
               </SettingButton>
             </>
           }

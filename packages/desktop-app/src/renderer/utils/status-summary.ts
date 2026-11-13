@@ -5,11 +5,11 @@ export type StatusSeverity = 'ok' | 'info' | 'waiting' | 'problem';
 
 const RANK: Record<StatusSeverity, number> = { ok: 0, info: 1, waiting: 2, problem: 3 };
 /** Between two rows as bad: time not reaching the provider is worse than a bar. */
-const TIE: Record<StatusRow['id'], number> = { update: 0, bar: 1, sending: 2 };
+const TIE: Record<StatusRow['id'], number> = { update: 0, bar: 1, sending: 2, account: 3 };
 
 /** One row of the status panel (S27). */
 export interface StatusRow {
-  id: 'bar' | 'sending' | 'update';
+  id: 'account' | 'bar' | 'sending' | 'update';
   severity: StatusSeverity;
   /** The row's first line: what is the case. */
   title: string;
@@ -26,6 +26,11 @@ export interface StatusInputs {
   queue: SyncQueueSnapshotDTO | null;
   update: UpdateStatusDTO | null;
   providerName: string;
+  /**
+   * The account has no site or token (`SyncHealthState` 'not-configured'):
+   * the header said All good while nothing could be fetched or sent (C11).
+   */
+  accountNotSetUp?: boolean;
 }
 
 const ALL_GOOD = 'All good';
@@ -33,6 +38,16 @@ const ALL_GOOD = 'All good';
 /** The rows the panel shows, in the panel's order. */
 export function statusRows(inputs: StatusInputs): StatusRow[] {
   const rows: StatusRow[] = [];
+
+  if (inputs.accountNotSetUp) {
+    rows.push({
+      id: 'account',
+      severity: 'problem',
+      title: `${inputs.providerName} not set up`,
+      detail: `Your time is kept here. To fetch your tasks and send your time: Settings › Account › Set up.`,
+      headerWord: 'Not set up'
+    });
+  }
 
   if (inputs.bar) {
     rows.push(

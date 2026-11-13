@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { ActiveSessionDTO, WorklogDTO } from '../../shared/dtos';
 import { localDateKey } from '../../shared/local-date';
-import { formatClockTime, formatHoursAndMinutes } from '../utils/formatters';
+import { formatHoursAndMinutes, formatHoursMinutes } from '../utils/formatters';
+import { hasTaskPage } from '../../shared/task-page';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
+import { TaskPageButton } from './TaskPageButton';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { useEntryActions } from './EntryActions';
 import { useInterruptionsToPlace } from './InterruptionsToPlace';
@@ -35,7 +38,9 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
     .reduce((sum, item) => sum + item.durationSeconds, 0);
   const loggedSeconds = worklogs.reduce((sum, log) => sum + log.durationSeconds, 0);
   const sentSeconds = worklogs.filter(log => log.syncState === 'sent').reduce((sum, log) => sum + log.durationSeconds, 0);
-  const totalSeconds = loggedSeconds + (session?.elapsedSeconds ?? 0) + toPlaceSeconds;
+  // During an interruption the session is the fragment; the task it holds
+  // still counts (C6).
+  const totalSeconds = loggedSeconds + (session?.elapsedSeconds ?? 0) + (session?.interruption?.heldElapsedSeconds ?? 0) + toPlaceSeconds;
 
   const newestFirst = [...worklogs].sort((a, b) => b.startedAtUtc.localeCompare(a.startedAtUtc));
   const shown = showAll ? newestFirst : newestFirst.slice(0, TODAY_ENTRIES_SHOWN);
@@ -76,14 +81,19 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
                 <td className={`${cell} font-mono font-bold text-text-primary`}>
                   <span className="inline-flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${session.status === 'TRACKING' ? 'bg-accent-green motion-safe:animate-pulse' : 'bg-accent-amber'}`} />
-                    {session.interruption ? '⚡' : session.taskKey}
+                    {session.interruption ? <span aria-hidden="true">⚡</span> : session.taskKey}
+                    {!session.interruption && hasTaskPage(session.isAdHoc ? ADHOC_PROJECT_ID : session.projectId, session.providerId) && (
+                      <TaskPageButton taskId={session.taskId} taskKey={session.taskKey} />
+                    )}
                   </span>
                 </td>
-                <td className={`${cell} text-white font-medium`}>{session.taskTitle}</td>
-                <td className={`${cell} text-xs font-semibold ${session.status === 'TRACKING' ? 'text-accent-green' : 'text-accent-amber'}`}>
-                  {session.status === 'TRACKING' ? 'running' : 'paused'}
+                {/* The rows' own pattern (C18): the note column, a duration, HH:MM. */}
+                <td className={`${cell} text-text-secondary`}>{session.taskTitle}</td>
+                <td className={`${cell} font-mono font-bold whitespace-nowrap ${session.status === 'TRACKING' ? 'text-accent-green' : 'text-accent-amber'}`}>
+                  {formatHoursAndMinutes(session.elapsedSeconds)}
+                  <span className="sr-only">{session.status === 'TRACKING' ? ', running' : ', paused'}</span>
                 </td>
-                <td className={`${cell} text-xs text-text-secondary font-mono`}>{formatClockTime(new Date(session.startTimeUtc))}</td>
+                <td className={`${cell} text-xs text-text-secondary font-mono`}>{formatHoursMinutes(new Date(session.startTimeUtc))}</td>
                 <td className={cell} />
                 <td className={cell} />
               </tr>

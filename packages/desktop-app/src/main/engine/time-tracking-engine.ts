@@ -906,6 +906,7 @@ export class TimeTrackingEngine extends EventEmitter {
         interruptedTaskKey: held?.taskKey ?? null,
         interruptedTaskTitle: held?.taskTitle ?? null,
         interruptedWasPaused: running.interruptedWasPaused,
+        ...(held ? { heldElapsedSeconds: held.elapsedSeconds } : {}),
         ...this.chosenTaskOf(running.id)
       },
       status: 'TRACKING',

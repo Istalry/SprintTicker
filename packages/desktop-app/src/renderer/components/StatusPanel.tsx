@@ -5,6 +5,7 @@ import { DeviceStatusDTO, NotificationLogEntryDTO, SyncQueueSnapshotDTO, UpdateS
 import { StatusRow, statusHeaderWord, statusRows, worstRow } from '../utils/status-summary';
 import { formatClockTime } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
+import { useSyncHealth } from '../hooks/usePrompts';
 import { SettingsGroupId } from '../views/Settings/settings-groups';
 
 /** How many mirrored notifications "What you missed" lists. */
@@ -29,6 +30,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
   const [missed, setMissed] = useState<NotificationLogEntryDTO[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const { providerName } = useProviderCapabilities();
+  const health = useSyncHealth();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const readQueue = useCallback((): void => {
@@ -71,7 +73,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
     bar: device.enabled ? { connected: device.connected, address: device.ipAddress, pingMs: device.webSocketPingMs } : null,
     queue,
     update,
-    providerName
+    providerName,
+    accountNotSetUp: health?.state === 'not-configured'
   });
   const worst = worstRow(rows);
   const word = statusHeaderWord(rows);

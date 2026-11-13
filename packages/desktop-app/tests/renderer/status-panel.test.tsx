@@ -51,6 +51,14 @@ describe('status summary', () => {
     expect(statusHeaderWord(statusRows(both))).toBe('Sending stopped');
   });
 
+  it('AccountNotSetUp_NotAllGood_SaysWhereToSetItUp', () => {
+    const rows = statusRows(inputs({ accountNotSetUp: true }));
+
+    // C11: the header said All good with no site and no token.
+    expect(statusHeaderWord(rows)).toBe('Not set up');
+    expect(rows.find(row => row.id === 'account')?.detail).toMatch(/Settings › Account › Set up/);
+  });
+
   it('NoBar_HasNoBarRow', () => {
     expect(statusRows(inputs({ bar: null })).map(row => row.id)).toEqual(['sending']);
   });

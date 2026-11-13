@@ -73,7 +73,7 @@ describe('Today entries', () => {
 
     // 1h 40m + 20m logged, 1h running, 45m to place; only PF-31 is at the provider.
     expect(await screen.findByText('3h 45m · 1h 40m sent · 45m to place')).toBeTruthy();
-    expect(screen.getByText('running')).toBeTruthy();
+    expect(screen.getByText(', running')).toBeTruthy();
   });
 
   it('Header_AnotherDaysToPlace_NotCountedToday', async () => {

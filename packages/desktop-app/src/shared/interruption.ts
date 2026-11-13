@@ -88,6 +88,12 @@ export interface RunningInterruptionDTO {
   interruptedTaskTitle: string | null;
   /** The held session was paused already: Back leaves it paused. */
   interruptedWasPaused: boolean;
+  /**
+   * The held task's time so far, paused: the day's total counts it while the
+   * fragment stands in for the session (REVIEW-2026-11 C6), or it dropped
+   * by the task's whole time at every interruption.
+   */
+  heldElapsedSeconds?: number;
   /** The task chosen for its time while it runs (S9): placed there when it ends. */
   chosenTask?: { id: string; key: string; title: string };
 }

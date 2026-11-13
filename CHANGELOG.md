@@ -227,6 +227,17 @@
 
 ### Changed
 
+- **Today asks one question at a time.** The stand-up, Back at your desk?,
+  a reminder and a task that left your list no longer stack up -- three
+  amber cards could contradict each other and push the session's buttons
+  down; the most urgent shows, with a line counting the others. The day's
+  total keeps the paused task during an interruption, **Switch task** no
+  longer offers the task already running, the page scrolls clear of the
+  Undo bar, and the running row on Today reads like the others (its time,
+  HH:MM, the task page). The status says **Not set up** while no account is
+  set up, and its button **Set up**. The mini timer uses ⇄ for Switch and a
+  green Back, and the header keeps its words when there is no bar.
+
 - **Usable with a screen reader and at a larger size.** The dashboard zooms
   again -- Ctrl+= and Ctrl+- or Ctrl+wheel, Ctrl+0 to reset -- which went
   with the hidden menu. A screen reader now hears the stand-up, Lunch, Away,

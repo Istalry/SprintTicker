@@ -48,6 +48,16 @@ const listed = () =>
 const search = (text: string) => fireEvent.change(screen.getByLabelText('Search tasks'), { target: { value: text } });
 
 describe('TaskPicker', () => {
+  it('Switch_TheRunningTask_IsLeftOut_TheHighlightOnTheFirstRealOption', async () => {
+    open({ runningTaskId: MG15.id });
+    await screen.findByText(/previous task/);
+
+    // C8: MG-15 is timing; switching to it would switch to itself.
+    expect(listed()).not.toContain('MG-15');
+    const field = screen.getByRole('combobox', { name: 'Search tasks' });
+    expect(document.getElementById(field.getAttribute('aria-activedescendant')!)?.textContent).toMatch(/^PF-31/);
+  });
+
   it('Switch_Opened_PreviousRecentStarredMineProjects_InThatOrder', async () => {
     open();
     await screen.findByText(/previous task/);

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { ActiveSessionDTO, TaskDTO, WorklogDTO } from '../../../shared/dtos';
 import { ActiveTaskHeroCard } from '../../components/ActiveTaskHeroCard';
 import { PickerMode } from '../../hooks/useModals';
-import { useCeremonyPrompt, useMorning, useReminder, useUserMode } from '../../hooks/usePrompts';
+import { useCeremonyPrompt, useForgottenReview, useMorning, useReminder, useResumePrompt, useUserMode } from '../../hooks/usePrompts';
 import { MorningCard } from '../../components/MorningCard';
-import { TaskLeftCard } from '../../components/TaskLeftCard';
+import { TaskLeftCard, wasKept } from '../../components/TaskLeftCard';
 import { ReminderCard } from '../../components/ReminderPrompt';
 import { BreakCard, LunchQuestionCard, StandupCard } from '../../components/PromptCards';
 import { ResumeAfterLunchPrompt } from '../../components/ResumeAfterLunchPrompt';
@@ -61,25 +61,41 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [morning, putMorningAway] = useMorning();
   // When Today opened: the morning card's "in 22 minutes" counts from it.
   const [openedAt] = useState(() => new Date());
+  const [resume] = useResumePrompt();
+  const [forgotten] = useForgottenReview();
+  // Bumped when the task-left card is put away, so the next question shows.
+  const [, setKeptCount] = useState(0);
   const leaveAway = () => {
     setMode('WORK');
     window.electronAPI.setUserMode('WORK').catch(err => console.warn('[TodayView] Leaving Away failed:', err));
   };
+  // One question at a time, the most urgent first (REVIEW-2026-11 C5, the
+  // user's choice, 2026-11-13): stacked, three amber cards contradicted each
+  // other -- two Resume buttons -- and pushed the session's controls down.
+  const questions: React.ReactNode[] = [];
+  if (forgotten?.deferred) questions.push(<ForgottenSessionCard key="forgotten" />);
+  if (resume) questions.push(<ResumeAfterLunchPrompt key="resume" />);
+  if (ceremony?.type === 'LUNCH') questions.push(<LunchQuestionCard key="lunch" prompt={ceremony} />);
+  if (ceremony?.type === 'STANDUP') questions.push(<StandupCard key="standup" prompt={ceremony} session={session} />);
+  if (mode !== 'WORK') questions.push(<BreakCard key="break" mode={mode} session={session} onLeaveAway={leaveAway} />);
+  if (session?.taskUnlisted && !session.interruption && !wasKept(session)) {
+    questions.push(
+      <TaskLeftCard key={`${session.sessionId}-${session.taskLeftBecause ?? 'reassigned'}`} session={session}
+        onSwitch={() => onOpenPicker('start')} onKept={() => setKeptCount(n => n + 1)} />
+    );
+  }
+  if (reminder) questions.push(<ReminderCard key="reminder" reminder={reminder} openPicker={() => onOpenPicker('start')} onAnswered={() => setReminder(null)} />);
+  const [first, ...rest] = questions;
+  const more = rest.length;
   return (
   <div className="space-y-6">
     {/* The page's own heading (A20): its cards are h3 under it. */}
     <h2 className="sr-only">Today</h2>
-    <ForgottenSessionCard />
     {device && onOpenSettings && <StatusCards device={device} onOpenSettings={onOpenSettings} />}
     {morning && !session && <MorningCard morning={morning} now={openedAt} onOpenPicker={() => onOpenPicker('start')} onPutAway={putMorningAway} />}
-    {ceremony?.type === 'STANDUP' && <StandupCard prompt={ceremony} session={session} />}
-    {ceremony?.type === 'LUNCH' && <LunchQuestionCard prompt={ceremony} />}
-    <ResumeAfterLunchPrompt />
-    <BreakCard mode={mode} session={session} onLeaveAway={leaveAway} />
-    {reminder && <ReminderCard reminder={reminder} openPicker={() => onOpenPicker('start')} onAnswered={() => setReminder(null)} />}
-
-    {session?.taskUnlisted && !session.interruption && (
-      <TaskLeftCard key={`${session.sessionId}-${session.taskLeftBecause ?? 'reassigned'}`} session={session} onSwitch={() => onOpenPicker('start')} />
+    {first}
+    {more > 0 && (
+      <p className="-mt-3 text-xs text-text-secondary">{more === 1 ? '1 more question' : `${more} more questions`} after this one</p>
     )}
 
     <ActiveTaskHeroCard

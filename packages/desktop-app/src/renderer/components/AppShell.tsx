@@ -84,7 +84,9 @@ export const AppShell: React.FC<AppShellProps> = ({ place, onNavigate, device, t
             }`}
           >
             <PictureInPicture2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden hdr-md:inline whitespace-nowrap">Mini timer</span>
+            {/* The breakpoints were measured with the bar's preview in the header;
+                without it there is room for the words (C20). */}
+            <span className={`${hasBar ? 'hidden hdr-md:inline' : 'inline'} whitespace-nowrap`}>Mini timer</span>
           </button>
 
           <button
@@ -95,7 +97,7 @@ export const AppShell: React.FC<AppShellProps> = ({ place, onNavigate, device, t
             className="flex items-center gap-1.5 bg-dark-700 hover:bg-dark-600 text-text-primary px-3 py-1.5 rounded-md border border-border-dark font-semibold text-xs transition-colors shrink-0"
           >
             <Moon className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden hdr-sm:inline whitespace-nowrap">End my day</span>
+            <span className={`${hasBar ? 'hidden hdr-sm:inline' : 'inline'} whitespace-nowrap`}>End my day</span>
           </button>
 
           <StatusPanel device={device} onOpenSettings={onOpenSettings} />

@@ -39,7 +39,7 @@ describe('App', () => {
 
     render(<App />);
 
-    const row = (await screen.findByText('running')).closest('tr');
+    const row = (await screen.findByText(', running')).closest('tr');
     expect(row).not.toBeNull();
     expect(within(row as HTMLElement).getByText(TRACKING_SESSION.taskKey)).toBeTruthy();
   });
@@ -71,7 +71,7 @@ describe('App', () => {
 
     act(() => bridge.emit('onSessionUpdated', TRACKING_SESSION));
 
-    expect(await screen.findByText('running')).toBeTruthy();
+    expect(await screen.findByText(', running')).toBeTruthy();
   });
 
   it('EndMyDay_Click_PutsThePromptOnTheBarToo', async () => {

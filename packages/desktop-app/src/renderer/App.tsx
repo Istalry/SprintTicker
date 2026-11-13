@@ -189,6 +189,7 @@ export const App: React.FC = () => {
         isOpen={modals.picker.open}
         onClose={modals.picker.close}
         mode={modals.picker.mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
+        runningTaskId={session?.taskId ?? null}
         onPick={picked => { void pickTask(modals.picker.mode, session, picked, startTask); }}
       />
 

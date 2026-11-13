@@ -188,8 +188,8 @@ Across the top, the header:
 - ☾ **End my day** opens the end-of-day wrap-up now.
 - ✅ **The status entry** says in a word how things stand: **All good**,
   **2 waiting** (entries not yet sent to your provider), **Sending stopped**
-  (your provider refused them), **Update**, or **Bar offline**; the worst
-  wins. Click it for the details, **Try now** to send what waits, and **What
+  (your provider refused them), **Not set up** (no account yet: Settings ›
+  Account › **Set up**), **Update**, or **Bar offline**; the worst wins. Click it for the details, **Try now** to send what waits, and **What
   you missed**: the last notifications the bar showed.
 
 🧭 **When something is not normal, Today says what still works**, in a card
@@ -846,7 +846,8 @@ hardware controls below.
 
 🔕 **No prompt takes the window.** SprintTicker never comes up over what you
 are typing. A question waits as a card at the top of **Today** and in the
-mini timer's row until you answer it, and, while the window is hidden in the
+mini timer's row until you answer it -- one at a time, the most urgent
+first, with *1 more question after this one* when others wait -- and, while the window is hidden in the
 tray or minimised, a Windows notification says so; clicking it opens the
 window. The stand-up's card offers **Join**, **Skip today** and **Remind me in
 10 min**, and stays until you choose. The end-of-day wrap-up opens in the

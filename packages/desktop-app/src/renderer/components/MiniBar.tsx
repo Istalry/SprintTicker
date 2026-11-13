@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CornerDownRight, History, Link2, ListTodo, Pause, Play, Square, Undo2, X, Zap } from 'lucide-react';
+import { AlertTriangle, CornerDownRight, History, Link2, ListTodo, Pause, Play, Repeat, Square, Undo2, X, Zap } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { useScreenIcon } from '../hooks/useScreenIcon';
 import { useToPlaceCount } from '../hooks/useToPlaceCount';
@@ -335,7 +335,8 @@ export const MiniBar: React.FC = () => {
       className={button}
       onClick={run('Open the task picker', () => api.openTaskPicker())}
     >
-      <ListTodo className="w-4 h-4" />
+      {/* ⇄ for Switch, as on every surface (C16). */}
+      {session ? <Repeat className="w-4 h-4" /> : <ListTodo className="w-4 h-4" />}
     </button>
   );
 
@@ -395,7 +396,9 @@ export const MiniBar: React.FC = () => {
               type="button"
               title={`${Verb.BACK} to ${interruption.interruptedTaskKey}: end the interruption and go back to it`}
               aria-label={`${Verb.BACK} to ${interruption.interruptedTaskKey}`}
-              className={button}
+              // The main answer here, green as in the window; set apart from
+              // Place, or ↶ beside ↳ read as Undo and Redo (C16).
+              className="mr-1.5 p-1.5 rounded-md bg-accent-green text-dark-900 hover:bg-accent-green/90 transition-colors [-webkit-app-region:no-drag]"
               onClick={run('Back', back)}
             >
               <Undo2 className="w-4 h-4" />

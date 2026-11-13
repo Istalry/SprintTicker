@@ -119,6 +119,6 @@ describe('the app shell', () => {
     installElectronApi({ getCurrentSession: vi.fn().mockResolvedValue(TRACKING_SESSION) });
     render(<App />);
 
-    expect(await screen.findByText('running')).toBeTruthy();
+    expect(await screen.findByText(', running')).toBeTruthy();
   });
 });

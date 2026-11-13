@@ -88,6 +88,7 @@ const TaskPickerWindow: React.FC<{ mode: Exclude<PickerWindowMode, 'place-ended'
       asWindow
       onClose={() => { if (!picking.current) close(); }}
       mode={placing ? 'place' : mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
+      runningTaskId={session?.taskId ?? null}
       title={placing ? `Which task is "${placing.title}" for?` : undefined}
       subtitle={placing ? 'The timer keeps running; its time goes there when it ends.' : undefined}
       onPick={picked => {

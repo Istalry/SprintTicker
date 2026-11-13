@@ -126,6 +126,8 @@ describe('Interruptions in a row', () => {
       expect(worklogs.getWorklogsByDate(DAY)).toEqual([]);
       expect(sessions.getActiveSession()).toMatchObject({ taskId: A.id, status: 'PAUSED', elapsedSeconds: minutes(30) });
       expect(session()?.elapsedSeconds).toBe(minutes(15));
+      // The day's total still counts the task it holds (C6).
+      expect(session()?.interruption?.heldElapsedSeconds).toBe(minutes(30));
     });
 
     it('Backdated_ThePauseStartsThen', () => {

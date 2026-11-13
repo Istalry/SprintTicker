@@ -61,6 +61,14 @@ export const UndoBar: React.FC = () => {
   useEffect(() => window.electronAPI?.onOpenRoute?.(route => {
     if (route === 'undo') button.current?.focus();
   }), []);
+  // While the bar shows, the page scrolls clear of it (index.css): it came
+  // up right after a press, over the next button to press (C14).
+  const shown = state !== null;
+  useEffect(() => {
+    if (!shown) return undefined;
+    document.documentElement.dataset.undo = 'shown';
+    return () => { delete document.documentElement.dataset.undo; };
+  }, [shown]);
   // Said once per action; the countdown beside it is never read (A9).
   useAnnounce(state ? `${state.label}:${state.expiresAtUtc}` : null, state ? `${state.label}. ${Verb.UNDO} for ${secondsLeft} seconds.` : '');
   if (!state) return null;

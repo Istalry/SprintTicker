@@ -83,6 +83,24 @@ describe('reminders', () => {
     expect(screen.queryByRole('region', { name: 'Still paused?' })).toBeNull();
   });
 
+  it('TodayView_TwoQuestions_OneCardAtATime_TheOtherCounted', async () => {
+    const bridge = installElectronApi({
+      getReminder: async () => PAUSED,
+      getCeremonyPrompt: async () => ({ type: 'STANDUP', title: 'Stand-up', at: '09:30' })
+    });
+    render(<TodayView session={null} worklogs={[]} onPause={() => undefined} onResume={() => undefined}
+      onComplete={() => undefined} onDiscard={() => undefined} onInterrupt={() => undefined} onOpenPicker={() => undefined} />);
+
+    // The stand-up first (C5, the user's choice): the reminder waits behind it.
+    expect(await screen.findByRole('region', { name: 'The stand-up' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Still paused?' })).toBeNull();
+    expect(screen.getByText('1 more question after this one')).toBeTruthy();
+
+    act(() => bridge.emit('onCeremonyPrompt', null));
+    expect(await screen.findByRole('region', { name: 'Still paused?' })).toBeTruthy();
+    expect(screen.queryByText(/more question/)).toBeNull();
+  });
+
   it('MiniBar_Reminder_TakesTheRow_StartOpensThePickerWindow', async () => {
     const bridge = installElectronApi({ getReminder: async () => NOTHING });
     render(<MiniBar />);

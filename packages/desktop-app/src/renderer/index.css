@@ -98,6 +98,12 @@
   input[type='radio'] {
     accent-color: theme('colors.primary');
   }
+
+  /* The Undo bar floats over the page's foot: while it shows, the page can
+     scroll its last controls clear of it (REVIEW-2026-11 C14). */
+  html[data-undo='shown'] main {
+    padding-bottom: 5rem;
+  }
 }
 
 /* A thin grey scrollbar, from the tokens: no colour, it means nothing. */

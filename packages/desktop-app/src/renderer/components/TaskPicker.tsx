@@ -40,6 +40,11 @@ export interface TaskPickerProps {
   mode: PickerMode;
   onClose: () => void;
   onPick: (picked: PickedTask) => void;
+  /**
+   * The task timing now. Switch leaves it out: it headed Recent, highlighted
+   * for Enter, and switched to itself (REVIEW-2026-11 C8).
+   */
+  runningTaskId?: string | null;
   /** The heading, when the mode's own is not enough: `Place "Call with Marc" on a task`. */
   title?: string;
   /** One line under the heading: what is being placed or moved. */
@@ -113,7 +118,8 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   justChosen = [],
   onKeepOff,
   keepOffMeaning,
-  asWindow = false
+  asWindow = false,
+  runningTaskId = null
 }) => {
   const { capabilities, providerName } = useProviderCapabilities();
   const [visibility, setVisibility] = useTaskVisibility();
@@ -143,7 +149,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   }, []);
 
   const realOnly = needsRealTask(mode);
-  const usable = (task: TaskDTO) => !realOnly || task.projectId !== ADHOC_PROJECT_ID;
+  const usable = (task: TaskDTO) => (!realOnly || task.projectId !== ADHOC_PROJECT_ID) && !(mode === 'switch' && task.id === runningTaskId);
   const snapshot = data ?? EMPTY_DATA;
   const { visible: tasks, hiddenCount } = visibleTasks(snapshot.tasks, visibility);
   const projects = orderProjects(snapshot.projects, tasks, snapshot.starred, snapshot.projectSeconds);
