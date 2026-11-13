@@ -172,6 +172,9 @@ Four places down the left: **Today**, **Tasks** and **History**, and
 **Settings** at the bottom. They are the same with or without a bar. A ⚡
 beside Today counts the interruptions you have not placed on a task yet.
 
+⌨️ Everything works from the keyboard. Escape closes any dialog or menu and
+puts you back on the button that opened it; the arrow keys move in a menu.
+
 Across the top, the header:
 
 - 🟩 **The bar's preview**, with a bar: what the bar shows right now.

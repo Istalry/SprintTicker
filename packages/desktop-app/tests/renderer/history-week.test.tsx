@@ -34,6 +34,14 @@ const weekOpen = async (overrides: Record<string, unknown> = {}) => {
 };
 
 /** History's week (S15, P9c): a timesheet by project, the Day row and what the provider holds. */
+
+/** What the eye reads: the screen reader's words (`sr-only`) left out. */
+const visibleText = (element: HTMLElement): string => {
+  const copy = element.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('.sr-only').forEach(node => node.remove());
+  return copy.textContent ?? '';
+};
+
 describe("History's week", () => {
   it('Week_ReadsMondayToSunday_GroupedByProject_TheLargestOpen', async () => {
     const bridge = await weekOpen();
@@ -54,8 +62,8 @@ describe("History's week", () => {
 
     const day = screen.getByRole('row', { name: 'Day' });
     const provider = screen.getByRole('row', { name: 'In OpenProject' });
-    expect(day.textContent).toMatch(/^Day3h 35m1h 00m20m held/);
-    expect(provider.textContent).toMatch(/^In OpenProject · what your manager sees3h 35m40m/);
+    expect(visibleText(day)).toMatch(/^Day3h 35m1h 00m20m held/);
+    expect(visibleText(provider)).toMatch(/^In OpenProject · what your manager sees3h 35m40m/);
     expect(screen.getByText(/All sent, except OPS-4's 20m on .*, held by an overlap\./)).toBeTruthy();
   });
 
@@ -71,7 +79,7 @@ describe("History's week", () => {
   it('Week_ATaskCellClicked_OpensThatDay', async () => {
     const bridge = await weekOpen();
 
-    fireEvent.click(screen.getByRole('button', { name: /^PF-31 on .*: open the day$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^\d[\dhm ]*, PF-31 on .*: open the day$/ }));
 
     await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledWith(MONDAY));
   });

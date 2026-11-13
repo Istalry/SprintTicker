@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import type { TaskDTO, WorklogDTO } from '../../shared/dtos';
 import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
 import { splitPieces } from '../../shared/worklog-correction';
@@ -60,14 +61,18 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
   };
 
   const cell = 'py-2 pr-3 whitespace-nowrap';
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef, () => { if (!picking) onClose(); });
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
         <div
+          ref={panelRef}
           role="dialog"
+          aria-modal="true"
           aria-label="Split in two"
           className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-4"
-          onKeyDown={e => { if (e.key === 'Escape' && !picking) onClose(); }}
         >
           <h3 className="text-sm font-bold text-white">
             Split <span className="font-mono">{key}</span> · {clock(startMs)} – {clock(endMs)} · {formatHoursAndMinutes(total)}

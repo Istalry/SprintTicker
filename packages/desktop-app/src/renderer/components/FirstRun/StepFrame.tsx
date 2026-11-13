@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useModal } from '../../hooks/useModal';
 
 export const FIRST_RUN_STEPS = 3;
 
@@ -27,10 +28,24 @@ export const StepFrame: React.FC<{
   footer: React.ReactNode;
   error?: string | null;
   children: React.ReactNode;
-}> = ({ step, title, intro, footer, error, children }) => (
+}> = ({ step, title, intro, footer, error, children }) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef);
+  // A new step replaces the button that had the focus: its title takes it,
+  // so the next Tab starts in the step, not at the top of the window.
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const shown = useRef(step);
+  useEffect(() => {
+    if (shown.current === step) return;
+    shown.current = step;
+    titleRef.current?.focus();
+  }, [step]);
+  return (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
     <div
+      ref={panelRef}
       role="dialog"
+      aria-modal="true"
       aria-label={title}
       className="w-full max-w-xl max-h-[92vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl flex flex-col"
     >
@@ -38,7 +53,7 @@ export const StepFrame: React.FC<{
         <div className="text-[11px] font-semibold text-text-secondary">
           Set up · {step} of {FIRST_RUN_STEPS}
         </div>
-        <h2 className="mt-1 text-lg font-bold text-white">{title}</h2>
+        <h2 ref={titleRef} tabIndex={-1} className="mt-1 text-lg font-bold text-white outline-none">{title}</h2>
         <p className="mt-1 text-xs text-text-secondary leading-relaxed">{intro}</p>
       </div>
       <div className="px-6 py-5 space-y-3 overflow-y-auto">{children}</div>
@@ -51,3 +66,4 @@ export const StepFrame: React.FC<{
     </div>
   </div>
 );
+};

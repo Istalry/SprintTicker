@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useMenu } from '../hooks/useMenu';
 import { ChevronDown, CircleCheck, CircleAlert, Clock3, Download } from 'lucide-react';
 import { DeviceStatusDTO, NotificationLogEntryDTO, SyncQueueSnapshotDTO, UpdateStatusDTO } from '../../shared/dtos';
 import { StatusRow, statusHeaderWord, statusRows, worstRow } from '../utils/status-summary';
@@ -60,15 +61,11 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
       );
   }, [open]);
 
-  // Closes on a click outside, as a menu does.
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
+  // Closes on a click outside or Escape, as a menu does, and takes the
+  // focus when it opens (REVIEW-2026-11 A5).
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  useMenu(open, () => setOpen(false), { root: rootRef, menu: panelRef, trigger: triggerRef });
 
   const rows = statusRows({
     bar: device.enabled ? { connected: device.connected, address: device.ipAddress, pingMs: device.webSocketPingMs } : null,
@@ -92,6 +89,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(value => !value)}
         aria-expanded={open}
@@ -112,6 +110,8 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
 
       {open && (
         <div
+          ref={panelRef}
+          tabIndex={-1}
           role="dialog"
           aria-label="Status"
           className="absolute right-0 top-full z-40 mt-2 w-96 space-y-3 rounded-xl border border-border-dark bg-dark-800 p-4 shadow-2xl"
@@ -122,7 +122,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
               <StatusRowItem key={row.id} row={row} onTryNow={tryNow} onOpenSettings={onOpenSettings} />
             ))}
           </ul>
-          {notice && <p className="text-xs text-accent-red">{notice}</p>}
+          {notice && <p role="alert" className="text-xs text-accent-red">{notice}</p>}
 
           <div className="space-y-1.5 border-t border-border-dark pt-3">
             <h4 className="text-xs font-semibold text-text-secondary">What you missed</h4>

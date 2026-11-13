@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useMenu } from '../hooks/useMenu';
 import { ChevronDown, Square } from 'lucide-react';
 import type { ActiveSessionDTO } from '../../shared/dtos';
 import { finishNeedsConfirmation } from '../../shared/task-left';
@@ -29,8 +30,12 @@ export interface StopMenuProps {
  */
 export const StopMenu: React.FC<StopMenuProps> = ({ session, offerDone, doneMeans, onComplete, onDiscard, onDoneCelebrate }) => {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  useMenu(open, () => setOpen(false), { root: rootRef, menu: menuRef, trigger: triggerRef });
   return (
-    <div className="relative inline-flex">
+    <div ref={rootRef} className="relative inline-flex">
       <button
         type="button"
         onClick={() => onComplete(undefined, false)}
@@ -41,8 +46,10 @@ export const StopMenu: React.FC<StopMenuProps> = ({ session, offerDone, doneMean
         <span>{Verb.STOP}</span>
       </button>
       <button
+        ref={triggerRef}
         type="button"
         aria-label="More ways to stop"
+        aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(current => !current)}
         className="px-2 py-2.5 rounded-r-lg border border-l-0 bg-dark-700 hover:bg-dark-600 text-white border-border-dark"
@@ -51,10 +58,10 @@ export const StopMenu: React.FC<StopMenuProps> = ({ session, offerDone, doneMean
       </button>
       {open && (
         <StopMenuPanel
+          menuRef={menuRef}
           session={session}
           offerDone={offerDone}
           doneMeans={doneMeans}
-          onClose={() => setOpen(false)}
           onDone={() => {
             setOpen(false);
             onDoneCelebrate?.();
@@ -75,17 +82,17 @@ export const StopMenu: React.FC<StopMenuProps> = ({ session, offerDone, doneMean
 };
 
 interface PanelProps {
+  menuRef: React.RefObject<HTMLDivElement | null>;
   session: ActiveSessionDTO;
   offerDone: boolean;
   doneMeans: string;
-  onClose: () => void;
   onDone: () => void;
   onStop: () => void;
   onDiscard: () => void;
 }
 
 /** Mounted only while open, so every opening starts on the two choices, never a question left. */
-const StopMenuPanel: React.FC<PanelProps> = ({ session, offerDone, doneMeans, onClose, onDone, onStop, onDiscard }) => {
+const StopMenuPanel: React.FC<PanelProps> = ({ menuRef, session, offerDone, doneMeans, onDone, onStop, onDiscard }) => {
   const [asking, setAsking] = useState<'discard' | 'done' | null>(null);
   // Across midnight the time goes in under each day: said before it does.
   const [daySplit, setDaySplit] = useState<string | null>(null);
@@ -100,10 +107,10 @@ const StopMenuPanel: React.FC<PanelProps> = ({ session, offerDone, doneMeans, on
 
   return (
     <div
+      ref={menuRef}
       role="menu"
       aria-label="Stop"
       className="absolute left-0 top-full mt-2 z-40 w-96 bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-2 text-xs"
-      onKeyDown={e => { if (e.key === 'Escape') onClose(); }}
     >
       {asking === 'discard' ? (
         <div className="p-2">
@@ -113,6 +120,7 @@ const StopMenuPanel: React.FC<PanelProps> = ({ session, offerDone, doneMeans, on
             message={<>Nothing of this session on <span className="font-mono">{session.taskKey}</span> is kept or sent. {Verb.UNDO} stays on the toast for 10 s.</>}
             confirmLabel={`${Verb.DISCARD} ${logged}`}
             cancelLabel="Keep it"
+            takeFocus
             onConfirm={onDiscard}
             onCancel={() => setAsking(null)}
           />
@@ -124,6 +132,7 @@ const StopMenuPanel: React.FC<PanelProps> = ({ session, offerDone, doneMeans, on
             message={<>It left your list since you started it: reassigned, or moved. Your {logged} are logged either way. Marking it done applies your completion transition to it.</>}
             confirmLabel="Mark it done anyway"
             cancelLabel="Back"
+            takeFocus
             onConfirm={onDone}
             onCancel={() => setAsking(null)}
           />

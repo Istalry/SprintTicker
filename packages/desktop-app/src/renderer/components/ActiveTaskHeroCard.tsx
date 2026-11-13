@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Play, Pause, Repeat, AlertTriangle, Zap, Link2, Square, Undo2, History } from 'lucide-react';
 import { ActiveSessionDTO, TaskDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
@@ -80,6 +80,16 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   onPrevious
 }) => {
   const { capabilities, providerName } = useProviderCapabilities();
+  // Stop and Discard take away the button that had the focus: Start, which
+  // replaces them, takes it -- only after an end asked here, never one from
+  // the bar or the deck (REVIEW-2026-11 A4).
+  const startRef = useRef<HTMLButtonElement | null>(null);
+  const endedHere = useRef(false);
+  useEffect(() => {
+    if (session || !endedHere.current) return;
+    endedHere.current = false;
+    startRef.current?.focus();
+  }, [session]);
   // An interruption is timed apart from the task it interrupted, which waits
   // paused (P6): its controls are Back, Stop and Another, never Pause or Done.
   const interruption = session?.interruption ?? null;
@@ -166,7 +176,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         {/* Idle, the one thing to do is start: Resume and Stop had nothing to act on. */}
         {!session ? (
           <>
-            <button type="button" onClick={onOpenTaskModal} className={PRIMARY_GREEN}>
+            <button ref={startRef} type="button" onClick={onOpenTaskModal} className={PRIMARY_GREEN}>
               <Play className="w-4 h-4" />
               <span>{Verb.START} a task</span>
             </button>
@@ -228,8 +238,8 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               session={session}
               offerDone={offerDone}
               doneMeans={doneMeans}
-              onComplete={onComplete}
-              onDiscard={onDiscard}
+              onComplete={(comment, markDone) => { endedHere.current = true; onComplete(comment, markDone); }}
+              onDiscard={() => { endedHere.current = true; onDiscard(); }}
               // The bar's DONE! is played by `session:complete` itself, once
               // the session has stopped; asking for it here too started it twice.
               onDoneCelebrate={triggerDesktopConfetti}

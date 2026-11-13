@@ -6,7 +6,7 @@ import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { EditWorklogModal } from './EditWorklogModal';
 import { SplitWorklogDialog } from './SplitWorklogDialog';
 import { TaskPicker } from './TaskPicker';
-import { ConfirmPanel } from './ConfirmPanel';
+import { ConfirmDialog } from './ConfirmPanel';
 import { RowMenu } from './RowMenu';
 import { keepOffLabel, Verb } from '../../shared/words';
 
@@ -95,9 +95,7 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
   const dialogs = (
     <>
       {askingMove && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
-          <div className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
-            <ConfirmPanel
+            <ConfirmDialog
               title="Move time from a closed week?"
               message={<><strong className="text-white">{askingMove.label}</strong>. {closedWeekWarning(providerName)}</>}
               confirmLabel="Choose a task"
@@ -105,8 +103,6 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
               onConfirm={() => { setMoving(askingMove); setAskingMove(null); }}
               onCancel={() => setAskingMove(null)}
             />
-          </div>
-        </div>
       )}
 
       <TaskPicker

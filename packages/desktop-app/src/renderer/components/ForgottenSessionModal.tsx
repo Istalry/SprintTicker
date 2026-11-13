@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { Moon } from 'lucide-react';
 import { ForgottenSessionAction, ForgottenSessionReviewDTO } from '../../shared/dtos';
 import { forgottenHeading as headingFor, workedSecondsUntil } from '../../shared/session-review';
@@ -140,10 +141,15 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
   const primary = 'px-3 py-2 rounded-lg text-xs font-semibold bg-primary hover:bg-primary/90 text-dark-900 disabled:opacity-40 transition-all';
   const secondary = 'px-3 py-2 rounded-lg text-xs font-semibold bg-dark-700 hover:bg-dark-600 text-white border border-border-dark disabled:opacity-40 transition-all';
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef, () => answer('later'));
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-label={heading}
         className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-5"
       >
@@ -157,6 +163,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
 
         {confirming === 'discard' ? (
           <ConfirmPanel
+            takeFocus
             title="Discard this session?"
             tone="danger"
             message={
@@ -172,6 +179,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
           />
         ) : confirming === 'restart' ? (
           <ConfirmPanel
+            takeFocus
             title="No longer assigned to you"
             message={
               <>

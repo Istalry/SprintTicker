@@ -365,6 +365,14 @@
 
 ### Fixed
 
+- **The keyboard reaches everything, and Escape closes every dialog.** Add
+  time, Correct, End my day and the Tasks dialogs ignored Escape; the others
+  heard it only once you had tabbed into them. Every dialog now takes the
+  focus when it opens, keeps Tab inside and gives the focus back when it
+  closes; every menu (Mode, ⋯, Stop ▾) opens on its first item, moves with
+  the arrow keys and closes on Escape. **Change keys** puts the focus in the
+  field at once -- the keys pressed used to go nowhere -- and History's week
+  reads each time out before saying which day it opens.
 - **End my day's Later lets go of the bar.** Putting off the wrap-up closed
   the question in the window but left EOD WRAP-UP on the bar for the
   rest of the day; the stand-up's Remind me did the same with its prompt.

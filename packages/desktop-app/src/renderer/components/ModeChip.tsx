@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useMenu } from '../hooks/useMenu';
 import { ChevronDown } from 'lucide-react';
 import { UserMode } from '../../shared/dtos';
 
@@ -33,14 +34,9 @@ export const ModeChip: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  useMenu(open, () => setOpen(false), { root: rootRef, menu: menuRef, trigger: triggerRef });
 
   const choose = (next: UserMode): void => {
     setOpen(false);
@@ -57,6 +53,7 @@ export const ModeChip: React.FC = () => {
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(value => !value)}
         aria-haspopup="menu"
@@ -70,7 +67,7 @@ export const ModeChip: React.FC = () => {
         <ChevronDown className="h-3 w-3" />
       </button>
       {open && (
-        <div role="menu" aria-label="Mode" className="absolute left-0 top-full z-40 mt-2 w-64 rounded-lg border border-border-dark bg-dark-800 p-1 shadow-2xl">
+        <div ref={menuRef} role="menu" aria-label="Mode" className="absolute left-0 top-full z-40 mt-2 w-64 rounded-lg border border-border-dark bg-dark-800 p-1 shadow-2xl">
           {MODES.map(m => (
             <button
               key={m.id}

@@ -2728,6 +2728,30 @@ left once the screens are real:
   handler no longer draws the session after it (one end, one render); an
   own project's delete button spilled out of the Tasks table.
 
+**As landed: P15a2, dialogs, menus and the focus (2026-11-13).**
+
+- `hooks/useModal.ts` on every overlay (Add time, Correct, Split, Check my
+  week, End my day, the Forgotten session -- Escape is Decide later there --
+  Place, the first run, Tasks' dialogs, the picker, Ctrl+K, and the
+  closed-week questions as `ConfirmDialog`): the focus moves in, Tab stays
+  inside, Escape from anywhere closes the dialog on top, the focus goes back
+  to the opener. The first run and the picker and Ctrl+K leave Escape to
+  themselves. A first-run step's title takes the focus when the step
+  changes.
+- `hooks/useMenu.ts` on the Mode chip, the row ⋯, Stop ▾, the project ⋯ and
+  the status panel: first item focused, arrows, Home and End, Escape back
+  to the button, Tab or a click outside closes.
+- Swaps in place: `ConfirmPanel takeFocus` (Stop's Discard… and Done
+  questions, the Forgotten session's), Erase…'s Keep them and back, the mini
+  timer's safe answer, Start after a Stop or Discard asked in the window.
+  Change keys focuses its field (`autoFocus` does nothing on a span in
+  React 19) and gives the focus back to its button.
+- History's week: the time is each button's name, the day after it.
+- The user's decisions on the three design questions (2026-11-13): Pause
+  grey (P15a4), one question card at a time (P15a6), the ⚡ card's help in
+  one line (P15a3).
+- Tests: `focus.test.tsx` (8).
+
 ---
 
 ## 21. Verification, all phases
@@ -2803,5 +2827,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review) done | P15a1 (2026-11-13) |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus) done | P15a1 `e2dafc9`, P15a2 (2026-11-13) |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

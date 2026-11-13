@@ -1120,6 +1120,21 @@ shortcut that declares another AUMID. Two more things about it:
   `execPath` is a temp folder gone by the next login), and nothing from
   `pnpm dev`, whose `execPath` is a bare electron.exe.
 
+**Every overlay is a `useModal`, every ⋯ or ▾ a `useMenu`** (P15a2). The
+review found fifteen dialogs that left the focus behind them, and Escape
+working only once the user had tabbed in. `useModal(panelRef, onClose)`
+moves the focus in, keeps Tab inside, closes on Escape from anywhere --
+only the dialog on top -- and gives the focus back; `useMenu` focuses the
+first item and does the arrows. Not the native `<dialog>`: jsdom has no
+`showModal`. Two things about them:
+- **An Escape something inside used is not the dialog's.** A menu listens in
+  the capture phase and marks it (`defaultPrevented`); a field that reads
+  Escape stops it. Otherwise one Escape closes the menu *and* its dialog.
+- **A question that replaces its button takes the focus; a prompt never
+  does.** `ConfirmPanel takeFocus` for Stop's Discard… and the like; a
+  card main put on Today keeps §5's rule, and is announced
+  instead.
+
 **The window's colours are tokens, and colour means something.** Green is
 running, amber is paused or waiting on the user, red is danger; everything
 else is grey (`tailwind.config.js`). There is no blue or purple token, and

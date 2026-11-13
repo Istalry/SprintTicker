@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 import { ProviderId } from '../../../shared/provider-names';
 import { ipcErrorMessage } from '../../utils/formatters';
@@ -16,6 +16,20 @@ export const DataSettings: React.FC = () => {
   const { capabilities, providerName } = useProviderCapabilities();
   const [exported, setExported] = useState<string | null>(null);
   const [step, setStep] = useState<EraseStep>('idle');
+  // Each question replaces the button that asked it: Keep them takes the
+  // focus, and Erase… gets it back when the answer is no (REVIEW-2026-11 A4).
+  const keepRef = useRef<HTMLButtonElement | null>(null);
+  const eraseRef = useRef<HTMLButtonElement | null>(null);
+  const asked = useRef(false);
+  useEffect(() => {
+    if (step === 'first' || step === 'second') {
+      asked.current = true;
+      keepRef.current?.focus();
+    } else if (step === 'idle' && asked.current) {
+      asked.current = false;
+      eraseRef.current?.focus();
+    }
+  }, [step]);
   const [eraseResult, setEraseResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const exportLogs = () => {
@@ -55,7 +69,7 @@ export const DataSettings: React.FC = () => {
         title="Erase everything on this computer"
         description={`Tasks, projects and history. ${elsewhere} Asks twice.`}
         control={step === 'idle' && (
-          <SettingButton tone="danger" onClick={() => { setEraseResult(null); setStep('first'); }}>Erase…</SettingButton>
+          <SettingButton ref={eraseRef} tone="danger" onClick={() => { setEraseResult(null); setStep('first'); }}>Erase…</SettingButton>
         )}
       >
         {step === 'first' && (
@@ -64,7 +78,7 @@ export const DataSettings: React.FC = () => {
               Erase every task, project, session and entry of your history on this computer?
             </span>
             <SettingButton tone="danger" onClick={() => setStep('second')}>Erase</SettingButton>
-            <SettingButton tone="ghost" onClick={() => setStep('idle')}>Keep them</SettingButton>
+            <SettingButton ref={keepRef} tone="ghost" onClick={() => setStep('idle')}>Keep them</SettingButton>
           </div>
         )}
         {(step === 'second' || step === 'erasing') && (
@@ -75,7 +89,7 @@ export const DataSettings: React.FC = () => {
             <SettingButton tone="danger" disabled={step === 'erasing'} onClick={erase}>
               {step === 'erasing' ? 'Erasing…' : 'Erase everything now'}
             </SettingButton>
-            <SettingButton tone="ghost" disabled={step === 'erasing'} onClick={() => setStep('idle')}>Keep them</SettingButton>
+            <SettingButton ref={keepRef} tone="ghost" disabled={step === 'erasing'} onClick={() => setStep('idle')}>Keep them</SettingButton>
           </div>
         )}
         {eraseResult && (eraseResult.ok

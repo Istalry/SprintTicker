@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import type { ScheduleSettingsDTO, WeekChangeDTO, WorklogDTO } from '../../shared/dtos';
 import { addLocalDays, localDateKey } from '../../shared/local-date';
 import { checkWeek, describeWeekCheck, WeekIssue } from '../../shared/week-issues';
@@ -126,14 +127,18 @@ export const CheckWeekDialog: React.FC<CheckWeekDialogProps> = ({ monday, onClos
     }
   };
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef, () => { if (!placing) onClose(); });
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
         <div
+          ref={panelRef}
           role="dialog"
+          aria-modal="true"
           aria-label="Check my week"
           className="w-full max-w-xl max-h-[85vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col"
-          onKeyDown={e => { if (e.key === 'Escape' && !placing) onClose(); }}
         >
           <div className="px-5 pt-4 pb-3 border-b border-border-dark">
             <h3 className="text-sm font-bold text-white">Check my week · {formatDayRange(monday, lastShown)}</h3>

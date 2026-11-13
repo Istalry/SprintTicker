@@ -8,7 +8,7 @@ import { formatClockTime, formatDay, formatHoursAndMinutes, ipcErrorMessage } fr
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { InlineRename } from './InlineRename';
 import { TaskPicker } from './TaskPicker';
-import { ConfirmPanel } from './ConfirmPanel';
+import { ConfirmDialog } from './ConfirmPanel';
 import { PlaceInterruptionsDialog } from './PlaceInterruptionsDialog';
 import { RowMenu } from './RowMenu';
 
@@ -248,17 +248,13 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
       {error && <p role="alert" className="text-xs text-accent-red">Not done: {error}</p>}
 
       {asking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
-            <ConfirmPanel
+            <ConfirmDialog
               title={`${Verb.PLACE} ${asking.label}?`}
               message={closedWeekWarning(providerName)}
               confirmLabel={`${Verb.PLACE} anyway`}
               onConfirm={() => { setPlacing(asking); setAsking(null); }}
               onCancel={() => setAsking(null)}
             />
-          </div>
-        </div>
       )}
 
       {placingRows && (

@@ -92,6 +92,7 @@ const TONES: Record<ButtonTone, string> = {
 
 interface SettingButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: ButtonTone;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 /** A small button at a row's right, as the mockups' `.btn.s`. */

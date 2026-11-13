@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ShortcutsStatusDTO } from '../../shared/dtos';
 import { SHORTCUT_ACTIONS, ShortcutAction } from '../../shared/flow-settings';
 import {
@@ -36,6 +36,19 @@ export const ShortcutSettings: React.FC = () => {
   const [status, setStatus] = useState<ShortcutsStatusDTO | null>(null);
   const [recording, setRecording] = useState<ShortcutAction | null>(null);
   const [refusal, setRefusal] = useState<{ action: ShortcutAction; text: string } | null>(null);
+  // The field replaces Change keys, and Change keys comes back when the
+  // recording ends: the focus follows both ways (REVIEW-2026-11 A2), or the
+  // chord pressed went nowhere -- `autoFocus` does nothing on a span.
+  const changeButtons = useRef<Partial<Record<ShortcutAction, HTMLButtonElement | null>>>({});
+  const recorded = useRef<ShortcutAction | null>(null);
+  useEffect(() => {
+    if (recording) {
+      recorded.current = recording;
+      return;
+    }
+    if (recorded.current) changeButtons.current[recorded.current]?.focus();
+    recorded.current = null;
+  }, [recording]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -113,7 +126,7 @@ export const ShortcutSettings: React.FC = () => {
                       role="textbox"
                       aria-label={`Press the new shortcut for ${name}`}
                       tabIndex={0}
-                      autoFocus
+                      ref={field => field?.focus()}
                       onKeyDown={onKeyDown(action)}
                       onBlur={() => void stopRecording()}
                       className="rounded border border-focus bg-dark-900 px-2 py-0.5 text-text-primary outline-none"
@@ -126,6 +139,7 @@ export const ShortcutSettings: React.FC = () => {
                         {accelerator ? describeAccelerator(accelerator) : '…'}
                       </kbd>
                       <SettingButton
+                        ref={button => { changeButtons.current[action] = button; }}
                         aria-label={`Change the shortcut for ${name}`}
                         disabled={!status || recording !== null}
                         onClick={() => void startRecording(action)}

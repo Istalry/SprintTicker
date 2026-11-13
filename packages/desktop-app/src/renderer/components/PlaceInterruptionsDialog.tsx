@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import type { TaskDTO } from '../../shared/dtos';
 import type { InterruptionSource, InterruptionToPlaceDTO } from '../../shared/interruption';
 import { localDateKey } from '../../shared/local-date';
@@ -6,7 +7,7 @@ import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
 import { KEEP_AS_OWN_ENTRY, Verb, keepAsOwnEntryMeaning } from '../../shared/words';
 import { formatClockTime, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
 import { TaskPicker } from './TaskPicker';
-import { ConfirmPanel } from './ConfirmPanel';
+import { ConfirmDialog } from './ConfirmPanel';
 
 /** Where an unnamed one was started, said beside it: the place helps recall it. */
 const STARTED_FROM: Partial<Record<InterruptionSource, string>> = {
@@ -130,17 +131,21 @@ export const PlaceInterruptionsDialog: React.FC<PlaceInterruptionsDialogProps> =
     else void place();
   };
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef, () => { if (!choosing) close(); });
+
   return (
     <div className={asWindow
       ? 'fixed inset-0 z-50 flex select-none'
       : 'fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none'}>
       <div
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-label={waiting.length === 1 ? `${Verb.PLACE} ${waiting[0].title}` : `${Verb.PLACE} ${waiting.length} interruptions`}
         className={asWindow
           ? 'w-full h-full bg-dark-800 overflow-hidden flex flex-col'
           : 'w-full max-w-2xl max-h-[85vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col'}
-        onKeyDown={e => { if (e.key === 'Escape' && !choosing) close(); }}
       >
         <div className="px-5 pt-4 pb-3 border-b border-border-dark">
           <h4 className="text-sm font-bold text-white">
@@ -229,17 +234,13 @@ export const PlaceInterruptionsDialog: React.FC<PlaceInterruptionsDialogProps> =
       />
 
       {asking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6">
-            <ConfirmPanel
+            <ConfirmDialog
               title={chosen.length === 1 ? `${Verb.PLACE} "${nameOf(chosen[0])}"?` : `${Verb.PLACE} ${chosen.length} interruptions?`}
               message={closedWeekWarning(providerName)}
               confirmLabel={`${Verb.PLACE} anyway`}
               onConfirm={() => { setAsking(false); void place(); }}
               onCancel={() => setAsking(false)}
             />
-          </div>
-        </div>
       )}
     </div>
   );

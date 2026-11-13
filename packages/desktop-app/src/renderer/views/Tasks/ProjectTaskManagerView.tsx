@@ -5,6 +5,8 @@ import { END_THE_INTERRUPTION_FIRST } from '../../../shared/interruption';
 import { pickTask } from '../../utils/pick-task';
 import { Verb } from '../../../shared/words';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
+import { useModal } from '../../hooks/useModal';
+import { useMenu } from '../../hooks/useMenu';
 import { useOnlyProjectsWithTasks } from '../../hooks/useOnlyProjectsWithTasks';
 import { useTaskVisibility } from '../../hooks/useTaskVisibility';
 import { useStarredProjects, useStarredTasks } from '../../hooks/useStars';
@@ -92,6 +94,10 @@ export const ProjectTaskManagerView: React.FC = () => {
   const [stateFilter, setStateFilter] = useState<StateFilter>('open');
   const [sort, setSort] = useState<Sort | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRootRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  useMenu(menuOpen, () => setMenuOpen(false), { root: menuRootRef, menu: menuRef, trigger: menuTriggerRef });
   const [problem, setProblem] = useState<string | null>(null);
 
   /**
@@ -268,13 +274,13 @@ export const ProjectTaskManagerView: React.FC = () => {
                 <SettingButton onClick={() => setDialog('add-task')}><Plus className="h-3.5 w-3.5" /> Task of my own</SettingButton>
               )}
               {ownProject && (
-                <div className="relative">
-                  <SettingButton tone="ghost" aria-label={`More for ${activeProject.name}`} aria-haspopup="menu" aria-expanded={menuOpen}
+                <div ref={menuRootRef} className="relative">
+                  <SettingButton ref={menuTriggerRef} tone="ghost" aria-label={`More for ${activeProject.name}`} aria-haspopup="menu" aria-expanded={menuOpen}
                     onClick={() => setMenuOpen(v => !v)}>
                     <MoreHorizontal className="h-4 w-4" />
                   </SettingButton>
                   {menuOpen && (
-                    <div role="menu" className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-border-dark bg-dark-800 py-1 shadow-xl">
+                    <div ref={menuRef} role="menu" aria-label={`More for ${activeProject.name}`} className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-border-dark bg-dark-800 py-1 shadow-xl">
                       {([['import', 'Import tasks…'], ['rename', 'Rename…']] as const).map(([to, label]) => (
                         <button key={to} role="menuitem" type="button" onClick={() => { setMenuOpen(false); setDialog(to); }}
                           className="block w-full px-3 py-1.5 text-left text-xs text-text-primary hover:bg-dark-700">{label}</button>
@@ -397,7 +403,7 @@ export const ProjectTaskManagerView: React.FC = () => {
       )}
 
       {askingDelete && (
-        <Modal label={askingDelete.kind === 'project' ? 'Delete this project' : 'Delete this task'}>
+        <Modal label={askingDelete.kind === 'project' ? 'Delete this project' : 'Delete this task'} onClose={() => setAskingDelete(null)}>
           <ConfirmPanel
             title={askingDelete.kind === 'project' ? 'Delete this project and its tasks?' : 'Delete this task?'}
             tone="danger"
@@ -607,13 +613,17 @@ const TaskRow: React.FC<{
   );
 };
 
-const Modal: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 p-4 backdrop-blur-sm">
-    <div role="dialog" aria-modal="true" aria-label={label} className="w-full max-w-md space-y-4 rounded-xl border border-border-dark bg-dark-800 p-6 shadow-2xl">
-      {children}
+const Modal: React.FC<{ label: string; onClose: () => void; children: React.ReactNode }> = ({ label, onClose, children }) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef, onClose);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 p-4 backdrop-blur-sm">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label={label} className="w-full max-w-md space-y-4 rounded-xl border border-border-dark bg-dark-800 p-6 shadow-2xl">
+        {children}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const FIELD = 'w-full rounded-lg border border-border-dark bg-dark-900 px-3 py-2 text-xs text-text-primary focus:border-focus focus:outline-none';
 
@@ -636,7 +646,7 @@ const ProjectDialog: React.FC<{
   const [key, setKey] = useState(initialKey);
   const [name, setName] = useState(initialName);
   return (
-    <Modal label={title}>
+    <Modal label={title} onClose={onCancel}>
       <form className="space-y-3" onSubmit={e => { e.preventDefault(); if (key.trim() && name.trim()) onSubmit(key.trim(), name.trim()); }}>
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         {note && <p className="text-xs text-text-secondary">{note}</p>}
@@ -662,7 +672,7 @@ const TaskDialog: React.FC<{
   const [status, setStatus] = useState<TaskStatus>('todo');
   const label = `A task of my own in ${project.name}`;
   return (
-    <Modal label={label}>
+    <Modal label={label} onClose={onCancel}>
       <form className="space-y-3" onSubmit={e => { e.preventDefault(); if (title.trim()) onSubmit(key.trim().toUpperCase(), title.trim(), status); }}>
         <h3 className="text-sm font-semibold text-text-primary">{label}</h3>
         <label className="block text-xs text-text-secondary">Key, or leave it for one to be made
@@ -704,7 +714,7 @@ const ImportDialog: React.FC<{
     );
   };
   return (
-    <Modal label={label}>
+    <Modal label={label} onClose={onCancel}>
       <h3 className="text-sm font-semibold text-text-primary">{label}</h3>
       <p className="text-xs text-text-secondary">
         One task a line, <span className="font-mono text-text-primary">KEY, Title, todo</span> -- or a title alone -- or a JSON

@@ -514,7 +514,10 @@ export const MiniBar: React.FC = () => {
               <button type="button" title="Keep nothing: no worklog, nothing sent" className={`${choice} text-text-secondary hover:text-accent-red hover:bg-accent-red/15`} onClick={() => setEnding('discard')}>
                 {Verb.DISCARD}…
               </button>
-              <button type="button" title="Keep the session running" aria-label="Keep the session" className={button} onClick={() => setEnding(null)}>
+              <button type="button" title="Keep the session running" aria-label="Keep the session" className={button} onClick={() => setEnding(null)}
+                // The choices replace the button that asked for them: the
+                // safe one takes the focus (REVIEW-2026-11 A4).
+                autoFocus>
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -526,7 +529,7 @@ export const MiniBar: React.FC = () => {
               <button type="button" title="Mark it done anyway: your completion transition is applied" className={`${choice} bg-accent-green/90 hover:bg-accent-green text-dark-900`} onClick={end('Finish', () => complete(undefined, true))}>
                 Yes
               </button>
-              <button type="button" title="Back to the choices" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')}>
+              <button type="button" title="Back to the choices" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')} autoFocus>
                 No
               </button>
             </div>
@@ -538,7 +541,7 @@ export const MiniBar: React.FC = () => {
               <button type="button" title="Throw the session away: nothing kept, nothing sent" className={`${choice} bg-accent-red/90 hover:bg-accent-red text-white`} onClick={end('Discard', discard)}>
                 Yes
               </button>
-              <button type="button" title="Keep the session" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')}>
+              <button type="button" title="Keep the session" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')} autoFocus>
                 No
               </button>
             </div>

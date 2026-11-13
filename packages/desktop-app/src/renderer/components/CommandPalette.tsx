@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import type { ActiveSessionDTO, ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { matchesSearch } from '../../shared/task-picker';
 import { orderTasksForSelection } from '../../shared/task-order';
@@ -115,13 +116,18 @@ const PaletteDialog: React.FC<CommandPaletteProps> = ({ onClose, session, toPlac
       index === current ? 'bg-select text-white' : 'text-text-primary hover:bg-dark-700'
     }`;
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] bg-dark-900/80 backdrop-blur-sm p-4 select-none"
       onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-label="Command palette"
         className="w-full max-w-xl bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[70vh]"
         onKeyDown={onKeyDown}

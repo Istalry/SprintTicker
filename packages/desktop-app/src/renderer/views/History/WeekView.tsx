@@ -108,8 +108,10 @@ export const WeekView: React.FC<{ monday: string; revision: number; onOpenDay: (
                       {dayKeys.map((key, i) => (
                         <td key={key} className={cell}>
                           {task.perDay[i] > 0 && (
-                            <button type="button" aria-label={`${task.key} on ${weekdayLong(key)}: open the day`} onClick={() => onOpenDay(key)} className="text-text-primary hover:text-white hover:underline">
+                            <button type="button" onClick={() => onOpenDay(key)} className="text-text-primary hover:text-white hover:underline">
                               {formatHoursAndMinutes(task.perDay[i])}
+                              {/* The time is the name, read first; the label used to replace it (REVIEW-2026-11 A3). */}
+                              <span className="sr-only">, {task.key} on {weekdayLong(key)}: open the day</span>
                             </button>
                           )}
                         </td>
@@ -132,8 +134,9 @@ export const WeekView: React.FC<{ monday: string; revision: number; onOpenDay: (
                   const notes = dayNotes(day);
                   return (
                     <td key={day.dateKey} className={`${cell} align-top ${notes.length ? 'bg-accent-amber/10' : ''}`}>
-                      <button type="button" aria-label={`${weekdayLong(day.dateKey)}: open the day`} onClick={() => onOpenDay(day.dateKey)} className={`font-bold hover:underline ${notes.length ? 'text-accent-amber' : 'text-white'}`}>
+                      <button type="button" onClick={() => onOpenDay(day.dateKey)} className={`font-bold hover:underline ${notes.length ? 'text-accent-amber' : 'text-white'}`}>
                         {time(day.seconds) || '–'}
+                        <span className="sr-only">, {weekdayLong(day.dateKey)}: open the day</span>
                       </button>
                       {notes.map(note => <div key={note} className="text-[10px] font-sans font-normal text-accent-amber">{note}</div>)}
                     </td>

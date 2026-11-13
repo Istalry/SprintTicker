@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useMenu } from '../hooks/useMenu';
 import { MoreHorizontal } from 'lucide-react';
 
 export interface RowMenuItem {
@@ -19,26 +20,14 @@ export interface RowMenuItem {
 export const RowMenu: React.FC<{ name: string; menuName: string; items: RowMenuItem[] }> = ({ name, menuName, items }) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDown = (event: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  useMenu(open, () => setOpen(false), { root: rootRef, menu: menuRef, trigger: triggerRef });
 
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={`More for ${name}`}
         aria-haspopup="menu"
@@ -49,7 +38,7 @@ export const RowMenu: React.FC<{ name: string; menuName: string; items: RowMenuI
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
-        <div role="menu" aria-label={menuName} className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border border-border-dark bg-dark-800 p-1 shadow-2xl">
+        <div ref={menuRef} role="menu" aria-label={menuName} className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border border-border-dark bg-dark-800 p-1 shadow-2xl">
           {items.map(item => (
             <button
               key={item.label}

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { ArrowLeft, ChevronRight, Download, PlusCircle, RefreshCw, Search, Star, X } from 'lucide-react';
 import { ProjectDTO, TaskDTO } from '../../shared/dtos';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
@@ -344,8 +345,11 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     ? 'h-screen w-screen bg-dark-800 border border-border-dark flex flex-col overflow-hidden select-none'
     : 'w-full max-w-xl max-h-[85vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col';
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef);
+
   const body = (
-    <div role="dialog" aria-label={heading} className={frame} onKeyDown={onKeyDown}>
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label={heading} className={frame} onKeyDown={onKeyDown}>
       <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-border-dark">
         <div className="min-w-0 flex items-center gap-2">
           {view === 'mine' && (

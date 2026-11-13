@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { Pencil } from 'lucide-react';
 import { WorklogDTO } from '../../shared/dtos';
 import { checkWorklogCorrection, WORKLOG_COMMENT_MAX_CHARS, WorklogCorrectionDTO } from '../../shared/worklog-correction';
@@ -109,10 +110,15 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
       });
   };
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useModal(panelRef, onClose);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/80 backdrop-blur-sm p-4 select-none">
       <div
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-label={mode === 'edit' ? 'Correct a worklog' : 'Delete a worklog'}
         className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-5"
       >
