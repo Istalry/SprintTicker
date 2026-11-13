@@ -111,7 +111,7 @@ export const SettingButton: React.FC<SettingButtonProps> = ({
 
 /** A menu at a row's right, as the mockups' `.sel2`. */
 export const SETTING_SELECT_CLASS =
-  'rounded-lg border border-border-dark bg-dark-700 px-2.5 py-1 text-xs text-text-primary disabled:opacity-50';
+  'rounded-lg border border-border-field bg-dark-700 px-2.5 py-1 text-xs text-text-primary disabled:opacity-50';
 
 /** Under a row: a change the app could not make, in amber, never as though it worked. */
 export const SettingProblem: React.FC<{ children: React.ReactNode }> = ({ children }) => (

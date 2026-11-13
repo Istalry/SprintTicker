@@ -163,7 +163,7 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
       <div ref={panelRef} role="dialog" aria-modal="true" aria-label="End my day" className="w-full max-w-2xl max-h-[90vh] bg-dark-800 border border-border-dark rounded-xl shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-start justify-between px-6 py-4 border-b border-border-dark">
           <div className="space-y-1">
-            <h3 className="flex items-center gap-2 text-md font-bold text-white">
+            <h3 className="flex items-center gap-2 text-base font-bold text-white">
               <Moon className="w-4 h-4 text-text-primary" />
               End my day — {formatLongDay(today)}
             </h3>

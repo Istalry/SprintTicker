@@ -61,7 +61,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ group, onGroupChange
   return (
     <div className="flex gap-6 max-w-6xl">
       <nav aria-label="Settings groups" className="w-52 shrink-0 space-y-3">
-        <label className="flex items-center gap-2 rounded-lg border border-border-dark bg-dark-800 px-3 py-2 focus-within:border-focus">
+        <label className="flex items-center gap-2 rounded-lg border border-border-field bg-dark-800 px-3 py-2 focus-within:border-focus">
           <Search className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
           <input
             type="search"

@@ -11,7 +11,7 @@ export const secondaryButton =
 export const quietButton =
   'px-3 py-2 text-text-secondary hover:text-white hover:bg-dark-700 text-xs font-semibold rounded-lg transition-all';
 export const fieldClass =
-  'w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus';
+  'w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus';
 
 /** A choice drawn as a card with its radio or checkbox, as S1 and S2 list them. */
 export const choiceCard = (on: boolean) =>

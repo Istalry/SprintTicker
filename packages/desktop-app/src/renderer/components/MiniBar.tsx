@@ -246,7 +246,7 @@ export const MiniBar: React.FC = () => {
                 value={startedChoice}
                 onChange={e => setStart(Number(e.target.value))}
                 title={interruption.interruptedTaskKey ? `Set it earlier, and those minutes come off ${interruption.interruptedTaskKey}` : undefined}
-                className="bg-dark-900 border border-border-dark rounded px-0.5 text-[11px] text-white focus:outline-none focus:border-focus [-webkit-app-region:no-drag]"
+                className="bg-dark-900 border border-border-field rounded px-0.5 text-[11px] text-white focus:outline-none focus:border-focus [-webkit-app-region:no-drag]"
               >
                 {STARTED_AGO_CHOICES.map(m => (
                   <option key={m} value={m}>{m === 0 ? 'now' : `${m} min ago`}</option>
@@ -538,7 +538,7 @@ export const MiniBar: React.FC = () => {
           {choosing === 'discard' && (
             <div className="flex items-center gap-1" role="alertdialog" aria-label="Discard this time?">
               <span className="text-[11px] text-accent-red font-bold">{Verb.DISCARD}?</span>
-              <button type="button" title="Throw this time away: nothing kept, nothing sent" className={`${choice} bg-accent-red/90 hover:bg-accent-red text-white`} onClick={end('Discard', discard)}>
+              <button type="button" title="Throw this time away: nothing kept, nothing sent" className={`${choice} bg-accent-red-fill hover:bg-accent-red-fill-hover text-white`} onClick={end('Discard', discard)}>
                 Yes
               </button>
               <button type="button" title="Keep it" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')} autoFocus>

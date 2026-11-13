@@ -167,19 +167,19 @@ export const NotificationListenerView: React.FC = () => {
               placeholder="App ID (e.g. chrome, outlook)"
               value={newAppId}
               onChange={e => setNewAppId(e.target.value)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus flex-1"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus flex-1"
             />
             <input
               type="text"
               placeholder="Display Name (e.g. Google Chrome)"
               value={newAppName}
               onChange={e => setNewAppName(e.target.value)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus flex-1"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus flex-1"
             />
             <select
               value={newIconId}
               onChange={e => setNewIconId(e.target.value as BitmapIconId)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus"
             >
               <option value="bell">Icon: Bell</option>
               <option value="discord">Icon: Discord</option>
@@ -192,7 +192,7 @@ export const NotificationListenerView: React.FC = () => {
             <select
               value={newPriorityMode}
               onChange={e => setNewPriorityMode(e.target.value as NotificationPriorityMode)}
-              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-dark focus:outline-none focus:border-focus"
+              className="bg-dark-900 text-white text-xs px-3 py-2 rounded-lg border border-border-field focus:outline-none focus:border-focus"
             >
               <option value="DONT_SHOW">Don&apos;t Show</option>
               <option value="DEFAULT">Default</option>
@@ -277,7 +277,7 @@ export const NotificationListenerView: React.FC = () => {
           className="p-4 text-[11px] leading-relaxed max-h-72 overflow-y-auto space-y-1.5 selection:bg-dark-600 selection:text-white"
         >
           {filteredLogs.length === 0 ? (
-            <div className="text-text-secondary/60 italic py-4 text-center">
+            <div className="text-text-secondary italic py-4 text-center">
               No notification logs captured yet. Trigger a system alert or send a test notification above.
             </div>
           ) : (
@@ -290,7 +290,7 @@ export const NotificationListenerView: React.FC = () => {
 
               return (
                 <div key={idx} className="flex items-start space-x-2 hover:bg-dark-900/50 p-0.5 rounded">
-                  <span className="text-text-secondary/50 text-[10px] shrink-0 font-mono select-none">{timeStr}</span>
+                  <span className="text-text-secondary text-[10px] shrink-0 font-mono select-none">{timeStr}</span>
                   <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${badgeColor} shrink-0 select-none`}>
                     {log.level}
                   </span>

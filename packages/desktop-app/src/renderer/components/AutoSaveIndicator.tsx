@@ -47,7 +47,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
   }
 
   return (
-    <div className="flex items-center space-x-2 px-3 py-2 text-xs text-text-secondary opacity-70">
+    <div className="flex items-center space-x-2 px-3 py-2 text-xs text-text-secondary">
       <span>{idleLabel}</span>
     </div>
   );

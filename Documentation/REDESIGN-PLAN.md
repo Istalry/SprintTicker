@@ -2772,6 +2772,19 @@ left once the screens are real:
   Note; the scope *Mine, free and in progress*; the priority panel in
   sentence case with the Notifications page's names; "—" for a dash.
 
+**As landed: P15a4, colours and contrast (2026-11-13).**
+
+- Tokens measured for WCAG AA: `accent-red` #F87171 for text, borders and
+  icons (4.7-6.9 on every surface, tints and the selection included);
+  `accent-red-fill` #DC2626 and `-hover` #B91C1C under white (4.8, 6.5);
+  `text-muted` #9A9AA2 (5.1 on the selection); `border-field` #6B6B73 on
+  inputs, selects and textareas (3.4 on the cards). The faded `/70`, `/60`,
+  `/50` and `opacity-70` text is plain secondary.
+- Pause is the grey primary, as drawn; amber is the Paused state only (C7,
+  the user's choice). `color-scheme: dark` and `accent-color` from the
+  primary token for checkboxes and radios (C13). "nobody" is muted, the
+  Developer note plain (C17, C22); `text-md` is `text-base` (C21).
+
 ---
 
 ## 21. Verification, all phases
@@ -2847,5 +2860,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words) done | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 (2026-11-13) |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours) done | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 (2026-11-13) |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

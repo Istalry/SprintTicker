@@ -51,7 +51,7 @@ export const TodayEntries: React.FC<{ session: ActiveSessionDTO | null; worklogs
   const cell = ENTRY_CELL;
   return (
     <section aria-label="Today's entries" className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-3">
-      <h3 className="text-md font-bold text-white flex items-center justify-between">
+      <h3 className="text-base font-bold text-white flex items-center justify-between">
         <span>Today</span>
         <span className="flex items-center gap-3">
           <span className="text-xs text-text-secondary font-normal font-mono">{summary}</span>

@@ -377,7 +377,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             onChange={e => setOwnTitle(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pick({ ownTitle: ownTitle.trim() }); }}
             placeholder="e.g. Code review with the lead"
-            className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
+            className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
           />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setNaming(false)} className="px-3 py-1.5 text-xs rounded-lg text-text-secondary hover:text-white">Cancel</button>
@@ -395,7 +395,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
         <>
           <div className="px-5 pt-3 space-y-2">
             <TaskVisibilityToggle visibility={visibility} onChange={setVisibility} hiddenCount={hiddenCount} />
-            <div className="flex items-center gap-2 bg-dark-900 border border-border-dark rounded-lg px-3 focus-within:border-focus">
+            <div className="flex items-center gap-2 bg-dark-900 border border-border-field rounded-lg px-3 focus-within:border-focus">
               <Search className="w-4 h-4 text-text-secondary shrink-0" />
               {project && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-select text-xs text-text-primary shrink-0">

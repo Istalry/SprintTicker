@@ -181,7 +181,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
     });
   };
 
-  const field = 'w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus';
+  const field = 'w-full bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus';
   const panelRef = useRef<HTMLDivElement | null>(null);
   useModal(panelRef, onClose);
 

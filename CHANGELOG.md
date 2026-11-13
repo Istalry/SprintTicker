@@ -227,6 +227,15 @@
 
 ### Changed
 
+- **Easier to read, and colour means one thing.** **Pause** is grey: a
+  running task no longer looks paused, amber being the paused state's
+  colour. Red text and the Discard and Delete buttons, the quiet grey text
+  and every field's edge now meet the WCAG AA contrast levels -- an empty
+  field used to be all but invisible. Checkboxes and radios are drawn in
+  the window's grey instead of Chromium's blue and white, "nobody" in Tasks
+  is grey, and three headings that fell back to body size are headings
+  again.
+
 - **One word for each thing, everywhere.** After an interruption the window,
   the mini timer and the bar all ask **Back to MG-12?** -- **↩ Back**,
   **↩ Back, add the 6 min**, **Not now** -- where the window said Resume it

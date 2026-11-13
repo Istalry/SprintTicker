@@ -29,10 +29,10 @@ export const ProjectFilterToggle: React.FC<ProjectFilterToggleProps> = ({ enable
     />
     <span>Only projects with tasks</span>
     {enabled && hiddenCount > 0 && (
-      <span className="text-text-secondary/70">({hiddenCount} hidden)</span>
+      <span className="text-text-secondary">({hiddenCount} hidden)</span>
     )}
     {enabled && nothingAssigned && (
-      <span className="text-text-secondary/70">(none has a task: showing all)</span>
+      <span className="text-text-secondary">(none has a task: showing all)</span>
     )}
   </label>
 );

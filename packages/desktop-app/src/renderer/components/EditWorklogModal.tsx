@@ -166,7 +166,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                     min={0}
                     value={hours}
                     onChange={e => setHours(e.target.value)}
-                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
+                    className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
                   />
                   <span className="text-text-secondary">h</span>
                   <input
@@ -176,7 +176,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                     max={59}
                     value={minutes}
                     onChange={e => setMinutes(e.target.value)}
-                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
+                    className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
                   />
                   <span className="text-text-secondary">min</span>
                 </div>
@@ -190,7 +190,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                     setStart(e.target.value);
                     setNow(Date.now());
                   }}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
+                  className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
                 />
               </label>
               <label className="space-y-1 col-span-2">
@@ -202,7 +202,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                   maxLength={WORKLOG_COMMENT_MAX_CHARS}
                   rows={2}
                   onChange={e => setComment(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus resize-none"
+                  className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus resize-none"
                 />
               </label>
             </div>

@@ -231,7 +231,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
         ) : (
           <>
             {session.status === 'TRACKING' ? (
-              <button type="button" onClick={onPause} className={`${BUTTON} bg-accent-amber hover:bg-accent-amber/90 text-dark-900 shadow-md`}>
+              <button type="button" onClick={onPause} className={`${BUTTON} bg-primary hover:bg-primary/90 text-dark-900 shadow-md`}>
                 <Pause className="w-4 h-4" />
                 <span>{Verb.PAUSE}</span>
               </button>

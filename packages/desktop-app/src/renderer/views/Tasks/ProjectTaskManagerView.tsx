@@ -584,7 +584,7 @@ const TaskRow: React.FC<{
       <td className={`whitespace-nowrap px-3 py-2 ${task.status === 'in_progress' ? 'text-text-primary' : 'text-text-secondary'}`}>
         {STATUS_LABEL[task.status]}
       </td>
-      <td className={`truncate whitespace-nowrap px-3 py-2 ${who === 'nobody' ? 'text-accent-amber' : 'text-text-secondary'}`} data-testid="task-owner" title={who}>
+      <td className={`truncate whitespace-nowrap px-3 py-2 ${who === 'nobody' ? 'text-text-muted italic' : 'text-text-secondary'}`} data-testid="task-owner" title={who}>
         {who}
       </td>
       <td className="whitespace-nowrap px-3 py-2 text-right">
@@ -625,7 +625,7 @@ const Modal: React.FC<{ label: string; onClose: () => void; children: React.Reac
   );
 };
 
-const FIELD = 'w-full rounded-lg border border-border-dark bg-dark-900 px-3 py-2 text-xs text-text-primary focus:border-focus focus:outline-none';
+const FIELD = 'w-full rounded-lg border border-border-field bg-dark-900 px-3 py-2 text-xs text-text-primary focus:border-focus focus:outline-none';
 
 const DialogButtons: React.FC<{ submit: string; onCancel: () => void; disabled?: boolean }> = ({ submit, onCancel, disabled }) => (
   <div className="flex justify-end gap-2 pt-1">

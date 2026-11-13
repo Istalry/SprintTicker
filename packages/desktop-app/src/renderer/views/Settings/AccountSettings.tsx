@@ -36,7 +36,7 @@ const SCOPE_SENTENCES: Record<TaskScopeValue, string> = {
 };
 
 const FIELD =
-  'w-full rounded-lg border border-border-dark bg-dark-900 px-3 py-1.5 text-xs text-text-primary focus:border-focus focus:outline-none';
+  'w-full rounded-lg border border-border-field bg-dark-900 px-3 py-1.5 text-xs text-text-primary focus:border-focus focus:outline-none';
 
 /** The site's host for the account line: "studio.atlassian.net", or the text as typed when it is no URL. */
 function hostOf(site: string): string {

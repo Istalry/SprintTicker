@@ -64,7 +64,7 @@ export const StandupCard: React.FC<{ prompt: CeremonyPromptDTO; session: ActiveS
           title="Joined late? Say when, and the minutes come off the task before"
           value={minutesAgo}
           onChange={e => setMinutesAgo(Number(e.target.value))}
-          className="bg-dark-700 border border-border-dark rounded-lg px-2 py-2 text-xs text-text-primary"
+          className="bg-dark-700 border border-border-field rounded-lg px-2 py-2 text-xs text-text-primary"
         >
           {JOINED_MINUTES_AGO.map(m => <option key={m} value={m}>{m === 0 ? 'joined now' : `joined ${m} min ago`}</option>)}
         </select>

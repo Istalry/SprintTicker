@@ -231,7 +231,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                       setCustom(e.target.value);
                       setNow(Date.now());
                     }}
-                    className="mt-2 w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-focus"
+                    className="mt-2 w-full bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-focus"
                   />
                 )}
                 {choice === 'custom' && !customValid && (
@@ -275,7 +275,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                 <button
                   type="button"
                   onClick={() => setConfirming('discard')}
-                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent-red hover:bg-accent-red/90 text-white transition-all"
+                  className="px-3 py-2 rounded-lg text-xs font-semibold bg-accent-red-fill hover:bg-accent-red-fill-hover text-white transition-all"
                 >
                   Discard
                 </button>

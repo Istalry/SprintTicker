@@ -38,7 +38,11 @@ module.exports = {
           600: '#323237'
         },
         border: {
-          dark: '#2E2E33'
+          dark: '#2E2E33',
+          // A field's edge -- inputs, selects, textareas only: 3.4:1 on the
+          // cards, where the quiet border was 1.3:1 and an empty field all
+          // but vanished (REVIEW-2026-11 A12, WCAG 1.4.11).
+          field: '#6B6B73'
         },
         // A primary button: light grey, with dark text (text-dark-900).
         primary: '#E4E4E7',
@@ -48,12 +52,19 @@ module.exports = {
         accent: {
           green: '#22C55E',
           amber: '#F59E0B',
-          red: '#EF4444'
+          // Red text, borders and icons: 4.5:1 or more on every surface,
+          // tints and the selection included. #EF4444 read 3.8-4.3 there
+          // (REVIEW-2026-11 A7).
+          red: '#F87171',
+          // A danger button's fill, under white text (4.8:1), and its hover.
+          'red-fill': '#DC2626',
+          'red-fill-hover': '#B91C1C'
         },
         text: {
           primary: '#EDEDEF',
           secondary: '#A1A1A8',
-          muted: '#8A8A92'
+          // 4.5:1 on the selection and on a hover (REVIEW-2026-11 A8).
+          muted: '#9A9AA2'
         }
       },
       fontFamily: {

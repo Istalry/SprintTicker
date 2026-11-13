@@ -177,7 +177,7 @@ export const PlaceInterruptionsDialog: React.FC<PlaceInterruptionsDialogProps> =
                     placeholder={choice?.kind === 'task'
                       ? `What was it? Sent as the note on ${choice.task.key}`
                       : `${item.title} — what was it?`}
-                    className="w-full bg-dark-800 border border-border-dark focus:border-focus rounded px-2 py-1 font-bold text-white outline-none"
+                    className="w-full bg-dark-800 border border-border-field focus:border-focus rounded px-2 py-1 font-bold text-white outline-none"
                   />
                   <div className="text-[10px] text-text-secondary truncate">
                     {when} · {formatHoursAndMinutes(item.durationSeconds)}

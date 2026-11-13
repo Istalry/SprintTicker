@@ -1139,9 +1139,16 @@ first item and does the arrows. Not the native `<dialog>`: jsdom has no
 running, amber is paused or waiting on the user, red is danger; everything
 else is grey (`tailwind.config.js`). There is no blue or purple token, and
 Tailwind draws nothing for a class it does not know -- no error, no
-warning -- which is how `accent-emerald`, `bg-dark-600` and an `animate-in`
-with no plugin all shipped unnoticed. Use a defined token, and grep for the
-class before trusting it. `font-mono` is for task keys and times only.
+warning -- which is how `accent-emerald`, `bg-dark-600`, `text-md` and an
+`animate-in` with no plugin all shipped unnoticed. Use a defined token, and
+grep for the class before trusting it. `font-mono` is for task keys and
+times only. **The tokens are measured for contrast** (P15a4): red text is
+`accent-red`, a danger button's fill under white text `accent-red-fill`;
+a field's edge is `border-field`, the quiet `border-dark` for cards and
+dividers only; and no text is faded with `/70` or `opacity-` -- size and
+weight make the hierarchy. Each passes WCAG AA on every surface it sits
+on, the selection and the tints included; check a new pairing before
+using it.
 The tray icon is drawn in main from the same tokens (`TRAY_COLOURS` in
 `tray/tray-icon.ts`); `tray-icon.test.ts` holds that copy to the config.
 

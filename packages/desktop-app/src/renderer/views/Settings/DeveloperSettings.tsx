@@ -37,7 +37,7 @@ export const DeveloperSettings: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-accent-amber">
+      <p className="text-xs text-text-secondary">
         These tools act on the real app: the bar remote presses real keys, and the display debugger&apos;s Pause,
         Stop, Lunch and Away act on your real timer and mode.
       </p>

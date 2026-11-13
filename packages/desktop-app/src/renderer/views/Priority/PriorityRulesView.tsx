@@ -179,7 +179,7 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
                       value={rule.priority}
                       aria-label={`${def.label} level`}
                       onChange={e => updateRuleScore(rule.eventName, Number(e.target.value))}
-                      className="w-20 bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-sm text-text-primary font-bold text-center focus:outline-none focus:border-focus"
+                      className="w-20 bg-dark-900 border border-border-field rounded-lg px-3 py-1.5 text-sm text-text-primary font-bold text-center focus:outline-none focus:border-focus"
                     />
                     <span className="text-xs text-text-secondary">Level</span>
                   </div>
@@ -197,7 +197,7 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
                         <select
                           value={currentAction || 'DISPLAY'}
                           onChange={e => updateRuleAction(rule.eventName, m, e.target.value as PriorityAction)}
-                          className="bg-dark-800 border border-border-dark rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-focus"
+                          className="bg-dark-800 border border-border-field rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-focus"
                         >
                           <option value="DISPLAY">DISPLAY</option>
                           <option value="QUEUE">QUEUE</option>

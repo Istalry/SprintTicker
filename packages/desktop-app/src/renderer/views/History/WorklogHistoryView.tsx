@@ -214,7 +214,7 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
 
       {mode === 'day' && <section aria-label="The day's entries" className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-md font-bold text-white">
+          <h3 className="text-base font-bold text-white">
             <span className="font-mono">{formatHoursAndMinutes(summary.totalSeconds)}</span>
             <span className="text-text-secondary font-normal"> · {countOf(summary.tasks.length, 'task')} · {countOf(summary.entries, 'entry', 'entries')}</span>
           </h3>

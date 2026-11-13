@@ -108,7 +108,7 @@ const AppRule: React.FC<{
             // can pick the wrong executable for a Win32 app.
             onChange={e => onChange({ iconImagePath: e.target.value === '' ? undefined : e.target.value })}
             placeholder="a 16×16 PNG, instead of the app's"
-            className="min-w-0 flex-1 rounded border border-border-dark bg-dark-800 px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted focus:border-focus focus:outline-none"
+            className="min-w-0 flex-1 rounded border border-border-field bg-dark-800 px-2 py-1 text-[11px] text-text-primary placeholder:text-text-muted focus:border-focus focus:outline-none"
           />
         </label>
       </div>

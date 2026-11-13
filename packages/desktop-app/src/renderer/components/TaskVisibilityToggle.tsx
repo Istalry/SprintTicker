@@ -40,7 +40,7 @@ export const TaskVisibilityToggle: React.FC<TaskVisibilityToggleProps> = ({ visi
       />
       <span>{WhoseWord.TEAMMATES}</span>
     </label>
-    {hiddenCount > 0 && <span className="text-text-secondary/70">({hiddenCount} hidden)</span>}
+    {hiddenCount > 0 && <span className="text-text-secondary">({hiddenCount} hidden)</span>}
   </div>
 );
 

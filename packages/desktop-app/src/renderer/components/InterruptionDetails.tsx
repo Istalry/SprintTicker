@@ -104,7 +104,7 @@ export const InterruptionDetails: React.FC<{ interruption: RunningInterruptionDT
               title={held ? `Set it earlier, and those minutes come off ${held}` : undefined}
               value={startedAgo}
               onChange={e => setStart(Number(e.target.value))}
-              className="bg-dark-900 border border-border-dark rounded px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-focus"
+              className="bg-dark-900 border border-border-field rounded px-1.5 py-0.5 text-xs text-white focus:outline-none focus:border-focus"
             >
               {STARTED_AGO_CHOICES.map(m => (
                 <option key={m} value={m}>{m === 0 ? 'now' : `${m} min ago`}</option>

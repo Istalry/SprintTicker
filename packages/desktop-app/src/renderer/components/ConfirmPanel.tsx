@@ -64,7 +64,7 @@ export const ConfirmPanel: React.FC<ConfirmPanelProps> = ({
         onClick={onConfirm}
         className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
           tone === 'danger'
-            ? 'bg-accent-red/90 hover:bg-accent-red text-white'
+            ? 'bg-accent-red-fill hover:bg-accent-red-fill-hover text-white'
             : 'bg-primary hover:bg-primary/90 text-dark-900'
         }`}
       >

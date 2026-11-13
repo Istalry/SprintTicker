@@ -286,7 +286,7 @@ const ConnectionFields: React.FC<{
           spellCheck={false}
           onChange={e => { setAddress(e.target.value); setSaved(null); }}
           placeholder={DEFAULT_USB_IP}
-          className={`${fieldClass} mt-1 font-mono ${address.length > 0 && !addressValid ? 'border-accent-red' : 'border-border-dark'}`}
+          className={`${fieldClass} mt-1 font-mono ${address.length > 0 && !addressValid ? 'border-accent-red' : 'border-border-field'}`}
         />
       </label>
       {address.length > 0 && !addressValid && (
@@ -301,7 +301,7 @@ const ConnectionFields: React.FC<{
             spellCheck={false}
             autoComplete="off"
             onChange={e => { setToken(e.target.value); setSaved(null); }}
-            className={`${fieldClass} border-border-dark font-mono`}
+            className={`${fieldClass} border-border-field font-mono`}
           />
           <button type="button" onClick={() => setTokenVisible(v => !v)} aria-label={tokenVisible ? 'Hide token' : 'Show token'}
             className="rounded border border-border-dark p-1.5 text-text-secondary hover:text-text-primary">

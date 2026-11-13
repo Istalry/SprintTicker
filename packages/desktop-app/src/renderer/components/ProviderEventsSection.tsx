@@ -148,7 +148,7 @@ export const ProviderEventsSection: React.FC<ProviderEventsSectionProps> = ({ pr
               onChange={e => update({ pollIntervalSeconds: Number(e.target.value) })}
               min={MIN_PROVIDER_EVENT_POLL_SECONDS}
               max={MAX_PROVIDER_EVENT_POLL_SECONDS}
-              className="w-32 bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
+              className="w-32 bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
             />
           </div>
           <button
