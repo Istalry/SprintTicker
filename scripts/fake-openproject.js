@@ -37,8 +37,21 @@ const DEFAULT_OPTIONS = {
   statuses: 23,
   pageSize: 20,
   notifyEvery: 0,
-  quiet: false
+  quiet: false,
+  /**
+   * Named projects and work packages instead of the generated ones, for the
+   * documentation's pictures (capture-app.js): `[{ id, identifier, name,
+   * workPackages: [{ id, subject, status: 'todo' | 'in_progress' | 'done',
+   * owner?: null | { id, name } }] }]`. A package with no `owner` is the
+   * user's; `status` maps to `CATALOG_STATUS`.
+   */
+  catalog: null,
+  /** The name `/api/v3/users/me` answers: "Connected as ..." in the app. */
+  userName: null
 };
+
+/** The status ids a catalog's packages carry; the app is told the same ones. */
+const CATALOG_STATUS = { todo: 1, in_progress: 7, done: 12 };
 
 /** The order `--notify-every` cycles through. `watched` is one the app drops. */
 const NOTIFICATION_REASONS = ['mentioned', 'assigned', 'commented', 'processed', 'watched', 'dateAlert'];
@@ -219,7 +232,23 @@ function projectIdFromFilters(rawFilters) {
  */
 function createFakeOpenProject(overrides = {}) {
   const options = { ...DEFAULT_OPTIONS, ...overrides };
-  const projects = buildProjects(options.projects);
+  const catalog = options.catalog;
+  const projects = catalog
+    ? catalog.map(p => ({ id: p.id, identifier: p.identifier, name: p.name, templated: false }))
+    : buildProjects(options.projects);
+  /** A project's packages: the catalog's, or the generated ones. */
+  const packagesOf = projectId => {
+    if (!catalog) return workPackagesFor(projectId, options.workPackages);
+    const project = catalog.find(p => p.id === projectId);
+    return (project ? project.workPackages : []).map(wp => ({
+      id: wp.id,
+      subject: wp.subject,
+      lockVersion: 1,
+      _links: { status: { href: `/api/v3/statuses/${CATALOG_STATUS[wp.status] ?? 1}` }, type: { title: 'Task' } }
+    }));
+  };
+  /** The project a package belongs to: the catalog's, or id = project * 1000 + n. */
+  const projectOf = id => (catalog ? (catalog.find(p => p.workPackages.some(wp => wp.id === id))?.id ?? 0) : Math.floor((id - 1) / 1000));
   const statuses = buildStatuses(options.statuses);
   const requests = [];
   /** Unread notifications, newest last. Push to it to post one. */
@@ -254,6 +283,10 @@ function createFakeOpenProject(overrides = {}) {
    * `FAKE_USER`, as the search used to return only the user's work.
    */
   const assignees = new Map();
+  for (const project of catalog ?? []) {
+    for (const wp of project.workPackages) if (wp.owner !== undefined) assignees.set(wp.id, wp.owner);
+  }
+  const me = { ...FAKE_USER, ...(options.userName ? { name: options.userName } : {}) };
   /**
    * Each work package's `lockVersion`, 1 until a PATCH moves it on. A PATCH
    * carrying another answers 409, as OpenProject refuses a write over an
@@ -336,15 +369,15 @@ function createFakeOpenProject(overrides = {}) {
     }
 
     if (url.pathname === '/api/v3/users/me') {
-      send(200, { _type: 'User', ...FAKE_USER });
+      send(200, { _type: 'User', ...me });
       return;
     }
 
     if (url.pathname === '/api/v3/work_packages') {
       const filters = url.searchParams.get('filters');
       const projectId = projectIdFromFilters(filters);
-      const packages = workPackagesFor(projectId, options.workPackages).map(wp => {
-        const owner = assignees.has(wp.id) ? assignees.get(wp.id) : FAKE_USER;
+      const packages = packagesOf(projectId).map(wp => {
+        const owner = assignees.has(wp.id) ? assignees.get(wp.id) : me;
         const assignee = owner ? { href: `/api/v3/users/${owner.id}`, title: owner.name } : { href: null };
         return { ...wp, _links: { ...wp._links, assignee } };
       });
@@ -461,12 +494,12 @@ function createFakeOpenProject(overrides = {}) {
       }
       // Status embedded as a real instance embeds it, `isClosed` and all.
       const status = closedWorkPackages.has(id) ? statuses[statuses.length - 1] : statuses[0];
-      const owner = assignees.has(id) ? assignees.get(id) : FAKE_USER;
+      const owner = assignees.has(id) ? assignees.get(id) : me;
       const assignee = owner ? { href: `/api/v3/users/${owner.id}`, title: owner.name } : { href: null };
       // Its project and type as the list builds them: id = project * 1000 + n.
-      const projectId = Math.floor((id - 1) / 1000);
+      const projectId = projectOf(id);
       // One outside the generated lists still answers, as a task the tests name directly.
-      const listed = workPackagesFor(projectId, options.workPackages).find(wp => wp.id === id);
+      const listed = packagesOf(projectId).find(wp => wp.id === id);
       send(200, {
         id,
         lockVersion: lockVersion(),
@@ -486,7 +519,7 @@ function createFakeOpenProject(overrides = {}) {
   };
 }
 
-module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS, FAKE_USER };
+module.exports = { createFakeOpenProject, buildNotification, DEFAULT_OPTIONS, FAKE_USER, CATALOG_STATUS };
 
 if (require.main === module) {
   const options = parseArgs(process.argv.slice(2), DEFAULT_OPTIONS);

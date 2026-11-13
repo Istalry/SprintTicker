@@ -488,7 +488,7 @@ const ProjectColumn: React.FC<{
         <div className="flex items-center justify-between px-2 pb-1">
           <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">All · {props.total}</h3>
           <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-text-secondary"
-            title="Hides projects with no open task the lists show. The bar's own picker follows the same setting.">
+            title="Hides projects with no open task the lists show. The task picker follows the same setting.">
             <input type="checkbox" checked={props.hideEmpty} onChange={e => props.onHideEmpty(e.target.checked)} className="accent-primary" />
             hide empty
           </label>

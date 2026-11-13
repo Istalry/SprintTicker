@@ -227,6 +227,12 @@ Three releases, so that a user meets one change of habit at a time:
   prompts, the tray. The Stream Deck keeps working with protocol 1.
 - **1.7 -- the rest.** History, End my day, first run, and the devices.
 
+> [!NOTE]
+> **Changed in P15c (the user, 2026-11-13): one release, 2.0.0.** The phases
+> landed out of this order -- P9-P11 (1.7) before P12 (1.6) -- so no commit
+> is a clean 1.6. The CHANGELOG has one 2.0.0 entry, which opens with what
+> changes in a 1.4 user's habits.
+
 ---
 
 ## 5. P0 -- Land the pending work
@@ -2665,8 +2671,8 @@ left once the screens are real:
   against the glossary: one word per action.
 - **`README.md`**: the feature list, the requirements, and any figures
   quoted. Grep for each old value: `CLAUDE.md` §9.
-- **`CHANGELOG.md`**: one entry per release (1.5, 1.6, 1.7), written for a
-  user who has the previous version, with the reset bar bindings and the
+- **`CHANGELOG.md`**: one entry per release (1.5, 1.6, 1.7; one 2.0.0
+  since P15c), written for a user who has the previous version, with the reset bar bindings and the
   changed Lunch named.
 - **`docs/index.html`**: `pnpm docs:build`, then `pnpm docs:check`.
 - **A release candidate on the real bar and Stream Deck Mobile**, as 1.3.0
@@ -2870,6 +2876,23 @@ left once the screens are real:
   timer take 0.3-0.7 s to open whatever the data.
 - Tests: the search's cap and its "more" row.
 
+**As landed: P15c, the documents (2026-11-13).**
+
+- One release, **2.0.0** (the user's choice): the CHANGELOG's Unreleased
+  is one 2.0.0 entry for a 1.4 user, opening with *Before you update:
+  what changes in your habits*; entries a later phase replaced are gone
+  (plugin 0.5, the shortcut off by default, the bar's own picker).
+- The pictures show a set-up account (the user's choice):
+  `capture-app.js` syncs its invented projects from the fake OpenProject
+  (`catalog`, `userName`), so tasks read OP-12 and the header **All good**.
+  The fake Jira cannot serve the app: its adapter forces https.
+- The guide read end to end by a fresh agent and fixed (REVIEW-2026-11.md
+  §8): 54 findings. The README's features caught up with the redesign
+  (Interrupt, Lunch, End my day, History, Undo; Unity's build bar gone),
+  and the figures were measured again: 3,872 tests in 193 files, coverage
+  94.01 / 88.03 / 95.24 / 96.30.
+- Code: two hints that named the bar's old buttons.
+
 ---
 
 ## 21. Verification, all phases
@@ -2945,5 +2968,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale) done; P15c next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee` |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d (release candidate, the user's) next | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d` |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

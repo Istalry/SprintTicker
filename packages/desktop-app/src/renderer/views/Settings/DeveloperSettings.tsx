@@ -42,7 +42,7 @@ export const DeveloperSettings: React.FC = () => {
         Stop, Lunch and Away act on your real timer and mode.
       </p>
       <SettingsList label="Developer">
-        {row('remote', 'Bar remote', '▲ ▼ OK BACK START, as if pressed on the bar. Acts on your real timer.', <BarRemotePad />)}
+        {row('remote', 'Bar remote', 'Turn, click, Back and Pause, as if on the bar. Acts on your real timer.', <BarRemotePad />)}
         {hasBar && row('debugger', 'Display debugger', 'Plays every scene and screen. Pause, Stop, Lunch and Away act on your real timer.', <AnimationDebugPanel />)}
         {hasBar && row('tests', 'Test notifications', 'Fake Slack, Discord, battery and screenshot notifications.', <TestNotifications />)}
         {hasBar && row('listener', 'Notification listener', 'Capture strategy, database access, logs, apps added by their id.', <NotificationListenerView />)}

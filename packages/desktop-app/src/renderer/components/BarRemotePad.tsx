@@ -1,11 +1,13 @@
 import React from 'react';
 
 const KEYS: readonly { key: string; label: string; title: string }[] = [
-  { key: 'up', label: '▲', title: 'Wheel up' },
-  { key: 'down', label: '▼', title: 'Wheel down' },
-  { key: 'ok', label: 'OK', title: 'Wheel click (OK)' },
-  { key: 'back', label: 'BACK', title: 'Back button' },
-  { key: 'start', label: 'START', title: 'Start button' }
+  // The bar's own names for its inputs are the keys; the labels are what each
+  // does since P14b: the click interrupts, Back does nothing, Pause is yes.
+  { key: 'up', label: '▲', title: 'Turn the wheel up' },
+  { key: 'down', label: '▼', title: 'Turn the wheel down' },
+  { key: 'ok', label: 'Click', title: 'Click the wheel' },
+  { key: 'back', label: 'Back', title: 'Back (does nothing)' },
+  { key: 'start', label: 'Pause', title: 'Pause' }
 ];
 
 /**

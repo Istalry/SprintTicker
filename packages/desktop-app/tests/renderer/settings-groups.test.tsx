@@ -74,7 +74,7 @@ describe('settings groups', () => {
 
     expect(await screen.findByText(/act on the real app/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Open Bar remote' }));
-    expect(screen.getByRole('button', { name: 'START' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
   });
 
   it('SearchBox_Result_OpensItsGroup', async () => {

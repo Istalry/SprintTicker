@@ -1,6 +1,51 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 — not yet released
+
+SprintTicker, redesigned. The window has four places -- Today, Tasks,
+History, Settings -- and in greys, colour means one thing: green is running,
+amber waits on you, red is danger. Everything you send waits ten seconds for
+Undo. An interruption holds your task instead of stopping it. Lunch and Away
+pause instead of stopping. History shows each day as a timeline and the week
+as a timesheet. End my day replaces the wrap-up wizard. The BUSY Bar's
+buttons, the Stream Deck's keys and four keyboard shortcuts each mean one
+thing everywhere. Measured with a dry run of 20 projects of 50 tasks and two
+months of history: every screen answers within about a tenth of a second.
+
+### Before you update: what changes in your habits
+
+- **The bar's buttons are reset.** **Pause** says yes -- pause, resume, back
+  from an interruption, join, dismiss. **Pause twice** within 4 s stops the
+  task. A **wheel click** starts an interruption, and says no to a question.
+  **Turning** the wheel opens a short menu. **Back** does nothing. The bar's
+  own task picker, its paused menu and "hold BACK = done" are gone, and with
+  them any bindings you had set: choosing a task happens on the computer.
+- **Lunch and Away pause your task; they no longer stop it.** At the break's
+  end the window and the bar ask *Back at your desk?* -- Resume, **I worked
+  through it**, or Not now; nothing restarts on its own. The morning still
+  goes to Jira or OpenProject as its own entry, cut at the break, when you
+  stop the task. If *A long pause starts a new entry* is set to **never**
+  (Settings › My workday), it is one entry spanning lunch, with lunch left
+  out.
+- **Every send waits ten seconds**, the time to press **Undo**: Stop, Done,
+  Discard, a correction, a move. The entry reaches your provider ten seconds
+  later than it did.
+- **Interrupt holds your task.** Its time runs on its own and goes nowhere
+  until you **place** it on a task, or keep it off: **Back** returns to the
+  task you held.
+- **Closing the window keeps SprintTicker in the tray.** Quit from the tray
+  icon, or change *When I close the window* in Settings › General.
+- **Four keyboard shortcuts are on**, from any app: Ctrl+Alt+Shift+I
+  (Interrupt), S (Switch task), P (Previous task), B (Back). Change or turn
+  them off in Settings › General › Shortcuts.
+- **Starting a task moves it to In Progress after 2 minutes**, not at once:
+  a glance moves nothing. The delay is *When I start a task*, in Settings ›
+  Account.
+- **No prompt takes the window any more.** The stand-up, *Back at your
+  desk?* and the reminders wait as cards on Today and in the mini timer.
+- **The Stream Deck plugin is 0.6.3**, in the installer: the first run
+  offers it. A deck laid out with 0.5 keeps working.
+- **Unity support is gone** -- see Removed.
 
 ### Added
 
@@ -17,8 +62,8 @@
   Stream Deck Mobile come with it, beside your own profiles.
 - **The app speaks the Stream Deck's protocol 2** -- an interruption, what
   waits to be placed, the previous and recent tasks, the stand-up running
-  -- for the plugin 0.6.3 to come. Plugin 0.5 keeps working as it does: the
-  app tells the two apart and answers each in its own protocol.
+  -- which plugin 0.6.3 uses. Plugin 0.5 keeps working as it does: the app
+  tells the two apart and answers each in its own protocol.
 - **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
   Switch task (S), Previous task (P) and Back (B), on by default and each
   changeable in *Settings › General › Shortcuts*. A chord another app holds
@@ -111,7 +156,7 @@
   transition is not sent, and an edited entry is as it was. The Stream
   Deck's keys are undoable the same way.
 - **Overlapping entries wait.** Of two worklogs that overlap, the later one
-  is not sent until one of them is corrected; History marks it **Waiting ·
+  is not sent until one of them is corrected; History marks it **Waiting to send ·
   overlaps PF-31**, and a correction that would cause an overlap says so
   before it is saved.
 - **Interrupt: a timer at once, and the task waits.** When someone comes to
@@ -128,10 +173,6 @@
   **Keep as its own entry** keeps one in your history without a task,
   never sent. On the bar, Interrupt is the
   paused menu's first choice: pause, turn the wheel two notches left, click.
-- **A keyboard shortcut for Interrupt**, from any app, off until you turn it
-  on in Settings, General, where you record
-  the chord (Ctrl+Alt+Shift+I suggested). A chord another app holds is said to be inactive rather than
-  shown on, and a press with nothing on screen is told by a notification.
 - **One task picker, search first.** Start, Switch, Assign, Place and Move
   open the same picker: type and it searches every project at once, or pick
   from the previous task, Recent, Starred (☆ on any task), your open tasks
@@ -213,13 +254,6 @@
 - **Time in a closed week asks first.** Moving, correcting or deleting a
   worklog of a week already closed warns that its timesheet may be in, or
   approved, before anything changes.
-- **Stream Deck plugin 0.5.0: Interrupt, and three answer keys.** The deck's
-  layout is now Session, **Interrupt**, and **Answer A, B and C**, which show
-  whichever answers apply: A is DONE, or yes to a question waiting; B is NOT
-  DONE, or no; C is DISCARD, always. A press in the moment A or B changes
-  only flashes the key. The five actions they replace keep working on decks
-  laid out with them, hidden from the list. Needs this SprintTicker for
-  Interrupt; an older app refuses that one key.
 - **Name an interruption, or assign it to a task, while it runs.** Click its
   title on the session card or in the mini timer to name it. **Assign to
   Task** moves the running session to a task you pick, keeping its start, so
@@ -381,8 +415,6 @@
   **Show developer tools**, and say that they act on the real app.
 - **Deleting a project or a task asks first**, and a project's edit and
   delete buttons no longer appear only on hover.
-- **The bar's START opens one picker.** With nothing running, the bar's own
-  picker opens, and the window's no longer opens over it.
 - **A quieter look, in greys.** The blue and purple accents are gone: the
   window is grey, the main button of each screen is light grey, and colour
   is left for meaning -- green running, amber paused or waiting on you, red
@@ -460,10 +492,6 @@
   break ended; the bar kept the sandwich or the coffee cup instead, then
   went to the clock, and the notification was never seen. It now shows as
   the break ends, then the bar goes on to your session or the clock.
-- **The bar's picker could open invisibly over the stand-up prompt.**
-  Pressing START while the prompt's meeting scene played opened the
-  picker -- it took presses -- but the scene stayed on the bar. The
-  picker now replaces the scene, and the prompt comes back when it closes.
 - **The stand-up prompt could vanish from the bar while it waited.** It
   could come back during Lunch, playing the meeting scene over the break,
   when Away had covered it before lunch began; once lunch ended, the

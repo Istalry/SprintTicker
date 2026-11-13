@@ -337,44 +337,57 @@ async function clip(page, framesDir, name, ms, act = async () => {}) {
 
 // --- the invented day ------------------------------------------------------
 
-const PROJECTS = [
+// The invented projects, served by a fake OpenProject (scripts/fake-openproject.js)
+// in this process: the pictures show a working account, synced, its entries
+// sent (P15c, the user's choice). OpenProject keys a task OP-<id>, so the ids
+// are the numbers the pictures and the guide name: OP-12, OP-31.
+const TEAMMATE = { id: 9, name: 'Rin Okada' };
+const CATALOG = [
   {
-    id: 'demo-mg', key: 'MG', name: 'Moonlight Garden',
-    tasks: [
-      { key: 'MG-12', title: 'Fix the lantern glow at dusk', status: 'in_progress' },
-      { key: 'MG-14', title: 'Pond ripple shader', status: 'todo' },
-      { key: 'MG-15', title: 'Firefly flocking', status: 'todo' },
-      { key: 'MG-17', title: 'Dew on the leaves', status: 'in_progress' },
-      { key: 'MG-9', title: 'Save system for seeds', status: 'done' }
+    id: 3, identifier: 'moonlight-garden', name: 'Moonlight Garden',
+    workPackages: [
+      { id: 12, subject: 'Fix the lantern glow at dusk', status: 'in_progress' },
+      { id: 14, subject: 'Pond ripple shader', status: 'todo' },
+      { id: 15, subject: 'Firefly flocking', status: 'todo', owner: null },
+      { id: 17, subject: 'Dew on the leaves', status: 'in_progress', owner: TEAMMATE },
+      { id: 9, subject: 'Save system for seeds', status: 'done' }
     ]
   },
   {
-    id: 'demo-pf', key: 'PF', name: 'Pixel Forge',
-    tasks: [
-      { key: 'PF-31', title: 'Anvil sound pass', status: 'todo' },
-      { key: 'PF-33', title: 'Ore spawn tables', status: 'in_progress' },
-      { key: 'PF-35', title: 'Bellows particle burst', status: 'todo' }
+    id: 5, identifier: 'pixel-forge', name: 'Pixel Forge',
+    workPackages: [
+      { id: 31, subject: 'Anvil sound pass', status: 'todo' },
+      { id: 33, subject: 'Ore spawn tables', status: 'in_progress' },
+      { id: 35, subject: 'Bellows particle burst', status: 'todo', owner: null }
     ]
   }
 ];
+// Whom the account belongs to, as "Connected as" says it.
+const USER_NAME = 'Alex Moreau';
+// The task the pictures time.
+const RUNNING_TASK = '12';
 
 // Hours before now, task, minutes, comment: the day's logged work so far.
 // Today only: the session panel's table lists the latest worklogs whatever
 // their day, and a total there disagreeing with Work History reads as a bug
 // in the pictures.
 const WORKLOGS = [
-  [6.5, 'demo-mg_MG-14', 85, 'Ripples follow the wind now'],
-  [4.8, 'demo-pf_PF-31', 40, 'Hammer and quench sounds'],
-  [3.9, 'demo-mg_MG-15', 55, 'Boids, first pass'],
-  [2.5, 'demo-pf_PF-33', 70, 'Iron and copper tables']
+  [6.5, '14', 85, 'Ripples follow the wind now'],
+  [4.8, '31', 40, 'Hammer and quench sounds'],
+  [3.9, '15', 55, 'Boids, first pass'],
+  [2.5, '33', 70, 'Iron and copper tables']
 ];
 
-// Task, ownership, assignee: everything else is the user's.
-const OWNERS = [
-  ['demo-mg_MG-15', 'unassigned', null],
-  ['demo-mg_MG-17', 'other', 'Rin Okada'],
-  ['demo-pf_PF-35', 'unassigned', null]
-];
+/** The fake OpenProject, serving `CATALOG` on a port of its own. */
+async function startProvider() {
+  const { createFakeOpenProject } = require('../fake-openproject.js');
+  const fake = createFakeOpenProject({ catalog: CATALOG, userName: USER_NAME, quiet: true });
+  // `localhost` reads as a name in Settings › Account, where the address
+  // shows; `*.localhost` would read better but resolves only in Chromium,
+  // and the provider's requests leave from main.
+  await new Promise(resolve => fake.server.listen(0, 'localhost', resolve));
+  return { ...fake, url: `http://localhost:${fake.server.address().port}` };
+}
 
 function openDb(profile) {
   const { DatabaseSync } = require('node:sqlite');
@@ -409,11 +422,7 @@ async function reload(page) {
 
 const listener = (page, on) => page.api(`saveNotificationSettings({ enableListener: ${on} })`);
 
-async function seed(page, profile) {
-  // The invented profile sends to OpenProject without credentials, which
-  // Today answers with "No account yet" (P11b): put away, as a user would,
-  // or every picture of Today shows it over the session.
-  await page.api("dismissNotice('no-account')");
+async function seed(page, profile, provider) {
   // The mini timer's one-line tour of its buttons shows on its first open
   // only (P12d); the picture is of the timer as it is every day after.
   await page.api("saveFlowSetting('mini_tour_seen', true)");
@@ -433,9 +442,24 @@ async function seed(page, profile) {
     lunchEndTime: at(4),
     eodWrapUpTime: at(6)
   })})`);
-  for (const project of PROJECTS) {
-    await page.api(`createProject(${JSON.stringify({ id: project.id, key: project.key, name: project.name })})`);
-    await page.api(`importTasks(${JSON.stringify(project.id)}, ${JSON.stringify(project.tasks)})`);
+  // The account, as Settings › Account sets it, and its first sync.
+  const { CATALOG_STATUS } = require('../fake-openproject.js');
+  await page.api(`setActiveProvider(${JSON.stringify({
+    providerId: 'openproject',
+    opDomain: provider.url,
+    opApiKey: 'docs-capture',
+    opStatusInProgress: String(CATALOG_STATUS.in_progress),
+    opStatusToReview: String(CATALOG_STATUS.done)
+  })})`);
+  await page.api('syncProviderNow()');
+  const wanted = CATALOG.reduce((n, p) => n + p.workPackages.length, 0);
+  for (let i = 0; ; i++) {
+    const projects = await page.api('getProjects()');
+    let tasks = 0;
+    for (const p of projects) tasks += (await page.api(`getTasks(${JSON.stringify(p.id)})`)).length;
+    if (tasks >= wanted) break;
+    if (i === 60) throw new Error(`the first sync brought ${tasks} of ${wanted} tasks`);
+    await sleep(500);
   }
   // Written straight into the profile's database: a worklog of an hour and a
   // half cannot be produced through the app in less than one. This is the
@@ -458,18 +482,9 @@ async function seed(page, profile) {
     insert.run(`demo-log-${i}`, `demo-session-${i}`, taskId, minutes * 60, start.toISOString(), comment, end.toISOString());
     delivered.run(`demo-sync-${i}`, taskId, minutes * 60, start.toISOString(), comment, end.toISOString(), `demo-log-${i}`, String(900 + i));
   });
-  // Whose each task is, as a sync from a team's tracker would store it: an
-  // import makes every task the user's. Two nobody has, one an invented
-  // teammate is on -- and both switches on, so the picture shows both marks.
-  for (const [taskId, ownership, assignee] of OWNERS) {
-    db.prepare('UPDATE tasks SET ownership = ?, assignee_name = ? WHERE id = ?').run(ownership, assignee, taskId);
-  }
-  // From OpenProject, as the worklogs above were sent there: a project made
-  // in the app has no page on a provider, so its tasks would show no arrow to
-  // open one. OpenProject is not set up in this profile, so nothing is asked
-  // of it -- and nothing here clicks an arrow.
-  db.prepare("UPDATE projects SET provider_id = 'openproject' WHERE id LIKE 'demo-%'").run();
   db.close();
+  // Two tasks nobody has and one a teammate is on, from the catalog: both
+  // switches on, so the picture shows both marks.
   await page.api('setTaskVisibility({ unassigned: true, others: true })');
 }
 
@@ -480,7 +495,7 @@ async function captureWithBar(page, framesDir, profile) {
 
   await page.shot('app-session-idle');
 
-  await page.api(`startTask('demo-mg_MG-12')`);
+  await page.api(`startTask(${JSON.stringify(RUNNING_TASK)})`);
   backdateSession(profile, SESSION_MINUTES);
   await sleep(2000);
   await clip(page, framesDir, 'tracking', 4200);
@@ -618,7 +633,7 @@ async function captureEveryScreen(page, profile) {
   };
 
   await step('today idle', () => page.shot('s01-today-idle'));
-  await page.api(`startTask('demo-mg_MG-12')`);
+  await page.api(`startTask(${JSON.stringify(RUNNING_TASK)})`);
   backdateSession(profile, SESSION_MINUTES);
   await sleep(2000);
   await step('today tracking', () => page.shot('s02-today-tracking'));
@@ -798,6 +813,7 @@ async function main() {
   fs.mkdirSync(SCREENS ?? IMAGES, { recursive: true });
   log('profile', profile);
 
+  const provider = await startProvider();
   const child = launch(profile);
   let page = null;
   try {
@@ -805,7 +821,7 @@ async function main() {
     // The app finishing its start before the first call reaches it.
     await sleep(2000);
     await listener(page, false);
-    await seed(page, profile);
+    await seed(page, profile, provider);
     await reload(page);
     await page.eval(RECORDER);
 
@@ -831,6 +847,7 @@ async function main() {
   } finally {
     if (page) page.close();
     child.kill();
+    provider.server.close();
     await sleep(1500);
     fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
   }

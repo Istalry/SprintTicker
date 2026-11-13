@@ -407,7 +407,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
               </div>
             )}
             <div className="max-w-xl">
-              <Field label="Key for tasks of my own" hint="The key new tasks of your own show, in the lists and on the bar. Their time stays in your History and is never sent.">
+              <Field label="Key for tasks of my own" hint="The key new tasks of your own show in the lists; the bar shows their name alone. Their time stays in your History and is never sent.">
                 <input type="text" value={fallbackTicketKey} onChange={e => setFallbackTicketKey(e.target.value)} placeholder="e.g. MISC-1 or ADMIN-1" className={FIELD} />
               </Field>
             </div>

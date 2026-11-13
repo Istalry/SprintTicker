@@ -1603,8 +1603,11 @@ duplicated-constant hazard again, in binary. Four things about them:
 
 - **`pnpm docs:images` makes them**, and a change to a screen remakes its
   picture in the same commit, like any other document. `capture-app.js` runs
-  the built app on a throwaway profile under `--mock-hardware`, fills it with
-  invented projects, and records the frames the app sends its emulator;
+  the built app on a throwaway profile under `--mock-hardware`, syncs it from
+  a fake OpenProject in the same process serving invented projects (the
+  fake's `catalog`; tasks read OP-12, since OpenProject keys them by id --
+  the fake Jira cannot serve the app, whose Jira adapter forces https), and
+  records the frames the app sends its emulator;
   `make-images.py` renders those, and every scene and icon in `Animations/`,
   as the LED panel. Never capture the real profile: development shares the
   real database (§7), so its pictures would publish the user's own task names.

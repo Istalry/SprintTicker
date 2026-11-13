@@ -516,11 +516,11 @@
         </thead>
         <tbody><tr>
         <td align="left">🏁 <a href="#-first-run">First run</a></td>
-        <td align="left">the first run -- your account, your desk, your day -- and the mini timer</td>
+        <td align="left">the first run -- your account, your desk, your day</td>
         </tr>
         <tr>
         <td align="left">🗂️ <a href="#-the-window">The window</a></td>
-        <td align="left">its four places -- Today, Tasks, History, Settings -- and the header</td>
+        <td align="left">its four places -- Today, Tasks, History, Settings -- the header, the mini timer, the tray and the shortcuts</td>
         </tr>
         <tr>
         <td align="left">💡 <a href="#-the-bar-itself">The bar itself</a></td>
@@ -564,7 +564,7 @@
       </tr>
       <tr>
       <td align="left">📝 No account</td>
-      <td align="left">Nothing -- your own tasks only, and their time stays on this computer</td>
+      <td align="left">Nothing -- your own tasks only, and their time stays on this computer; the app then names your provider <em>This computer</em></td>
       </tr>
       </tbody></table></div>
       <p><strong>Test connection</strong> tries what you typed without saving it, and says who you
@@ -572,8 +572,9 @@
       an address that does not exist (<em>studio.atlasian.net was not found</em>), a token
       Jira refused (with <strong>Make a new one ↗</strong>), or no network. Then one question:
       when you start a task, should SprintTicker move it to In Progress and make it
-      yours once it has run two minutes? <strong>Continue</strong> saves the account; nothing is
-      saved before it. <strong>Set up later</strong> goes straight to Today -- connect an
+      yours once it has run two minutes? With Jira or OpenProject, <strong>Continue</strong>
+      waits until Test connection has passed, and says so beside it; it saves the
+      account, and nothing is saved before it. <strong>Set up later</strong> goes straight to Today -- connect an
       account any time in <strong>Settings › Account</strong>.</p>
       <p><strong>2️⃣ What&#39;s on your desk?</strong> A BUSY Bar and a Stream Deck, both optional.
       Only what SprintTicker finds starts ticked: a bar answering on USB, Stream
@@ -590,10 +591,6 @@
       timed on, lunch, and the end of your day, all filled in already, and how
       SprintTicker works in four sentences. <strong>Start my first task</strong> saves them and
       opens the picker on Today.</p>
-      <p>The <strong>ad-hoc task key</strong> (default <code>MISC-1</code>) is the key your own ad-hoc tasks
-      show in the window — meetings, admin, anything without a ticket. The bar
-      shows their name alone, which the shared key would only crowd out. Ad-hoc time stays in your
-      History and is <strong>never sent</strong> to Jira or OpenProject.</p>
       <h4>💻 Without a BUSY Bar</h4>
       <div class="table-wrap"><table>
         <tr>
@@ -609,8 +606,8 @@
           <td>The same four places; everything that keeps time is still there.</td>
         </tr>
       </table></div><p>Everything that keeps time works without the hardware: the task picker, the
-      running timer, pausing, finishing, worklog sync, history, the ceremonies and
-      the end-of-day wrap-up. The window keeps its four places; what steps aside is
+      running timer, pausing, stopping, sending your time, History, the stand-up,
+      lunch and End my day. The window keeps its four places; what steps aside is
       what only describes the bar -- the bar&#39;s preview in the header, and in
       <strong>Settings, Desk devices</strong> the Windows notifications it mirrors and <strong>What the
       bar shows first</strong>, which orders its screen and nothing else. Notifications
@@ -625,57 +622,6 @@
       cleared and handed back to its own clock first. To add a bar later,
       press <strong>Add</strong> on its one line in the same place: the address and token you had set
       before are kept, and the bar&#39;s screens come back at once.</p>
-      <h4>⏱️ The mini timer</h4>
-      <p>A small window that stays above every other one and shows what the bar would:
-      the task key and title, the elapsed time, and a coloured edge -- green while
-      tracking, amber while paused, in an interruption or asking, grey with nothing
-      running. <strong>Nothing timing</strong> is written large and amber in your working hours,
-      with the interruptions still to place under it, and <strong>▶ Start…</strong> beside it.
-      The first time it opens, one line names its buttons; <strong>Got it</strong> puts it
-      away. Beside them is the
-      icon of whatever holds the bar: the stopwatch for your session, an app&#39;s icon
-      during its notification, the burger at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
-      Timer</strong> in the header or <strong>Mini timer</strong> in the tray menu.</p>
-      <p align="center">
-        <img src="images/app-mini-timer.png" alt="The mini timer: MG-12, Fix the lantern glow, 01:24:10, with pause, stop and task-list buttons">
-      </p><ul>
-      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as Today does; paused, the
-      row says <strong>❚❚ Paused · MG-12</strong>.</li>
-      <li>⏹️ <strong>Stop</strong> offers the three ways to end it, in the order the bar and the
-      Stream Deck use: <strong>Done</strong> logs the time and marks the task done, <strong>Stop</strong>
-      logs it and keeps the task open, and <strong>Discard…</strong> throws the session away
-      after a <strong>Yes</strong>. <strong>×</strong> keeps the session running.</li>
-      <li>⟲ <strong>Previous</strong> goes back to the task you timed before this one, and
-      <strong>⚡3</strong> beside the buttons counts the interruptions waiting to be placed.</li>
-      <li>⚡ <strong>Interrupt</strong> starts a timer at once, as Today&#39;s button does --
-      see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. During an interruption the
-      row says which task waits, and offers ↩ <strong>Back</strong> to it, ↳ to choose the
-      task its time goes to, the list, ⚡ <strong>Another</strong> and ⏹️ <strong>Stop</strong>, which ends
-      the interruption alone. Click its title to name it.</li>
-      <li>🎛️ <strong>An interruption started from the bar, the Stream Deck or the
-      shortcut opens the mini timer</strong>, without taking the focus from what you
-      are typing in, unless the window is on screen: &quot;⚡ from the deck · started
-      now ▾&quot; sets when it began (2, 5 or 10 minutes ago, taken off the task it
-      interrupted), and its name can wait.</li>
-      <li>☷ <strong>During the stand-up</strong> the row says which task comes back after it,
-      &quot;then back to MG-12, as it was&quot;, with <strong>End stand-up</strong>.</li>
-      <li>👤 A task given to someone else reads <strong>MG-12 · Rin&#39;s now</strong>, in amber; its
-      time is still logged.</li>
-      <li>📋 The <strong>list</strong> button brings the window forward with the task picker open:
-      that is how you start or switch a task from it.</li>
-      <li>❓ <strong>A question takes the row</strong> until you answer it, with an amber edge:
-      the stand-up (<strong>Skip today</strong>, <strong>Join</strong>), <strong>Back at your desk?</strong> (<strong>Not now</strong>,
-      <strong>I worked through it</strong>, <strong>▶ Resume</strong>) and <strong>Back to MG-12? 6 min not timed</strong>
-      (<strong>Not now</strong>, <strong>↩ Back +6m</strong>, <strong>↩ Back</strong>), and, when nothing else is asked, a reminder
-      -- see <em>Reminders ask once</em>, with the ceremonies. Answered anywhere, it
-      goes everywhere.</li>
-      <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
-      that was on a monitor you have since unplugged, it comes back in the
-      bottom-right corner of the main one.</li>
-      <li>🔁 It reopens at the next launch if it was open when you quit, and stays closed
-      if you closed it.</li>
-      </ul>
-      <p>It counts seconds, which the bar does not: on screen a second costs nothing.</p>
       <hr>
       <h3 id="guide-the-window">🗂️ The window</h3>
       <p>Four places down the left: <strong>Today</strong>, <strong>Tasks</strong> and <strong>History</strong>, and
@@ -683,6 +629,8 @@
       beside Today counts the interruptions you have not placed on a task yet.</p>
       <p>⌨️ Everything works from the keyboard. Escape closes any dialog or menu and
       puts you back on the button that opened it; the arrow keys move in a menu.
+      Closing the window keeps SprintTicker running in the tray, and four
+      shortcuts work from any app: see <a href="#-the-tray-closing-the-window-and-the-shortcuts">the tray and the shortcuts</a>.
       🔍 <strong>Ctrl+=</strong> and <strong>Ctrl+-</strong> (or Ctrl and the mouse wheel) make the window&#39;s
       text larger or smaller; <strong>Ctrl+0</strong> puts it back. A screen reader hears a
       question -- the stand-up, Back to MG-12? -- when it arrives, without the
@@ -691,9 +639,9 @@
       <ul>
       <li>🟩 <strong>The bar&#39;s preview</strong>, with a bar: what the bar shows right now.</li>
       <li>🔀 <strong>Mode: Work ▾</strong> switches between Work, Lunch and Away by hand. It is
-      the mode the ceremonies and Windows&#39; lock switch for you.</li>
+      the mode your day&#39;s schedule and Windows&#39; lock switch for you.</li>
       <li>▭ <strong>Mini timer</strong> opens the mini timer, below.</li>
-      <li>☾ <strong>End my day</strong> opens the end-of-day wrap-up now.</li>
+      <li>☾ <strong>End my day</strong> opens End my day now.</li>
       <li>✅ <strong>The status entry</strong> says in a word how things stand: <strong>All good</strong>,
       <strong>2 waiting</strong> (entries not yet sent to your provider), <strong>Sending stopped</strong>
       (your provider refused them), <strong>Not set up</strong> (no account yet: Settings ›
@@ -742,12 +690,10 @@
       <td align="left"><em>PF-44, 30m: time tracking is off on this issue.</em> Jira turned that entry down, and asking again would not change its answer, so it is not sent again -- not even after a new token. It stays here, unsent, and Check my week lists it. <strong>↳ Move…</strong> puts it on another task, which sends it there; <strong>Keep off Jira</strong> keeps the time in your history only (Undo takes that back). The entry&#39;s ⋯ offers both too.</td>
       </tr>
       </tbody></table></div>
-      <p>On your first day the picker opens on your own open tasks -- in progress
-      first, then to do by priority -- since you have no Recent or Starred yet.</p>
       <h4>⚙️ Settings</h4>
       <p>Six groups, each one page, with a search box above them that finds a setting
       by its name or by the name it used to have -- <em>sync queue</em>, <em>priority</em>,
-      <em>ceremonies</em>. Each is a page of rows: a name, one sentence and its control
+      <em>ceremonies</em>, <em>wrap-up</em>. Each is a page of rows: a name, one sentence and its control
       at the right -- a switch that says <strong>On</strong> or <strong>Off</strong>, a menu or a button:</p>
       <div class="table-wrap"><table>
       <thead>
@@ -778,7 +724,7 @@
       </tr>
       <tr>
       <td align="left"><strong>Developer</strong></td>
-      <td align="left">hidden until <strong>Show developer tools</strong>: the bar remote, the display debugger, test notifications, the notification listener, the bar&#39;s health -- each behind <strong>Open</strong>, one at a time</td>
+      <td align="left">hidden until <strong>Show developer tools</strong>, in General: the bar remote, the display debugger, test notifications, the notification listener, the bar&#39;s health -- each behind <strong>Open</strong>, one at a time</td>
       </tr>
       </tbody></table></div>
       <p>The developer tools act on the real app -- the bar remote and the display
@@ -793,17 +739,22 @@
       <p>The main screen. Start a task, and the bar shows it. With nothing running
       the session card offers just <strong>Start a task</strong> and <strong>Interrupt</strong>. While a task
       runs it says <strong>Running</strong> or <strong>Paused</strong>, when its time will be sent -- <em>sent
-      to Jira when you stop, after 10 s to undo</em> -- and offers, in one row:
+      to Jira when you stop, after 10 s to undo</em>; <em>kept on this computer, never
+      sent</em> for a task of your own; <em>kept here until Jira is set up</em> with no
+      account yet -- and offers, in one row:
       <strong>Pause</strong> or <strong>Resume</strong>, <strong>■ Stop ▾</strong>, <strong>⚡ Interrupt</strong>, <strong>Switch task</strong>, and
-      <strong>Previous task: PF-31</strong>, which goes back to the task before in one press.</p>
+      <strong>Previous task: PF-31</strong>, which goes back to the task before in one press.
+      Timing a task of your own? <strong>Place…</strong> puts the whole session, from its
+      start, on a task of your provider, where its time is then sent.</p>
       <p align="center">
-        <img src="images/app-session-tracking.png" width="80%" alt="Today: MG-12 tracking for 01:24:07, with Pause, Finish and Switch, and the day's worklogs below">
+        <img src="images/app-session-tracking.png" width="80%" alt="Today: OP-12 running for 01:24:07, with Pause, Stop, Interrupt and Switch task, and the day's entries below">
       </p><p><strong>Stop</strong> is one click: the time is logged, and sent after ten seconds to
       undo; the task stays open. The <strong>▾</strong> beside it holds the two other ends:
       <strong>✓ Done</strong>, which also moves the task to its done state at your provider
       (shown only where the provider can), and <strong>Discard…</strong>. Marking it done
       celebrates on the bar -- a green badge drops in, ticks itself, and throws
-      confetti beside <strong>DONE!</strong> -- then returns to the session. It also fires your
+      confetti beside <strong>DONE!</strong> -- then returns to the session; the window throws
+      confetti too, unless Windows&#39; animation effects are off. It also fires your
       configured completion transition — which in Jira usually means &quot;To
       Review&quot;, not &quot;Closed&quot;, because you send work for review rather than closing it
       yourself. Each project can send Done somewhere of its own -- workflows
@@ -836,9 +787,9 @@
       14:32</em> -- with <strong>Keep timing on it</strong>, <strong>↳ Move my 1h 24m…</strong>, which puts
       the time so far on the task you pick and goes on timing there, and
       <strong>⇄ Switch task</strong>. SprintTicker asks the provider why, and the panel and the
-      mini timer say so: <strong>No longer assigned to you</strong>, <strong>Closed on the provider</strong>,
-      or <strong>No longer on the provider</strong> when it was deleted or you can no longer see
-      it. Marking it done asks first, since your completion transition would move a
+      mini timer say so: <strong>No longer assigned to you</strong>, <strong>Assigned to Rin</strong>,
+      <strong>Closed in Jira</strong>, or <strong>No longer in Jira</strong> when it was deleted or you can
+      no longer see it -- with your provider&#39;s name. Marking it done asks first, since your completion transition would move a
       task that is no longer yours. A task already <strong>closed</strong>
       there is the exception: marking it done asks nothing and moves nothing on the
       provider. The task stays listed until the session ends, and leaves at the
@@ -871,8 +822,9 @@
       a long call -- brings the question, and <strong>I was working all along</strong> keeps it
       all.</p>
       <h4>🔎 Finding a task: the picker</h4>
-      <p><strong>Start a task</strong>, <strong>Switch task</strong>, <strong>Place on a task…</strong>, <strong>Place…</strong> and
-      <strong>Move</strong> all open the same picker. Type, and it searches every task of every
+      <p><strong>Start a task</strong>, <strong>Switch task</strong>, <strong>Place on a task…</strong>, <strong>Place…</strong> (see
+      <a href="#interruptions-to-place">Interruptions to place</a>) and <strong>Move</strong> all open the
+      same picker. Type, and it searches every task of every
       project at once -- key, title, description or project name -- grouped by
       project. When it finds many, it shows eight of each project and <strong>N more in
       …</strong>, which opens that project with your search kept. Before you type, it
@@ -886,6 +838,8 @@
       <li><strong>All projects</strong>, the ones you have starred tasks in first, then the ones
       you used most this month. Click one to see only its tasks.</li>
       </ul>
+      <p>On your first day it opens on your own open tasks -- in progress first, then
+      to do by priority -- since you have no Recent or Starred yet.</p>
       <p>A project&#39;s key and a space -- <code>pf </code> -- also narrows the picker to that
       project, and what you type next searches inside it: <code>pf 40</code> finds PF-40.
       Backspace on an empty search, or the ✕ beside the project, takes it off.
@@ -906,8 +860,8 @@
       about one of your usual places, and <strong>Keep as its own entry</strong> is there
       too.</li>
       </ul>
-      <p>The picker shows the same tasks in the same order as Tasks and the bar&#39;s
-      picker, and follows the same <strong>unassigned</strong> and <strong>teammates&#39;</strong> pills.</p>
+      <p>The picker shows the same tasks in the same order as Tasks, and follows the
+      same <strong>unassigned</strong> and <strong>teammates&#39;</strong> pills.</p>
       <p><strong>From the tray, the mini timer and the Stream Deck, the picker opens as its
       own small window</strong>, in the middle of the screen your pointer is on, over
       whatever you were doing -- the dashboard stays where it was. It is the same
@@ -933,11 +887,10 @@
       and then, with nothing to fill in. The task you were on <strong>waits, paused</strong>:
       nothing is logged or sent for it, and its timer goes on from where it was
       when you come back. Interrupt is on Today&#39;s session card, in the mini timer,
-      first in the tray menu, on the Stream Deck&#39;s Interrupt key, and on the bar:
-      click the wheel. On the bar, Pause then goes back to your task, Pause twice
-      stops the interruption, and another click is <strong>Another</strong>.
-      And, if you turn it on, on a keyboard shortcut that works from any app --
-      see below.</p>
+      in the tray menu, on the Stream Deck&#39;s Interrupt key, and on the bar: click
+      the wheel. On the bar, Pause then goes back to your task, Pause twice stops
+      the interruption, and another click is <strong>Another</strong>. And on Ctrl+Alt+Shift+I,
+      from any app -- see <a href="#-the-tray-closing-the-window-and-the-shortcuts">the shortcuts</a>.</p>
       <p>While it runs, the session card says which task waits, and offers:</p>
       <ul>
       <li>↩ <strong>Back to MG-12</strong> ends the interruption and goes back to the task, as
@@ -973,8 +926,8 @@
       <li><p><strong>The stand-up during an interruption</strong>: its card says <em>Join? It ends
       &quot;Call with Marc&quot;</em>; Join ends it, and it waits to be placed.</p>
       </li>
-      <li><p><strong>The end-of-day wrap-up</strong> ends an interruption and the task it held,
-      without asking.</p>
+      <li><p><strong>End my day</strong> ends an interruption and the task it held, without
+      asking.</p>
       </li>
       <li><p><strong>While it runs</strong>, Today&#39;s session card asks three things, none of which
       stops the timer:</p>
@@ -1003,7 +956,7 @@
       <strong>Interruptions to place · 3 · 45m</strong>: what it interrupted (<em>during MG-12</em>),
       where you started it (<em>from the Stream Deck</em>, <em>from the shortcut</em>, <em>from the
       bar</em>), its place in its run (<em>2 of 3</em>), its time, and when it began -- in
-      History, click that to go to the day. The end-of-day wrap-up lists them too,
+      History, click that to go to the day. End my day lists them too,
       so you can place them while you remember what they were. For each:</p>
       <ul>
       <li>Click its name to give it one, or <strong>⋯</strong> › <strong>Rename…</strong>.</li>
@@ -1019,7 +972,8 @@
       note the provider shows; a name you type is kept even if you close the
       list. <strong>Place N</strong> places those; the others stay to place.</li>
       <li><strong>⋯</strong> › <strong>Keep as its own entry</strong> keeps its time in your history as an
-      entry of its own, ad-hoc work, never sent to Jira -- nothing is deleted.
+      entry of its own, a task of your own, never sent to Jira -- nothing is
+      deleted.
       With no provider, it is simply an entry in your history.</li>
       <li><strong>⋯</strong> › <strong>Discard</strong> throws it away: its time is kept nowhere. Ten seconds
       to undo.</li>
@@ -1029,8 +983,8 @@
       placing one moves its entry to the task.</p>
       <p>🗑️ <strong>Discard…</strong>, in Stop&#39;s <strong>▾</strong>, is for a session started by mistake:
       nothing is kept in your history and nothing is sent to your provider. It
-      asks once more, naming the time and the task, and Undo on the toast takes
-      it back for ten seconds.</p>
+      asks once more, naming the time and the task, and <strong>Undo</strong>, on the bar at
+      the foot of the window, takes it back for ten seconds.</p>
       <div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1047,19 +1001,76 @@
       <td align="center">📝 Stopped: time logged, task still open</td>
       </tr>
       </tbody></table></div>
+      <h4>⏱️ The mini timer</h4>
+      <p>A small window that stays above every other one and shows what the bar would:
+      the task key and title, the elapsed time, and a coloured edge -- green while
+      tracking, amber while paused, in an interruption or asking, grey with nothing
+      running. <strong>Nothing timing</strong> is written large and amber in your working hours,
+      with the interruptions still to place under it, and <strong>▶ Start…</strong> beside it.
+      The first time it opens, one line names its buttons; <strong>Got it</strong> puts it
+      away. Beside them is the
+      icon of whatever holds the bar: the stopwatch for your session, an app&#39;s icon
+      during its notification, the sandwich at lunch, a coffee cup while you are away. Hover it for what the bar says. Open it with <strong>Mini
+      Timer</strong> in the header or <strong>Mini timer</strong> in the tray menu.</p>
+      <p align="center">
+        <img src="images/app-mini-timer.png" alt="The mini timer: OP-12, Fix the lantern glow, 01:24:10, with pause, stop, interrupt, switch and close buttons">
+      </p><ul>
+      <li>⏯️ <strong>Pause</strong> and <strong>Resume</strong> act on the session as Today does; paused, the
+      row says <strong>❚❚ Paused · MG-12</strong>.</li>
+      <li>⏹️ <strong>Stop</strong> offers the three ways to end it, in the order the bar and the
+      Stream Deck use: <strong>Done</strong> logs the time and marks the task done, <strong>Stop</strong>
+      logs it and keeps the task open, and <strong>Discard…</strong> throws the session away
+      after a <strong>Yes</strong>. <strong>×</strong> keeps the session running.</li>
+      <li>⟲ <strong>Previous</strong> goes back to the task you timed before this one, and
+      <strong>⚡3</strong> beside the buttons counts the interruptions waiting to be placed.</li>
+      <li>⚡ <strong>Interrupt</strong> starts a timer at once, as Today&#39;s button does --
+      see <a href="#-interrupt-a-timer-at-once">Interrupt</a>. During an interruption the
+      row says which task waits, and offers ↩ <strong>Back</strong> to it, ↳ to choose the
+      task its time goes to, ⚡ <strong>Another</strong> and ⏹️ <strong>Stop</strong>, which ends the
+      interruption alone. Click its title to name it.</li>
+      <li>🎛️ <strong>An interruption started from the bar, the Stream Deck or the
+      shortcut opens the mini timer</strong>, without taking the focus from what you
+      are typing in, unless the window is on screen: &quot;⚡ from the deck · started
+      now ▾&quot; sets when it began (2, 5 or 10 minutes ago, taken off the task it
+      interrupted), and its name can wait.</li>
+      <li>☷ <strong>During the stand-up</strong> the row says which task comes back after it,
+      &quot;then back to MG-12, as it was&quot;, with <strong>End stand-up</strong>.</li>
+      <li>👤 A task given to someone else reads <strong>MG-12 · Rin&#39;s now</strong>, in amber; its
+      time is still logged.</li>
+      <li>⇄ <strong>Switch</strong> (▶ <strong>Start…</strong> with nothing running) opens the task picker in
+      its own small window, over what you are doing -- the dashboard stays where
+      it is.</li>
+      <li>↳ <strong>Place…</strong>, while a task of your own runs, puts the session on a task of
+      your provider, as on Today.</li>
+      <li>❓ <strong>A question takes the row</strong> until you answer it, with an amber edge:
+      the stand-up (<strong>Skip today</strong>, <strong>Join</strong>), <strong>Back at your desk?</strong> (<strong>Not now</strong>,
+      <strong>I worked through it</strong>, <strong>▶ Resume</strong>) and <strong>Back to MG-12? 6 min not timed</strong>
+      (<strong>Not now</strong>, <strong>↩ Back, add the 6 min</strong>, <strong>↩ Back</strong>), and, when nothing
+      else is asked, a reminder -- see <em>Reminders ask once</em>, under
+      <a href="#-settings-my-workday">Settings: My workday</a>. Answered anywhere, it goes
+      everywhere.</li>
+      <li>🖱️ Drag it by any part that is not a button. It reopens where you left it; if
+      that was on a monitor you have since unplugged, it comes back in the
+      bottom-right corner of the main one.</li>
+      <li>🔁 It reopens at the next launch if it was open when you quit, and stays closed
+      if you closed it.</li>
+      </ul>
+      <p>It counts seconds, which the bar does not: on screen a second costs nothing.</p>
       <h4>📁 Tasks</h4>
       <p>Your projects in a column on the left, the selected one&#39;s tasks in a table
       on the right, refreshed from the provider. Make a project of your own here
       for work that has no ticket: the next sync leaves it alone, and time on its
-      tasks stays on this machine like ad-hoc time.</p>
-      <div class="note"><span class="label">Ad-hoc time stays on this machine.</span>
-      <p>It is in History like any other
-      time, but it is never sent to your provider, which has no ticket to put it
-      on. Finishing an ad-hoc task as done marks it done here only. The key the window shows is the one set in <strong>Settings, Account</strong>
-      (<code>MISC-1</code> by default); the bar shows the task&#39;s name alone.</p>
+      tasks stays on this machine, like the time of any task of your own.</p>
+      <div class="note"><span class="label">A task of your own stays on this machine.</span>
+      <p>Its time is in History like
+      any other, but it is never sent to your provider, which has no ticket to
+      put it on. Marking it done marks it done here only. The key the window
+      shows is <strong>Key for tasks of my own</strong>, in Settings › Account › Advanced
+      (<code>MISC-1</code> by default); the bar shows the task&#39;s name alone, which the
+      shared key would only crowd out.</p>
       </div>
       <p align="center">
-        <img src="images/app-projects.png" width="80%" alt="Tasks: the projects column with Starred and All, and Moonlight Garden's tasks in a table with their status and who has each: me, nobody, a teammate">
+        <img src="images/app-projects.png" width="80%" alt="Tasks: the projects column, and Moonlight Garden's tasks in a table with their status and who has each: me, nobody, a teammate">
       </p><p><strong>The projects column.</strong> A search box finds a project by name or key. ☆
       stars a project: the starred ones are listed first, under <em>Starred</em>. Below,
       <em>All</em> lists the rest, each with its count of open tasks, and
@@ -1067,7 +1078,7 @@
       <p><strong>The table.</strong> The header says where the project comes from (<em>from Jira</em>,
       <em>kept on this computer</em>) and how many tasks are open. Each row is ☆, the
       key, the title, the status, <strong>Who</strong> has it -- <em>me</em>, a teammate&#39;s name, or
-      <em>nobody</em> in amber -- and <strong>Start</strong>, or <strong>Switch</strong> while something runs, the
+      <em>nobody</em> in grey italics -- and <strong>Start</strong>, or <strong>Switch</strong> while something runs, the
       same as picking it in the picker. During an interruption it is greyed: end
       the interruption first. The task being timed has <strong>Stop</strong>, one click as on
       Today: the time is logged, the task stays open, and Undo takes it back for
@@ -1098,8 +1109,8 @@
       empty, so one you have just created does not vanish before its first task.
       If no project has a task for you -- before the first sync, or on a day
       nothing is assigned to you -- every project is listed, and the column says
-      so: <em>None has an open task: showing all.</em> Ad-hoc work does not count for
-      this, since an ad-hoc task stays in progress until you finish it as done.</p>
+      so: <em>None has an open task: showing all.</em> Tasks of your own do not count
+      for this, since one stays in progress until you mark it done.</p>
       <p>👥 <strong>Whose tasks</strong> -- the pills above the table -- decide whose tasks are
       shown besides yours, which always are (<em>✓ mine</em>). <strong>unassigned</strong>, on by
       default, lists the open tasks nobody is assigned: work free to take.
@@ -1114,8 +1125,8 @@
       <p>↗️ <strong>Open a task on its provider</strong> -- the small arrow beside a task&#39;s key in
       Today, Tasks and History opens it in
       your browser, on Jira or OpenProject, to comment, attach a picture or read
-      the thread. Ad-hoc work and projects made in SprintTicker have no page there,
-      so no arrow.</p>
+      the thread. Tasks and projects of your own have no page there, so no
+      arrow.</p>
       <p>⏱️ <strong>A glance moves nothing.</strong> Starting a task moves it to In Progress, and
       takes it if nobody has it, only once you have timed it for two minutes --
       paused time does not count. Started to look at it and stopped or switched
@@ -1132,9 +1143,8 @@
       not assigned to you</em>; it is not retried, so assign it on the provider if it
       should be yours. Starting a teammate&#39;s task in progress assigns nothing and
       moves nothing.</p>
-      <p>The cache is what the app and the bar read. If it looks stale, <strong>Sync now</strong> in
-      <strong>Settings, Account</strong> refetches it, and <strong>Try now</strong> in the header&#39;s status
-      panel does too.</p>
+      <p>The task list refreshes by itself every five minutes. If it looks out of
+      date, <strong>Refresh now</strong> in <strong>Settings › Account</strong> fetches it again.</p>
       <h4>📊 History</h4>
       <p>One day at a time: ‹ and › step through the days, a click on the date picks
       one, and <strong>Today</strong> comes back. At the top, what the day adds up to -- <em>7h 30m
@@ -1174,7 +1184,7 @@
       <p>There is no daily target to be &quot;under&quot;: time not timed is what it shows
       instead.</p>
       <p>▨ <strong>The day as a timeline.</strong> Under the day&#39;s figures, a strip shows your
-      working hours -- from the stand-up to the wrap-up, as set in <strong>Settings, My
+      working hours -- from the stand-up to End my day, as set in <strong>Settings, My
       workday</strong> -- with each entry a block named by its task, ⚡ for time that began
       as an interruption, and lunch. What no entry covers is hatched, and the strip
       says how much: <em>6h 50m logged · 40m not timed in working hours</em>. A click on a
@@ -1193,28 +1203,29 @@
       time after midnight as another.</p>
       <p align="center">
         <img src="images/app-history.png" width="80%" alt="History for one day: 4h 10m logged over four tasks, broken down by task">
-      </p><p><strong>A worklog never spans midnight.</strong> Jira and OpenProject file a worklog under
-      the day it began, so a session from 23:00 to 01:00 is logged as two: an hour
-      on each day, each sent on its own. A session paused overnight and resumed in
-      the morning puts the morning on the morning&#39;s day. The finish dialog, and the
-      question about a session left running, say how the time will be filed before
-      it is. The timer still shows the whole session.</p>
-      <p><strong>A long pause starts a new worklog too</strong>: 15 minutes or more by default,
-      set by <em>A long pause starts a new entry</em> in <strong>Settings, My workday</strong> (<em>never</em> keeps one worklog per day). A
-      shorter pause is a gap inside one worklog. A piece too short for your
+      </p><p><strong>An entry never spans midnight.</strong> Jira and OpenProject -- where an entry is
+      a <em>worklog</em> or a <em>time entry</em> -- file it under the day it began, so a
+      session from 23:00 to 01:00 is logged as two: an hour on each day, each sent
+      on its own. A session paused overnight and resumed in
+      the morning puts the morning on the morning&#39;s day. End my day, and the question about a session left running, say how the
+      time will be filed before it is. The timer still shows the whole session.</p>
+      <p><strong>A long pause starts a new entry too</strong>: 15 minutes or more by default, set
+      by <em>A long pause starts a new entry</em> in <strong>Settings, My workday</strong> (<em>never</em>
+      keeps one entry per day). A shorter pause is a gap inside one entry. A piece too short for your
       provider -- 30 seconds after midnight, on Jira -- is added to its neighbour
       rather than lost.</p>
-      <p><strong>A worklog is written locally whether or not the remote accepted it.</strong> If Jira
-      refused a 40-second session, the time is still in your history — it just is not
-      in Jira. Each entry says where it stands: <strong>Sent</strong>, <strong>Sending</strong>, <strong>Not sent</strong>,
-      <strong>Logged here</strong> (ad-hoc work, or too short for your provider), or a correction
-      on its way.</p>
+      <p><strong>An entry is kept here whether or not your provider accepted it.</strong> If Jira
+      refused a 40-second session, the time is still in your history — it just is
+      not in Jira. Each entry says where it stands: <strong>Waiting to send</strong>, <strong>Sent</strong>,
+      <strong>Not sent</strong>, <strong>Refused</strong>, <strong>Logged here</strong> (a task of your own, or too short
+      for your provider), <strong>Correction pending</strong> or <strong>Correction failed</strong>.</p>
       <p align="center">
-        <img src="images/app-history-edit.png" width="80%" alt="Correcting a worklog: hours, minutes, start and comment, with the time it ends and a note that the change also goes to Jira or OpenProject">
+        <img src="images/app-history-edit.png" width="80%" alt="Correcting an entry: duration, start and note, with the time it ends and a line saying the change also goes to OpenProject">
       </p><p>↩️ <strong>Undo, for ten seconds.</strong> Nothing you stop, discard, correct, move or
       delete goes to Jira or OpenProject at once: for ten seconds a bar at the foot
-      of the window says what you did -- <em>Stopped MG-12 · 1h 05m</em> -- with <strong>Undo</strong>,
-      and the mini timer shows it too. Undo puts things back as they were: a
+      of the window says what you did -- <em>Stopped MG-12 · 1h 05m</em> -- and what it
+      comes to -- <em>Sent in 7 s</em>, <em>Kept here</em>, <em>Waits to place</em>, or nothing kept
+      or sent -- with <strong>Undo</strong>, and the mini timer shows it too. Undo puts things back as they were: a
       stopped session runs on with its time and pauses, a discarded one comes
       back, a corrected, moved or deleted entry is as it was. A task you marked
       done is not moved on the provider until the ten seconds are over. Starting
@@ -1225,14 +1236,14 @@
       entries says <strong>Waiting to send · overlaps PF-31</strong> and is not sent until you correct
       one of them; then it goes. A correction that would make two entries overlap
       says so before you save it. Entries already sent stay as they are.</p>
-      <p>✏️ <strong>Correct or delete a worklog</strong> with <strong>Correct…</strong> and <strong>Delete…</strong> in ⋯ on its row. A
-      correction changes the duration, the start or the comment. It applies here at once and
-      reaches Jira or OpenProject through the sync queue, so it survives a lost
-      connection or a restart; a worklog not sent yet is simply sent with the new
-      values. A deletion asks first, and deletes the entry at the provider too.
-      Worklogs sent by an earlier version are found at the provider by the
-      <code>[#xxxxxxxx]</code> tag at the end of their comment, so keep that tag if you edit the
-      comment in Jira.</p>
+      <p>✏️ <strong>Correct or delete an entry</strong> with <strong>Correct…</strong> and <strong>Delete…</strong> in ⋯ on
+      its row. A correction changes the duration, the start or the note. It
+      applies here at once and reaches Jira or OpenProject behind the entry&#39;s own
+      send, so it survives a lost connection or a restart; an entry not sent yet
+      is simply sent with the new values. A deletion asks first, and deletes the
+      entry at the provider too. Entries are found at the provider by the
+      <code>[#xxxxxxxx]</code> tag at the end of their note, so keep that tag if you edit the
+      note in Jira.</p>
       <p>✂️ <strong>Split an entry in two</strong> with <strong>Split in two…</strong> in Correct, for the time
       you forgot to switch: slide to the moment you switched, by the minute, and
       pick the task the rest goes to -- nothing is chosen for you. The first part
@@ -1242,11 +1253,11 @@
       refuses keeps the second from being sent. Undo is there for ten seconds, and
       time in a closed week is warned about first. An entry under two minutes has
       nothing to split.</p>
-      <p>⇄ <strong>Move a worklog to another task</strong> with <strong>↳ Move…</strong> in ⋯ on its row: pick the
+      <p>⇄ <strong>Move an entry to another task</strong> with <strong>↳ Move…</strong> in ⋯ on its row: pick the
       task, and the time is on it at once here. At Jira or OpenProject the entry is
       deleted where it was, then created on the new task -- in that order, so the
       time is never on both, and for a moment may be on neither while the move goes
-      through. A worklog not sent yet simply goes to the new task. Neither task&#39;s
+      through. An entry not sent yet simply goes to the new task. Neither task&#39;s
       status changes. An interruption waiting in <strong>Interruptions to place</strong> is
       placed rather than moved: see <a href="#-interrupt-a-timer-at-once">Interrupt</a>.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
@@ -1254,7 +1265,7 @@
       stays in your history. The same happens when your provider stops listing a task
       you worked on — reassigned, closed or moved — and if it lists it again, it
       comes back.</p>
-      <p>An entry whose comment starts <strong>&quot;Recovered:&quot;</strong> is a session an earlier version
+      <p>An entry whose note starts <strong>&quot;Recovered:&quot;</strong> is a session an earlier version
       left running behind another one. Its end is where the next session began, the
       latest it can have run, so check it before copying it to a timesheet; it is not
       sent to your provider.</p>
@@ -1287,7 +1298,7 @@
       into Windows notifications: assigned to you, a mention, a comment, a status
       change, a date alert. Tick the ones you want. Clicking a notification opens the
       work package in your browser. With a bar, they can go there too, as a banner
-      that competes for the display like any <em>Notification — Default</em>. The app
+      that competes for the display like any <em>Default notifications</em>. The app
       checks every minute by default (30 seconds to an hour); more than three at
       once arrive as one summary. Only unread notifications that arrive after you
       turn this on are shown -- what was already waiting in OpenProject is not
@@ -1306,8 +1317,8 @@
       mention in a description rather than a comment.</li>
       <li>📅 <strong>Jira has no date alerts</strong>, so that box is not offered.</li>
       </ul>
-      <p>In <strong>Advanced</strong>, under <strong>Entries waiting to send</strong>, is every worklog that has not reached
-      the provider, with the server&#39;s own message, the attempt count against the
+      <p>In <strong>Advanced</strong>, under <strong>Entries waiting to send</strong>, is every entry that has
+      not reached the provider, with the server&#39;s own message, the attempt count against the
       ceiling, and when the next attempt is due. When the provider refuses your saved
       credentials, a Windows notification says <strong>Sending time to Jira stopped</strong> (or
       OpenProject) -- once, even with provider notifications switched off. Your time
@@ -1323,20 +1334,21 @@
       </thead>
       <tbody><tr>
       <td align="left">🔄 <strong>Sync now</strong></td>
-      <td align="left">Fetches projects and tasks immediately</td>
+      <td align="left">Fetches projects and tasks immediately, as Refresh now does</td>
       </tr>
       <tr>
       <td align="left">♻️ <strong>Retry failed</strong></td>
-      <td align="left">Un-parks rows that gave up — use after fixing what broke them</td>
+      <td align="left">Sends again the entries that stopped -- use after fixing what stopped them</td>
       </tr>
       </tbody></table></div>
-      <p>Above the rows, one line counts them: waiting, sending, failed, sent.</p>
-      <div class="note"><span class="label">Why a row parks</span>
+      <p>Above the entries, one line counts them: waiting, sending, not sent, sent.</p>
+      <div class="note"><span class="label">Why an entry stops being sent</span>
       <p></p>
-      <p>A row goes <code>FAILED</code> when the failure is permanent: a deleted issue, a revoked
-      key, a session too short for the provider to record. Retrying those on a timer
-      would send byte-identical requests forever, so the app stops and tells you
-      why. <strong>Retry failed</strong> is for after you have fixed the cause.</p>
+      <p>An entry is marked <strong>Not sent</strong> when the failure is permanent: a deleted
+      issue, a revoked key, a session too short for the provider to record.
+      Retrying those on a timer would send the same request forever, so the app
+      stops and tells you why. <strong>Retry failed</strong> is for after you have fixed the
+      cause.</p>
       </div>
       <h4>📅 Settings: My workday</h4>
       <p>A page of rows: your working days, the three scheduled events, when your
@@ -1345,7 +1357,7 @@
       starts a new entry. <strong>Show me</strong>, on the stand-up and the end of day, puts up
       the prompt now; nothing is timed or sent unless you answer it.</p>
       <p align="center">
-        <img src="images/app-ceremonies.png" width="80%" alt="Settings, My workday: working days, stand-up at 09:30, lunch 12:30 to 13:30, end of day at 17:30, the week closing on Friday, and the first reminders' delays">
+        <img src="images/app-ceremonies.png" width="80%" alt="Settings, My workday: working days, the stand-up, lunch, the end of the day, when the week closes, and the reminders' delays">
       </p><div class="table-wrap"><table>
       <thead>
       <tr>
@@ -1357,7 +1369,7 @@
       <tbody><tr>
       <td align="left">🗣️ <strong>Stand-up prompt</strong></td>
       <td align="left">09:30</td>
-      <td align="left">A card on Today; <strong>Join</strong> switches your timer to Daily Standup</td>
+      <td align="left">A card on Today; <strong>Join</strong> switches your timer to the stand-up&#39;s task (Daily Standup unless you chose one)</td>
       </tr>
       <tr>
       <td align="left">🥪 <strong>Lunch</strong></td>
@@ -1378,8 +1390,8 @@
       first, with <em>1 more question after this one</em> when others wait -- and, while the window is hidden in the
       tray or minimised, a Windows notification says so; clicking it opens the
       window. The stand-up&#39;s card offers <strong>Join</strong>, <strong>Skip today</strong> and <strong>Remind me in
-      10 min</strong>, and stays until you choose. The end-of-day wrap-up opens in the
-      window without bringing it forward.</p>
+      10 min</strong>, and stays until you choose. End my day opens in the window
+      without bringing it forward.</p>
       <p>🌙 <strong>End my day</strong> (at your end of day, or ☾ in the header, or the tray)
       shows the day before anything is sent:</p>
       <ul>
@@ -1473,51 +1485,53 @@
       </tr>
       </tbody></table></div>
       <p>🗣️ <strong>Joining the stand-up switches your timer to it.</strong> Press <strong>Join</strong> on
-      Today&#39;s card or in the mini timer, or OK on the bar&#39;s prompt: the task you are tracking stops, its time
-      logged, and a <strong>Daily Standup</strong> task starts -- one ad-hoc task, reused every
-      day, kept on this computer and never sent. Joined late? Pick <strong>joined 2, 5,
+      Today&#39;s card or in the mini timer, or Pause on the bar&#39;s prompt: the task
+      you are tracking stops, its time logged, and a <strong>Daily Standup</strong> task starts
+      -- one task of your own, reused every day, kept on this computer and never
+      sent. Joined late? Pick <strong>joined 2, 5,
       10 or 15 min ago</strong> beside Join: the stand-up starts then, and those minutes
       come off the task before it. To have the stand-up sent to your provider,
       choose its task on the <strong>Stand-up</strong> row of <strong>Settings, My workday</strong> --
       <strong>on Daily Standup ▾</strong>; <strong>Keep it here</strong> goes back to Daily Standup. A chosen task that is
       no longer in your lists falls back to Daily Standup. The bar then shows its timer, with three people at a table in place of
       the stopwatch, taking turns to speak, so you can see the prompt has gone and
-      the meeting is being timed. Stop the stand-up (DONE, STOP or DISCARD) and the task you were on starts
-      again, by the same rules as after lunch: once, that day, and only if you have
-      not started something else meanwhile, and never when the end-of-day wrap-up
-      is what stopped it. A task that left your list during the
-      meeting is asked about first: <strong>Resume after the stand-up?</strong> in the window,
-      <strong>NOT YOURS / RESUME IT?</strong> on the bar. <strong>Not now</strong>, the wheel&#39;s click, or leaving the
-      question alone keeps your task running.</p>
+      the meeting is being timed. Stop the stand-up (DONE, STOP or DISCARD) and the
+      task you were on starts again: once, that day, only if you have not started
+      something else meanwhile, and never when End my day is what stopped it. A
+      task that left your list during the meeting is asked about first: <strong>Resume
+      MG-12?</strong> in the window, with <strong>▶ Resume MG-12 anyway</strong> and <strong>Not now</strong>, and
+      <strong>NOT YOURS / RESUME IT?</strong> on the bar, where Pause resumes it and a wheel
+      click does not. <strong>Not now</strong>, or leaving the question alone, leaves the task
+      stopped.</p>
       <p>🥪 <strong>Lunch and Away pause the task you are tracking.</strong> Neither is timed,
       and nothing is sent at the start of the break: when you stop the task, its
-      time goes in as two worklogs either side of a break of 15 minutes or more
+      time goes in as two entries either side of a break of 15 minutes or more
       (<em>A long pause starts a new entry</em>, in <strong>My workday</strong>), to the second. When
       the break ends -- lunch&#39;s hour is over, or you unlock Windows -- Today and
       the mini timer ask <strong>Back at your desk?</strong>, naming the task, and the bar shows
-      its key with <strong>RESUME IT?</strong>:</p>
+      its key over <strong>BACK TO IT?</strong> -- Pause resumes, a wheel click is Not now:</p>
       <ul>
       <li><strong>Resume KEY</strong> starts timing again.</li>
       <li><strong>I worked through it</strong> takes the break back as though you had never
-      paused: the time counts as work, in one worklog.</li>
+      paused: the time counts as work, in one entry.</li>
       <li><strong>Not now</strong> leaves the task paused.</li>
       </ul>
-      <p>During the break, Today has a <strong>Lunch until 13:30</strong> or <strong>Away</strong> card saying
-      the task is paused and nothing is sent, with <strong>Resume KEY</strong> -- resuming
-      during lunch is working through it -- or, for Away, <strong>Resume KEY</strong>,
-      which also leaves Away.</p>
+      <p>During the break, Today has a <strong>Lunch until 13:30</strong> or <strong>Away since 10:42</strong>
+      card saying the task is paused and nothing is sent, with <strong>Resume KEY</strong> --
+      resuming during lunch is working through it; for Away it also leaves Away.
+      Away with nothing paused offers <strong>I&#39;m back</strong>.</p>
       <p>The paused session is kept in the database: closing the app over lunch, or
       leaving Windows locked until after it ends, does not lose it -- the question
       comes when you are back, that day. Lunch never undoes what you do:</p>
       <ul>
       <li><strong>Working through lunch.</strong> Start a task, resume a paused one or switch tasks
       during lunch -- in the window, the mini timer or on the bar -- and Lunch ends
-      there and then. Nothing restarts when it would have ended, even if you stop
-      your task before that, and Lunch does not start again that day.</li>
+      there and then; no <em>Back at your desk?</em> is asked when it would have ended,
+      and Lunch does not start again that day.</li>
       <li><strong>A task that left your list over the break</strong> -- reassigned, closed or
-      moved -- is not restarted without asking. The window asks <strong>Resume after
-      lunch?</strong>, and the bar shows <strong>NOT YOURS / RESUME IT?</strong>: OK resumes it, BACK
-      leaves it. Starting another task answers no. Resuming it tracks your time
+      moved -- is asked about as usual: <strong>Back at your desk?</strong> adds that it is
+      no longer assigned to you, and on the bar Pause resumes it and a wheel
+      click leaves it paused. Starting another task answers no. Resuming it tracks your time
       and nothing else: the task stays out of your lists, is not moved to In
       Progress on the provider, and marking it done still asks first.</li>
       <li><strong>Locked when lunch begins.</strong> The bar stays on Away; your task, paused
@@ -1527,7 +1541,7 @@
       </ul>
       <p>Lunch must start and end on the same day, start first: <strong>My workday</strong>
       says so and saves nothing until it does. A window across midnight never began.</p>
-      <p>📆 <strong>The ceremonies happen on working days only.</strong> <strong>Working days</strong>, at the
+      <p>📆 <strong>The stand-up, lunch and End my day happen on working days only.</strong> <strong>Working days</strong>, at the
       top of <strong>My workday</strong>, picks them -- Monday to Friday until you change
       it, and at least one. On any other day nothing is prompted and Lunch does not
       start; your timer works as on any day, and what you track is logged as usual.
@@ -1535,23 +1549,23 @@
       <em>Non-working days</em>, under Administration) are days off too. They are read
       once a day; if the instance cannot be reached, the weekdays you picked decide
       alone, and a holiday already read stays one.</p>
-      <p>🗓️ <strong>The wrap-up of the week&#39;s last working day closes the week.</strong> Usually
+      <p>🗓️ <strong>End my day on the week&#39;s last working day closes the week.</strong> Usually
       that is Friday&#39;s; with Friday a holiday, or a four-day week, it is Thursday&#39;s.
       <strong>My week closes</strong>, in My workday, names that day.
       A notice in the corner of the window then shows the week and the time logged
       in it, a reminder to check it is all in before your timesheet is due. <strong>Check
       my week</strong> opens that week in History with its check (above); either button
       dismisses the notice, which
-      otherwise stays -- across a restart too -- until you do. Missed the wrap-up
+      otherwise stays -- across a restart too -- until you do. Missed End my day
       (a day off you had not entered, the laptop shut)? The next working day closes
       the week at its first check instead, and a week closes once, whatever happens.
       A week you did not work at all closes without a notice.</p>
       <p><strong>Time in a closed week asks first.</strong> Closing a week locks nothing, but its
-      timesheet may be in by then, or approved. So moving a worklog of a closed week
+      timesheet may be in by then, or approved. So moving an entry of a closed week
       asks before the task picker opens, and correcting or deleting one says so in
       the dialog before you save -- a correction that moves the start into a closed
-      week too. A locked timesheet may refuse the change at Jira or OpenProject; the
-      sync queue then shows why.</p>
+      week too. A locked timesheet may refuse the change at Jira or OpenProject;
+      <strong>Entries waiting to send</strong> then shows why.</p>
       <h4>🔔 Settings: Desk devices, Windows notifications</h4>
       <p>Which applications may reach the bar: the <strong>Windows notifications on the
       bar</strong> row of <strong>Desk devices</strong>, with a bar. Its switch turns the mirroring on
@@ -1576,17 +1590,17 @@
       </tr>
       <tr>
       <td align="left">💬 <strong>Default</strong></td>
-      <td align="left">Claims the display at whatever <em>Default notifications</em> scores</td>
+      <td align="left">Takes the bar at the level of <em>Default notifications</em></td>
       </tr>
       <tr>
       <td align="left">🔔 <strong>High priority</strong></td>
-      <td align="left">Claims it at whatever <em>High-priority notifications</em> scores</td>
+      <td align="left">Takes it at the level of <em>High-priority notifications</em></td>
       </tr>
       </tbody></table></div>
-      <p>Note what that means: an app is assigned to a <strong>class</strong>, and <strong>What the bar shows
-      first</strong> decides what that class is worth and how it behaves during Lunch and Away.
-      Nothing here hardcodes which app wins. In the shipped defaults those two classes
-      score 65 and 70, and a few common apps arrive pre-classified — Slack and the
+      <p>Note what that means: an app is put in one of two rows of <strong>What the bar
+      shows first</strong>, which decides what that row is worth and how it behaves
+      during Lunch and Away. Nothing here hardcodes which app wins. In the shipped
+      defaults those two rows are at levels 65 and 70, and a few common apps arrive pre-classified — Slack and the
       battery warning as High priority, Discord, Gmail and Windows as Default — but
       all of it is yours to change.</p>
       <p>Each app&#39;s real icon is resolved from its MSIX manifest or Start Menu shortcut
@@ -1597,7 +1611,7 @@
       of your own on that app (<em>Icon of my own</em>, a 16×16 PNG). The ✈ beside an
       app sends it a test notification, and the bin forgets it until it notifies
       again. An app the list has not seen yet is added by its id under <strong>Settings,
-      Developer</strong>. The first notification from an app after SprintTicker
+      Developer</strong> (turn on <strong>Show developer tools</strong> in General first). The first notification from an app after SprintTicker
       starts shows the built-in icon while the real one is looked up; later ones
       show the app&#39;s own.</p>
       <p><strong>Hide the message text</strong> shows that a message arrived, and from whom,
@@ -1608,16 +1622,16 @@
       <code>--debug-notifications</code> to see it while troubleshooting.</p>
       <h4>⚡ Settings: Desk devices, What the bar shows first</h4>
       <p>What the display shows when several things want it: <strong>Open…</strong> on its row
-      of <strong>Desk devices</strong>, with a bar. Every claim has a score;
-      the highest holds the bar. The arrows beside a claim move its level by 10 and
-      the list sorts itself again; type a level from 1 to 100 to place it exactly.</p>
+      of <strong>Desk devices</strong>, with a bar. Every row has a level; the highest holds
+      the bar. The arrows beside a row move its level by 10 and the list sorts
+      itself again; type a level from 1 to 100 to place it exactly.</p>
       <p align="center">
-        <img src="images/app-priority.png" width="80%" alt="What the bar shows first: each claim with its level and its action in Work, Lunch and Away">
+        <img src="images/app-priority.png" width="80%" alt="What the bar shows first: each row with its level and what it does in Work, Lunch and Away">
       </p><div class="table-wrap"><table>
       <thead>
       <tr>
-      <th align="left">Claim</th>
-      <th align="right">Default</th>
+      <th align="left">Row</th>
+      <th align="right">Level</th>
       </tr>
       </thead>
       <tbody><tr>
@@ -1661,19 +1675,19 @@
       <td align="right">45</td>
       </tr>
       </tbody></table></div>
-      <p>Every row is editable, including what each does in each mode — <strong>Display</strong>,
-      <strong>Suppress</strong> or <strong>Queue</strong> for Work, Lunch and Away.</p>
+      <p>Every row is editable, including what each does in each mode — <strong>Show</strong>,
+      <strong>Show when free</strong> or <strong>Hide</strong> in Work, Lunch and Away.</p>
       <p>With the shipped ordering, notifications do not interrupt Lunch or Away. That is
       the table working as configured, not a bug. Move the rows if you disagree.</p>
-      <h4>🩺 Settings: Desk devices and General</h4>
+      <h4>🩺 Settings: Desk devices</h4>
       <p><strong>Desk devices</strong> opens on the bar&#39;s line -- <em>Connected on USB</em>, or the
       address it answers at, with its firmware, battery and brightness as the bar
       reports them, or <em>Not answering at …</em> -- and <strong>Use without a bar</strong>. <strong>When
       nothing runs</strong>, on, leaves the bar its own clock when no task is timed; a
       question or NOTHING TIMING still stays on it until answered. Off,
-      SprintTicker keeps its own idle screen. The animation debugger -- marquee speeds, particle effects, LED
-      colours and icon rasterisation, live, drawn through the real renderer -- and
-      <strong>Bar health</strong> are under <strong>Developer</strong>.</p>
+      SprintTicker keeps its own idle screen. The display debugger -- every scene
+      and screen, drawn through the real renderer -- and <strong>Bar health</strong> are under
+      <strong>Developer</strong>, once <strong>Show developer tools</strong> is on in General.</p>
       <p align="center">
         <img src="images/app-device.png" width="80%" alt="Desk devices: connected on USB, task key color, when nothing runs, Windows notifications, what the bar shows first, connection, and the Stream Deck's line">
       </p><p><strong>Connection</strong>, behind <strong>Change…</strong>, sets the address the app dials and, if
@@ -1701,6 +1715,7 @@
       seconds.</p>
       <p>🎨 <strong>Task key color</strong> sets the color of the task key on the bar&#39;s front
       display -- blue, pink, amber or pale cyan -- and is kept across restarts.</p>
+      <h4>🧭 The tray, closing the window, and the shortcuts</h4>
       <p>🗙 <strong>Closing the window keeps SprintTicker running</strong>, in the tray by the
       clock: your timer, the bar and the Stream Deck go on. The first time, a
       Windows notification says where it went. <strong>Quit</strong> is in the tray&#39;s menu.
@@ -1812,11 +1827,7 @@
       </tr>
       <tr>
       <td align="center"><img src="images/bar-standup.webp" width="304" alt="STAND-UP with a meeting icon, 00:00"></td>
-      <td align="left">🗣️ <strong>Stand-up.</strong> Joined from its prompt: <strong>STAND-UP</strong> over the stand-up&#39;s own timer, with three people at a table taking turns to speak in place of the stopwatch. An ad-hoc task shows its name alone, never its shared key.</td>
-      </tr>
-      <tr>
-      <td align="center"><img src="images/bar-scene-task-started.webp" width="304" alt="GO! with the stopwatch setting off"></td>
-      <td align="left">🏃 <strong>GO!</strong> A task picked on the bar itself, for two seconds.</td>
+      <td align="left">🗣️ <strong>Stand-up.</strong> Joined from its prompt: <strong>STAND-UP</strong> over the stand-up&#39;s own timer, with three people at a table taking turns to speak in place of the stopwatch. A task of your own shows its name alone, never its shared key.</td>
       </tr>
       <tr>
       <td align="center"><img src="images/bar-scene-task-logged.webp" width="304" alt="LOGGED"></td>
@@ -1833,8 +1844,9 @@
       </tbody></table></div>
       <p>The session screen&#39;s icon is a stopwatch whose colour says where you are: green
       while a task runs, its hand ticking round once a second; amber with blinking
-      pause bars while it is paused; dim grey when nothing runs (the screen then
-      reads <strong>Ready / No task running</strong>). While a task runs, row 0 shows the task and
+      pause bars while it is paused; dim grey when nothing runs, with <em>When
+      nothing runs</em> off (the screen then reads <strong>Ready / No task running</strong>; on,
+      the bar shows its own clock). While a task runs, row 0 shows the task and
       row 1 its time, in large digits. While paused, row 0 shows <strong>❚❚</strong> and the
       task key, and row 1 the time, in amber. Paused from the bar, row 1
       says <strong>AGAIN=STOP</strong> for four seconds: Pause again then stops the task --
@@ -1866,7 +1878,7 @@
       </div>
       <h4>🎞️ Animated icons</h4>
       <p>The icons move. A notification without an app logo rings its bell, the
-      end-of-day prompt&#39;s alarm clock rings, and the lunch prompt&#39;s burger hops. An
+      end-of-day prompt&#39;s alarm clock rings, and the lunch prompt&#39;s sandwich hops. An
       OpenProject notification passes a shine across the OpenProject logo; other
       apps&#39; logos stay still. The bar animates them itself. If one ever shows still,
       the log&#39;s <code>[IconAnimator]</code> lines say why, and the screen is otherwise
@@ -1958,16 +1970,16 @@
       </li>
       </ul>
       <p>🗣️ <strong>During a question</strong> -- the stand-up, back to your task?, NOTHING
-      TIMING, the end-of-day wrap-up -- Pause says yes and a wheel click no. The end-of-day
-      wrap-up asks twice — the first press is &quot;yes&quot;, the second confirms
+      TIMING, End my day -- Pause says yes and a wheel click no. End my day asks
+      twice — the first press is &quot;yes&quot;, the second confirms
       (<strong>AGAIN=YES</strong>) — because it can shut your machine down. Once it is done,
       the bar says <strong>SEE YOU!</strong> for five seconds, a moon rising and the stars
       coming out, and then goes idle.</p>
-      <p>The bar&#39;s buttons answer the wrap-up only while the bar shows its prompt. The
-      <strong>End my day</strong> button in the header puts the prompt on the bar too. If
-      something ranked above the wrap-up holds the bar -- Lunch, in the shipped
-      ordering -- the buttons keep doing what that screen says, and the wrap-up is
-      confirmed in the window.</p>
+      <p>The bar&#39;s buttons answer End my day only while the bar shows its prompt.
+      The <strong>End my day</strong> button in the header puts the prompt on the bar too. If
+      something ranked above it holds the bar -- Lunch, in the shipped ordering --
+      the buttons keep doing what that screen says, and End my day is confirmed
+      in the window.</p>
       <hr>
       <h3 id="guide-a-stream-deck">🎹 A Stream Deck</h3>
       <p>SprintTicker has a plugin for Elgato&#39;s Stream Deck app (7.1 or later). It
@@ -1980,7 +1992,8 @@
       Deck Mobile, not yet on a physical deck.</p>
       <p>Its actions are listed under <strong>SprintTicker</strong> in the Stream Deck app.
       Session, Interrupt and Answer A, B and C fill five of a Stream Deck Mini&#39;s
-      six keys; Previous task and Recent 1-3 are there if you want them. Drag each
+      six keys -- the ready-made profile puts Previous task in the sixth -- and
+      Recent 1-3 are there if you want them. Drag each
       onto any key, as many times as you like:</p>
       <div class="table-wrap"><table>
       <thead>
@@ -2007,7 +2020,7 @@
       </tr>
       <tr>
       <td align="left"><strong>Answer A</strong></td>
-      <td align="left">says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY</td>
+      <td align="left">says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY, and WRAP UP for End my day</td>
       <td align="left">does that. DONE takes two presses</td>
       </tr>
       <tr>
@@ -2035,7 +2048,7 @@
       </li>
       <li><p><strong>Each position keeps one meaning.</strong> A always says yes, B always stops or
       waits, C always throws away; a key with nothing of its kind to do is
-      blank. When a question comes -- the stand-up, the wrap-up, back to your
+      blank. When a question comes -- the stand-up, End my day, back to your
       task? -- A and B turn into its answers. A press in the moment a key
       changes only flashes it, so a question arriving as you press DONE is not
       answered by mistake. After an interruption, A, B and C are DONE, STOP and
@@ -2066,8 +2079,8 @@
       <li><p><strong>Yes and no are two keys</strong>, and neither changes meaning with how long you
       hold it. Session is the one key with a long press: held, it opens the task
       picker in its own small window, in front of the app you are in -- to
-      switch tasks without ending the one running. The wrap-up asks
-      twice, as on the bar: yes, then <strong>CONFIRM</strong>.</p>
+      switch tasks without ending the one running. End my day asks twice, as
+      on the bar: WRAP UP, then <strong>CONFIRM</strong>.</p>
       </li>
       <li><p><strong>offline under every key</strong> means the plugin cannot reach SprintTicker:
       start it, and the keys come back by themselves within ten seconds. <strong>update
@@ -2080,7 +2093,8 @@
       <h3 id="guide-troubleshooting">🩺 Troubleshooting</h3>
       <p>Click a problem to unfold its answer.</p>
       <details>
-      <summary>📭 <b>The task list is empty</b></summary><p> Check <strong>Settings, Account</strong> for a saved domain and key.
+      <summary>📭 <b>The task list is empty</b></summary><p> Check <strong>Settings, Account</strong>: your Jira site or OpenProject address, and its
+      API token or key.
       Press <strong>Refresh now</strong>; if it stays empty, the credentials are probably wrong — the
       app deliberately does not invent tasks. A provider error is shown rather than
       swallowed.</p>
@@ -2088,57 +2102,58 @@
       <summary>🔑 <b>Jira says <code>Checking the Jira credentials failed: HTTP 401</code></b></summary><p> Jira no longer
       accepts the API token. Atlassian tokens carry an expiry date chosen when they
       are created, so a token that worked last month can simply have run out. Create
-      a new one at id.atlassian.com › Security › API tokens and paste it into Task
-      Providers. Your projects and tasks stay as they were in the meantime, and the
+      a new one at id.atlassian.com › Security › API tokens and enter it in
+      <strong>Settings › Account</strong> -- the red banner&#39;s field and <strong>Save and send</strong>, or
+      <strong>Change account</strong> › API token. Your projects and tasks stay as they were in the meantime, and the
       next sync brings them up to date.</p>
       </details><details>
-      <summary>🔀 <b>The task I am tracking says "No longer assigned to you", "Assigned to …" or "Closed on the provider"</b></summary><p> Since you started it, the task
+      <summary>🔀 <b>The task I am tracking says "No longer assigned to you", "Assigned to …" or "Closed in Jira"</b></summary><p> Since you started it, the task
       left what your provider lists for you: reassigned to someone else, closed, or
       moved to a project you are not in. Nothing is lost: the session keeps running
       and its time is logged when you stop. The task stays in your lists until then.
       Marking it done asks first, because your completion transition would move a
       task that is no longer yours. If the provider refuses the time -- some Jira
-      setups forbid logging on someone else&#39;s issue -- the row appears under <strong>Entries
-      waiting to send</strong> with Jira&#39;s own message.</p>
+      setups forbid logging on someone else&#39;s issue -- the entry appears under
+      <strong>Entries waiting to send</strong> with Jira&#39;s own message.</p>
       </details><details>
-      <summary>📤 <b>A worklog never reached Jira or OpenProject</b></summary><p> Open <strong>Entries waiting to send</strong> in <strong>Settings, Account</strong>. The
-      row carries the server&#39;s own message. Common causes:</p>
+      <summary>📤 <b>An entry never reached Jira or OpenProject</b></summary><p> Open <strong>Entries waiting to send</strong> in <strong>Settings, Account</strong> › Advanced. Each
+      entry carries the server&#39;s own message. Common causes:</p>
       <ul>
-      <li><em><code>404</code> — the issue no longer exists.</em> Nothing to do; the local worklog stands.</li>
+      <li><em><code>404</code> — the issue no longer exists.</em> Nothing to do; the entry here stands.</li>
       <li><em><code>400</code> — under a minute.</em> Jira records time to the minute; anything shorter
       rounds to zero and is refused. The time is in your local history.</li>
-      <li><em><code>401</code>/<code>403</code> — the key was revoked.</em> Enter a new one; saving credentials
-      automatically un-parks rows the old key stranded.</li>
+      <li><em><code>401</code>/<code>403</code> — the key was revoked.</em> Enter a new one; saving it sends again
+      the entries the old key stopped.</li>
       </ul>
       </details><details>
-      <summary>✏️ <b>A correction never reached Jira or OpenProject</b></summary><p> The worklog says <strong>Correction failed</strong>,
-      and <strong>Entries waiting to send</strong> lists a <em>Correction</em> row with the reason.</p>
+      <summary>✏️ <b>A correction never reached Jira or OpenProject</b></summary><p> The entry says <strong>Correction failed</strong>,
+      and <strong>Entries waiting to send</strong> lists the correction with the reason.</p>
       <ul>
       <li><em>Not found in Jira (or OpenProject).</em> The entry was deleted there, or its
-      comment lost the <code>[#xxxxxxxx]</code> tag that identifies it. Correct it there by
-      hand; the worklog here already has the new values.</li>
+      note lost the <code>[#xxxxxxxx]</code> tag that identifies it. Correct it there by
+      hand; the entry here already has the new values.</li>
       <li><em>Under a minute.</em> Jira records time to the minute, so a correction to a
       shorter duration is refused before it is sent.</li>
-      <li><em><code>401</code>/<code>403</code>.</em> As for any worklog: enter a new key, and the row is retried.</li>
+      <li><em><code>401</code>/<code>403</code>.</em> As for any entry: enter a new key, and it is sent again.</li>
       </ul>
-      <p>A <strong>Correction pending</strong> that stays put is waiting for the worklog&#39;s own send
+      <p>A <strong>Correction pending</strong> that stays put is waiting for the entry&#39;s own send
       to arrive first: a correction never overtakes it.</p>
       </details><details>
       <summary>🔕 <b>Notifications never appear on the bar</b></summary><p> Three things to check, in order: the
       app is set to something other than <em>Don&#39;t show</em>, and the row&#39;s switch is
       on; the notification listener is
-      running (<strong>Settings, Developer</strong> reports its status — <strong>its failures are otherwise
-      silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
+      running (<strong>Settings, Developer</strong>, once <strong>Show developer tools</strong> is on in
+      General, reports its status — <strong>its failures are otherwise silent</strong>); and nothing higher-priority holds the display, Lunch and Away being
       the usual culprits.</p>
       </details><details>
-      <summary>🔌 <b>The bar never connects</b></summary><p> The header shows <em>Disconnected</em> and Device
-      Diagnostics reports no firmware or battery. The bar reaches the app as a <strong>USB
+      <summary>🔌 <b>The bar never connects</b></summary><p> The header says <strong>Bar offline</strong>, and the bar&#39;s line in <strong>Settings, Desk
+      devices</strong> reads <em>Not answering at 10.0.4.20</em>, with no firmware or battery. The bar reaches the app as a <strong>USB
       network device on <code>10.0.4.20</code></strong>, so the question is whether that device exists
       at all:</p>
       <ol>
       <li>Open <a href="http://10.0.4.20">http://10.0.4.20</a> in a browser. If the bar&#39;s own web UI loads, the link
-      is fine and the problem is in the app — export the logs from Device
-      Diagnostics and read the <code>[BusyBarDriver]</code> lines.</li>
+      is fine and the problem is in the app — export the logs from <strong>Settings,
+      Data</strong> › <strong>Export logs</strong> and read the <code>[BusyBarDriver]</code> lines.</li>
       <li>If the browser times out, run <code>ipconfig</code> (Windows) and look for an adapter
       holding a <code>10.0.4.x</code> address. <strong>No such adapter means the bar is not
       enumerating</strong>, and nothing in software can reach it.</li>
@@ -2170,7 +2185,8 @@
       device through to another network stack. WSL2 with <code>usbipd-win</code> brings the
       adapter up without complaint under its own <code>cdc_ncm</code> driver; proxy the bar
       back to a local address from there.</p>
-      <p>Then <strong>put that address in Settings › Device → Connection</strong>. That is what the
+      <p>Then <strong>put that address in Settings › Desk devices › Connection ›
+      Change…</strong>. That is what the
       setting is for: the bar is reachable at, say, <code>10.0.4.21</code>, and the app needs
       to be told.</p>
       <p>One thing to watch if you go this route: a <code>usbipd</code> binding, and any watcher
@@ -2187,8 +2203,8 @@
       &quot;why won&#39;t it connect&quot; contained no evidence of the failure anywhere.</p>
       </div>
       <details>
-      <summary>🎞️ <b>An animation plays in the app but not on the bar</b></summary><p> Fixed as of this
-      release, and worth knowing why, because the symptom is confusing: the preview
+      <summary>🎞️ <b>An animation plays in the app but not on the bar</b></summary><p> Fixed in 1.2.0, and
+      worth knowing why, because the symptom is confusing: the preview
       and the bar are fed by two different paths. The on-screen emulator draws every
       frame locally, while the bar is handed the whole animation file and plays it
       itself, so the preview kept animating while the bar showed nothing. Two causes,
@@ -2231,14 +2247,15 @@
       export the logs from <strong>Settings, Data</strong>: the lines just before the freeze say
       what the app was drawing. For the first kind of freeze, uploads taking several
       hundred milliseconds, rather than about fifty, are the warning sign, and
-      <strong>Settings, Developer</strong> shows them under <strong>Bar health</strong>: the median upload
+      <strong>Settings, Developer</strong> (with <strong>Show developer tools</strong> on) shows them under
+      <strong>Bar health</strong>: the median upload
       time, turning red with a warning when it reaches that level, and how many
       times the screen closed in the last hour. If you see the warning, export the
       logs before restarting the bar; the bundle then holds the run-up to the
       freeze. Once the bar is back, the app redraws the current screen by itself.</p>
       </details><details>
-      <summary>🕰️ <b>The bar shows something stale</b></summary><p> Something is holding the display lock at a
-      higher priority. Check <strong>What the bar shows first</strong> and the mode in the header. After the bar
+      <summary>🕰️ <b>The bar shows something stale</b></summary><p> Something ranked higher in <strong>What the bar
+      shows first</strong> holds the bar. Check that list and the mode in the header. After the bar
       restarts or its connection drops, the app redraws the current screen within a
       few seconds of the bar answering again; before 1.2.1 it could put back the
       screen from before the outage.</p>
@@ -3765,7 +3782,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 2789 tests across 134 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 3872 tests across 193 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

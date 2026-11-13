@@ -88,10 +88,10 @@ describe('Settings · Developer', () => {
     render(<DeveloperSettings />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Bar remote' }));
-    expect(screen.getByRole('button', { name: 'START' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Open Bar health' }));
 
-    expect(screen.queryByRole('button', { name: 'START' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
     expect(screen.getByText('Inputs from the bar')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Close Bar health' }));
     expect(screen.queryByText('Inputs from the bar')).toBeNull();

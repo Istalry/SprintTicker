@@ -5,7 +5,7 @@
 <h1 align="center">SprintTicker</h1>
 
 <p align="center">
-  <em>A time tracker for the BUSY Bar — your task, your timer and your build, on the LED bar on your desk.</em>
+  <em>A time tracker for the BUSY Bar — your task, your timer and your day, on the LED bar on your desk.</em>
 </p>
 
 <p align="center">
@@ -39,9 +39,9 @@ thing holds the display rather than the most recent thing.
 It ships with a Stream Deck plugin that puts the session on keys, and a canvas
 emulator so the whole thing can be developed with nothing plugged in.
 
-**No BUSY Bar? It still works.** Choose *Not now* on first launch and
-SprintTicker is a time tracker with a mini timer, OpenProject and Jira sync,
-and an end-of-day wrap-up; add a bar later and nothing is lost.
+**No BUSY Bar? It still works.** Answer *I have neither* in the first run
+and SprintTicker is a time tracker with a mini timer, OpenProject and Jira
+sync, and End my day; add a bar later and nothing is lost.
 
 <table>
   <tr>
@@ -49,7 +49,7 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
     <th width="50%">💻 Without one</th>
   </tr>
   <tr>
-    <td><img src="docs/images/app-session-tracking.png" alt="Today, with the bar's preview in the header, tracking MG-12 at 01:24"></td>
+    <td><img src="docs/images/app-session-tracking.png" alt="Today, with the bar's preview in the header, tracking OP-12 at 01:24"></td>
     <td><img src="docs/images/app-nobar-session.png" alt="Today in no-bar mode: no preview, the same session and worklogs"></td>
   </tr>
   <tr>
@@ -62,8 +62,8 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 
 | | |
 | :---: | :--- |
-| <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task MG-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
-| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before MG-12, the time below"> | ⏸️ **Paused** — Pause again within 4 s stops, later it resumes; a wheel click interrupts. |
+| <img src="docs/images/bar-tracking.webp" width="304" alt="Tracking: green stopwatch, task OP-12, 01:24"> | ⏱️ **Tracking** — the task on top, the time below, the stopwatch's hand ticking. |
+| <img src="docs/images/bar-paused.webp" width="304" alt="Paused: amber stopwatch, two pause bars before OP-12, the time below"> | ⏸️ **Paused** — Pause again within 4 s stops, later it resumes; a wheel click interrupts. |
 | <img src="docs/images/bar-standup.webp" width="304" alt="Daily Stand... with a meeting icon, 00:00"> | 🗣️ **Stand-up** — its own timer, three people at a table taking turns to speak. |
 | <img src="docs/images/bar-banner.png" width="304" alt="A Slack banner: Mira, New message"> | 🔔 **Notifications** — from the apps you allow, with their own icon. |
 | <img src="docs/images/bar-scene-lunch.webp" width="304" alt="The Lunch scene"> | 🥪 **Lunch, Away, meetings** — full-screen scenes while you are not at your desk. |
@@ -113,14 +113,18 @@ and an end-of-day wrap-up; add a bar later and nothing is lost.
 Four places -- **Today**, **Tasks**, **History** and **Settings** -- and a
 header with the bar's preview, the Work / Lunch / Away mode, the mini timer,
 **End my day**, and one word for how things stand (**All good**, **2
-waiting**, **Sending stopped**, **Update**, **Bar offline**) that opens the
-details. Settings is six groups with a search box that knows the settings'
+waiting**, **Sending stopped**, **Not set up**, **Update**, **Bar offline**)
+that opens the details. **Ctrl+K** offers every action your state allows. Settings is six groups with a search box that knows the settings'
 old names; the developer tools stay hidden until you ask for them.
 
 ### ⏱️ Time tracking
 
 Timestamp-based sessions with start / pause / resume / finish, a live tracker on
-the bar, and a local worklog history with an end-of-day export. A session left
+the bar, and a local worklog history: each day as a timeline with the time
+you didn't time, the week as a timesheet, **Check my week**, **Add time** and
+**Split in two**, and a CSV export. Everything you stop, discard, correct or
+move waits ten seconds for **Undo** before it is sent, and **End my day**
+shows the day's entries, sends them, and can shut the PC down afterwards. A session left
 running overnight or over the weekend is paused at your last activity and you
 are asked when you stopped, while overtime past midnight runs on untouched; a
 session is logged as one worklog per day it ran on, and a long pause starts a
@@ -131,18 +135,18 @@ through `better-sqlite3` with versioned schema migrations, so upgrading never
 discards existing worklogs.
 
 **Interrupt** starts a timer at once when someone comes to your desk -- one
-click on the session card, in the mini timer or in the tray, or a keyboard
-shortcut from any app (Ctrl+Alt+Shift+I; Switch, Previous and Back have
-theirs too) -- on a new task named for
-the time; when it ends, you are asked whether to go back to the task it
-stopped.
+click on the session card, in the mini timer or in the tray, a wheel click on
+the bar, a Stream Deck key, or a keyboard shortcut from any app
+(Ctrl+Alt+Shift+I; Switch, Previous and Back have theirs too). Your task
+waits, paused; **Back** returns to it, and the interruption's time goes to
+the task you **place** it on -- or stays off your provider.
 
 A **mini timer**, a small always-on-top window, shows the running task and its
 time on screen, with or without a bar, beside the icon of whatever holds the
 bar -- the session, a notification, a prompt, lunch:
 
 <p align="center">
-  <img src="docs/images/app-mini-timer.png" alt="The mini timer: MG-12, 01:24:10, pause, stop and switch buttons">
+  <img src="docs/images/app-mini-timer.png" alt="The mini timer: OP-12, 01:24:10, pause, stop and switch buttons">
 </p>
 
 <table>
@@ -179,10 +183,11 @@ Fetches projects and work packages over the REST API v3, updates a work
 package's status when tracking starts or completes, and posts tracked durations
 to `/api/v3/time_entries` as ISO 8601 durations.
 
-Time entries go through an **offline sync queue**: if the server is unreachable
-when you stop a session, the row stays `PENDING` with exponential backoff and is
-dispatched when connectivity returns. Nothing billable is dropped because a POST
-failed.
+Time entries go through an **offline sync queue**, ten seconds after you stop
+so Undo can take them back: if the server is unreachable, the row waits with
+exponential backoff and is sent when connectivity returns. Nothing billable is
+dropped because a POST failed, and an entry the provider refuses says why and
+is not retried.
 
 Its **notifications become Windows toasts** -- assigned, mentioned, commented,
 status changed, date alert, each switchable -- and optionally banners on the
@@ -204,8 +209,8 @@ Two things it does differently from the OpenProject adapter, both because Jira's
 model allows it:
 
 - **Status needs no configuration.** It reads Jira's `statusCategory`, which
-  every workflow has, where OpenProject needs three numeric status ids looked up
-  and pasted into Settings by hand.
+  every workflow has, where OpenProject needs its states chosen in Settings ›
+  Account, from the instance's own list.
 - **Transitions are configured by name.** Jira has no writable status field — a
   status is reached by executing a transition — and a transition id means
   nothing outside the one workflow it belongs to, whereas the name usually
@@ -230,7 +235,7 @@ search, leaving out your own.
 
 Everything on the front matrix is rasterised in the main process to a 72×16 PNG
 and uploaded to the device: 16×16 app icons, scrolling task titles, notification
-banners, compile progress bars, LED status colours and `.anim` animations.
+banners, LED status colours and `.anim` animations.
 
 Frames are hashed and identical frames skipped, so a tracking session sends
 traffic on state change rather than on every tick.
@@ -307,16 +312,20 @@ Interrupt, and three answer keys with one meaning each -- A says yes (done,
 back, join, resume), B stops or waits, C throws away. Five keys, on a Stream
 Deck Mini's six; Previous task and three Recent keys are there to add. It talks to the app on
 this machine, and every key turns grey while SprintTicker is closed. See
-[the plugin](#-stream-deck-plugin) below. Not yet tried on a physical deck.
+[the plugin](#-stream-deck-plugin) below. Tried on Stream Deck Mobile; not
+yet on a physical deck.
 
 ### 📅 Ceremonies and schedules
 
-Configurable working hours, lunch and away detection, a standup prompt whose
-Join switches the timer to a Daily Standup task and back to your task after it,
-and an end-of-day wrap-up that can be confirmed from
-the bar's **Pause** button or dismissed with a **wheel click**. Lunch stops the
-running task and starts it again afterwards, across a restart of the app too;
-start or resume a task during lunch and Lunch ends for the day instead.
+Configurable working hours, lunch and away detection, a stand-up prompt whose
+Join switches the timer to the stand-up's task and back to your task after it,
+and **End my day**, which the bar's **Pause** confirms and a **wheel click**
+puts off. Lunch and Away pause the running task, and when they end the window
+and the bar ask *Back at your desk?* -- nothing restarts on its own; start or
+resume a task during lunch and Lunch ends for the day instead. No question
+takes the window: each waits as a card on Today and in the mini timer, and a
+reminder asks once when nothing is timing, a pause runs long, or an
+interruption does.
 Ceremonies happen on the working days you pick, less the holidays your
 OpenProject instance lists, and the last one in a week closes it with a
 reminder of the time logged.
@@ -420,8 +429,8 @@ and Electron (for the app) both load as it is. Alternating `pnpm test` and
    token — nothing to configure for a normal USB setup. Both the address and an
    API token are editable under **Settings → Desk devices → Connection** for a bar on
    Wi-Fi, or one reached through a proxy.
-3. For OpenProject, open **Settings → Account** and enter your instance URL
-   and an API key. Until you do, the app runs entirely on local ad-hoc tasks.
+3. An account can wait: **Settings → Account → Set up**, for OpenProject or
+   Jira. Until then, the app runs on tasks of your own.
 4. In **Settings → Desk devices → Windows notifications on the bar**, choose which applications may reach the
    bar. Nothing is mirrored until you allow it.
 
@@ -495,10 +504,10 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 2789 tests across 134 files for the app -- the main and shared
-process code, plus smoke tests that mount every renderer view in jsdom (the
-renderer is not counted in coverage) -- then the animation studio's
-117 across 6 files, then the Stream Deck plugin's 238 across 8;
+`pnpm test` runs 3872 tests across 193 files for the app -- the main and shared
+process code, plus the renderer's views mounted in jsdom (the renderer is not
+counted in coverage) -- then the animation studio's 117 across 6 files, then
+the Stream Deck plugin's 320 across 8;
 `pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.
@@ -605,7 +614,9 @@ pnpm deck:pack   # dist/io.github.istalry.sprintticker.streamDeckPlugin
 ```
 
 Double-click the file it writes, then drag the **SprintTicker** actions onto
-keys. Releases attach it beside the installer as
+keys, or pick one of the ready-made profiles it brings, for the Stream Deck
+Mini and Stream Deck Mobile. The installer carries the plugin too, and the
+first run offers to install it. Releases attach it beside the installer as
 `SprintTicker-StreamDeck-<version>.streamDeckPlugin`, under a version of its
 own; the release workflow refuses a tag whose plugin changed while that
 version did not, since Stream Deck would keep the old one. Its [README](packages/streamdeck-plugin/README.md) lists the actions and
