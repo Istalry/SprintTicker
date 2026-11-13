@@ -42,6 +42,12 @@ export const RESUME_PROMPT_TEXT = { question: 'NOT YOURS', hint: 'RESUME IT?' } 
  * question. No button is named: Pause is yes on every question (P14b).
  */
 export const RESUME_AFTER_INTERRUPTION_TEXT = { fallback: 'YOUR TASK', hint: 'BACK TO IT?' } as const;
+/**
+ * After Lunch, Away or the stand-up, over the held task's key. Not BACK TO
+ * IT?: Back is the end of an interruption in every word of the app, and the
+ * window's answer here is Resume (P15d).
+ */
+export const RESUME_AFTER_BREAK_HINT = 'RESUME?';
 const RESUME_PROMPT_LED = '#F59E0BFF';
 
 /**
@@ -1075,7 +1081,7 @@ export class DisplayRenderer {
       this.paintIconAndTwoRows(
         getBitmapById(interruption ? 'task_in_progress' : after === 'standup' ? 'clock' : 'burger'),
         interruption ? taskKey || RESUME_AFTER_INTERRUPTION_TEXT.fallback : RESUME_PROMPT_TEXT.question,
-        interruption ? RESUME_AFTER_INTERRUPTION_TEXT.hint : RESUME_PROMPT_TEXT.hint,
+        !interruption ? RESUME_PROMPT_TEXT.hint : after === 'interruption' ? RESUME_AFTER_INTERRUPTION_TEXT.hint : RESUME_AFTER_BREAK_HINT,
         CONFIRM_COLOR,
         CONFIRM_HINT_COLOR
       );

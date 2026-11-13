@@ -172,8 +172,8 @@ describe('faceFor', () => {
 
   it.each<[DeckPrompt, [string, string], [string, string]]>([
     ['standup', ['JOIN', 'stand-up'], ['SKIP', 'stand-up']],
-    ['wrap-up', ['WRAP UP', 'end the day'], ['NOT NOW', 'keep going']],
-    ['wrap-up-confirm', ['CONFIRM', 'wrap-up'], ['NOT NOW', 'keep going']],
+    ['wrap-up', ['END MY DAY', 'sends the day'], ['NOT NOW', 'keep going']],
+    ['wrap-up-confirm', ['CONFIRM', 'end my day'], ['NOT NOW', 'keep going']],
     ['resume', ['RESUME', 'the task'], ['NOT NOW', 'leave it']],
     ['back', ['BACK', 'SPR-1'], ['NOT NOW', 'leave it']],
     ['lunch', ['START LUNCH', 'ends it'], ['NOT NOW', 'work on']]

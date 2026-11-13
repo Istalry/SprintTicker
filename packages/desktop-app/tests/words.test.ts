@@ -78,6 +78,11 @@ describe('words', () => {
       expect(DECK_WORDS.DISCARD_INTERRUPTION).toBe('DISCARD ⚡');
       expect(DECK_WORDS.DISCARD).toBe(BarWord.DISCARD);
     });
+
+    it('DeckWords_EndMyDay_IsTheBarsWord', () => {
+      // The deck said WRAP UP after the window and the bar had dropped it.
+      expect(DECK_WORDS.END_MY_DAY).toBe(BarWord.END_MY_DAY);
+    });
   });
 
   describe('labels', () => {

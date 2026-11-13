@@ -96,7 +96,7 @@ export const DECK_WORDS = {
   START: 'START',
   PREVIOUS: 'PREV',
   START_LUNCH: 'START LUNCH',
-  WRAP_UP: 'WRAP UP',
+  END_MY_DAY: 'END MY DAY',
   CONFIRM: 'CONFIRM'
 } as const;
 

@@ -950,7 +950,7 @@ time goes in as two entries either side of a break of 15 minutes or more
 (*A long pause starts a new entry*, in **My workday**), to the second. When
 the break ends -- lunch's hour is over, or you unlock Windows -- Today and
 the mini timer ask **Back at your desk?**, naming the task, and the bar shows
-its key over **BACK TO IT?** -- Pause resumes, a wheel click is Not now:
+its key over **RESUME?** -- Pause resumes, a wheel click is Not now:
 
 - **Resume KEY** starts timing again.
 - **I worked through it** takes the break back as though you had never
@@ -1360,7 +1360,7 @@ onto any key, as many times as you like:
 | **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (**NOT YOURS**). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker. During an interruption it does neither: end it first |
 | **Interrupt** | INTERRUPT -- ANOTHER during an interruption -- and "3 to place" while interruptions wait for you in the app | starts a timer at once, whatever runs -- see [Interrupt](#-interrupt-a-timer-at-once) |
 | **Previous task** | PREV and the task's key | goes back to the task you timed before this one. Blank during an interruption: A goes back |
-| **Answer A** | says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY, and WRAP UP for End my day | does that. DONE takes two presses |
+| **Answer A** | says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY, and END MY DAY | does that. DONE takes two presses |
 | **Answer B** | stops or waits, keeping the time, in blue-grey: STOP, SKIP, NOT NOW | does that; STOP logs the time and leaves the task open |
 | **Answer C** | throws away, in red: DISCARD, or DISCARD ⚡ during an interruption -- the interruption, not your task | two presses; nothing logged. Blank while a question waits or nothing runs |
 | **Recent 1, 2, 3** | one of your recent tasks and START -- never the one running; blank during an interruption | starts it |
@@ -1399,7 +1399,7 @@ onto any key, as many times as you like:
   hold it. Session is the one key with a long press: held, it opens the task
   picker in its own small window, in front of the app you are in -- to
   switch tasks without ending the one running. End my day asks twice, as
-  on the bar: WRAP UP, then **CONFIRM**.
+  on the bar: END MY DAY, then **CONFIRM**.
 - **offline under every key** means the plugin cannot reach SprintTicker:
   start it, and the keys come back by themselves within ten seconds. **update
   app** means SprintTicker and the plugin are of different versions -- update

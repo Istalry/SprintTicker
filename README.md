@@ -504,7 +504,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 3872 tests across 193 files for the app -- the main and shared
+`pnpm test` runs 3877 tests across 193 files for the app -- the main and shared
 process code, plus the renderer's views mounted in jsdom (the renderer is not
 counted in coverage) -- then the animation studio's 117 across 6 files, then
 the Stream Deck plugin's 320 across 8;

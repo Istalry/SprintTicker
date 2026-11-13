@@ -43,14 +43,14 @@ months of history: every screen answers within about a tenth of a second.
   Account.
 - **No prompt takes the window any more.** The stand-up, *Back at your
   desk?* and the reminders wait as cards on Today and in the mini timer.
-- **The Stream Deck plugin is 0.6.3**, in the installer: the first run
+- **The Stream Deck plugin is 0.6.4**, in the installer: the first run
   offers it. A deck laid out with 0.5 keeps working.
 - **Unity support is gone** -- see Removed.
 
 ### Added
 
-- **Stream Deck plugin 0.6.3: one meaning per key.** A says yes -- DONE,
-  BACK to your task during an interruption, JOIN, RESUME, END STAND-UP --
+- **Stream Deck plugin 0.6.4: one meaning per key.** A says yes -- DONE,
+  BACK to your task during an interruption, JOIN, RESUME, END STAND-UP, END MY DAY --
   in green; B stops or waits -- STOP, SKIP, NOT NOW -- in blue-grey; C
   throws away -- DISCARD, or DISCARD ⚡ for an interruption -- in red, and
   is blank when there is nothing to throw. DONE always takes two presses.
@@ -62,7 +62,7 @@ months of history: every screen answers within about a tenth of a second.
   Stream Deck Mobile come with it, beside your own profiles.
 - **The app speaks the Stream Deck's protocol 2** -- an interruption, what
   waits to be placed, the previous and recent tasks, the stand-up running
-  -- which plugin 0.6.3 uses. Plugin 0.5 keeps working as it does: the app
+  -- which plugin 0.6.4 uses. Plugin 0.5 keeps working as it does: the app
   tells the two apart and answers each in its own protocol.
 - **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
   Switch task (S), Previous task (P) and Back (B), on by default and each

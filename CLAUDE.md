@@ -1307,6 +1307,13 @@ logging, and treat anything an agent reports about this file as a hypothesis.
 The same caution applies to *writing*: a backup or restore performed from such a
 shell may not land where the installed app will look for it.
 
+So is *launching* the app on its default profile. `pnpm verify:packed` used
+to: from an agent's shell it opened the redirected copy, which read as
+`database disk image is malformed` with secrets that would not decrypt, and
+failed a sound build (2026-11-13). It now runs on a throwaway
+`--user-data-dir`, as `capture-app.js` and the dry run do; anything new
+that starts the app does the same.
+
 **Never `DELETE FROM tasks`.** `worklogs.task_id` is a foreign key (migration
 5), so deleting a task with logged time fails -- by design, because the paths
 that used to do it left history naming ids nothing could resolve. Tasks leave

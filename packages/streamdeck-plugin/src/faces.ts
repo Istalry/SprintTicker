@@ -132,8 +132,8 @@ const MEANING_GLYPHS: Record<'back' | 'end-standup', Glyph> = { back: 'back', 'e
 /** What yes and no say on each prompt: the answer, and what it means. */
 const PROMPTS: Record<DeckPrompt, Record<'yes' | 'no', [title: string, hint: string]>> = {
   standup: { yes: [DECK_WORDS.JOIN, 'stand-up'], no: [DECK_WORDS.SKIP, 'stand-up'] },
-  'wrap-up': { yes: [DECK_WORDS.WRAP_UP, 'end the day'], no: [DECK_WORDS.NOT_NOW, 'keep going'] },
-  'wrap-up-confirm': { yes: [DECK_WORDS.CONFIRM, 'wrap-up'], no: [DECK_WORDS.NOT_NOW, 'keep going'] },
+  'wrap-up': { yes: [DECK_WORDS.END_MY_DAY, 'sends the day'], no: [DECK_WORDS.NOT_NOW, 'keep going'] },
+  'wrap-up-confirm': { yes: [DECK_WORDS.CONFIRM, 'end my day'], no: [DECK_WORDS.NOT_NOW, 'keep going'] },
   resume: { yes: [DECK_WORDS.RESUME, 'the task'], no: [DECK_WORDS.NOT_NOW, 'leave it'] },
   back: { yes: [DECK_WORDS.BACK, 'to the task'], no: [DECK_WORDS.NOT_NOW, 'leave it'] },
   lunch: { yes: [DECK_WORDS.START_LUNCH, 'ends it'], no: [DECK_WORDS.NOT_NOW, 'work on'] }

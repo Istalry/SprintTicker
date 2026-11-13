@@ -3,7 +3,8 @@ import {
   MENU_CONFIRM_TEXT,
   PAUSED_MARK_WIDTH,
   MenuConfirm,
-  RESUME_AFTER_INTERRUPTION_TEXT
+  RESUME_AFTER_INTERRUPTION_TEXT,
+  RESUME_AFTER_BREAK_HINT
 } from '../src/main/hardware/display-renderer';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 import { measureText } from '../src/shared/proportional-text';
@@ -33,5 +34,6 @@ describe('paused screen layout', () => {
     // Row 0 is the task's key, cut where it must be; the answer is never cut.
     expect(measureText(RESUME_AFTER_INTERRUPTION_TEXT.fallback, ROW0_FONT)).toBeLessThanOrEqual(field);
     expect(measureText(RESUME_AFTER_INTERRUPTION_TEXT.hint, ROW1_FONT)).toBeLessThanOrEqual(field);
+    expect(measureText(RESUME_AFTER_BREAK_HINT, ROW1_FONT)).toBeLessThanOrEqual(field);
   });
 });

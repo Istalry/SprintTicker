@@ -2,6 +2,7 @@ const { spawn, execSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 /**
  * Automated verification of the packed Windows binary.
@@ -43,7 +44,22 @@ async function verifyPackedApp() {
   let hasUncaughtError = false;
   let errorMessage = '';
 
-  const appProcess = spawn(exePath, ['--mock-hardware'], {
+  // A throwaway profile, never the user's: on the default one the app opens
+  // the real database (development shares it, CLAUDE.md section 7), and from
+  // an agent's shell inside the Claude app that is a redirected copy, which
+  // read as malformed and failed this check on 2026-11-13 (P15d).
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sprintticker-verify-'));
+  process.on('exit', () => {
+    try {
+      fs.rmSync(profile, { recursive: true, force: true });
+    } catch (err) {
+      // The app may still hold a file for a moment after its kill; a temp
+      // folder left behind costs nothing, so the run's verdict stands.
+      console.warn(`[VERIFY] Could not remove the throwaway profile ${profile}: ${err.message}`);
+    }
+  });
+
+  const appProcess = spawn(exePath, ['--mock-hardware', `--user-data-dir=${profile}`], {
     cwd: path.dirname(exePath),
     env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1', MOCK_HARDWARE: 'true' },
     detached: false

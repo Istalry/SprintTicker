@@ -1,6 +1,6 @@
 import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DisplayRenderer, MENU_CONFIRM_TEXT, PAUSED_MARK_WIDTH } from '../src/main/hardware/display-renderer';
+import { DisplayRenderer, MENU_CONFIRM_TEXT, PAUSED_MARK_WIDTH, RESUME_AFTER_BREAK_HINT, RESUME_AFTER_INTERRUPTION_TEXT } from '../src/main/hardware/display-renderer';
 import { INTERRUPTION_16X16_BITMAP } from '../src/shared/pixel-bitmaps';
 import { DISPLAY_CONSTANTS } from '../src/shared/render-constants';
 import { BarWord, barToPlaceLabel } from '../src/shared/words';
@@ -972,6 +972,22 @@ describe('DisplayRenderer Unit Tests', () => {
 
       expect(texts()).toContain(BarWord.STAND_UP);
       expect(texts()).not.toContain('Daily Standup');
+    });
+
+    it.each(['lunch', 'away', 'standup'] as const)('RenderResumePrompt_After%s_AsksResumeNotBack', after => {
+      // Back is the end of an interruption everywhere else; after a break the
+      // window offers Resume, and so does the bar (P15d).
+      renderer.renderResumePrompt(after, 'MG-12', true);
+
+      expect(texts()).toContain('MG-12');
+      expect(texts()).toContain(RESUME_AFTER_BREAK_HINT);
+      expect(texts()).not.toContain(RESUME_AFTER_INTERRUPTION_TEXT.hint);
+    });
+
+    it('RenderResumePrompt_AfterAnInterruption_AsksBackToIt', () => {
+      renderer.renderResumePrompt('interruption', 'MG-12');
+
+      expect(texts()).toContain(RESUME_AFTER_INTERRUPTION_TEXT.hint);
     });
 
     it('RenderActiveSession_TaskGivenAway_SaysTheKeyAndTheirFirstName', () => {
