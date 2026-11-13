@@ -91,7 +91,7 @@ describe('checkWeek', () => {
     const entries = FULL_WEEK.filter(e => e.id !== '4b').concat(entry('4c', 'PF-31', 4, 13, 0, 180), entry('4d', 'PF-31', 4, 16, 20, 40));
 
     expect(checkWeek(input({ entries })).issues).toEqual([{
-      kind: 'gaps', title: 'Wednesday has 20m untracked', details: ['1 gap · 16:00–16:20'], fix: { kind: 'open-day', dateKey: '2026-11-04', label: 'Open Wednesday' }
+      kind: 'gaps', title: 'Wednesday has 20m not timed', details: ['1 gap · 16:00–16:20'], fix: { kind: 'open-day', dateKey: '2026-11-04', label: 'Open Wednesday' }
     }]);
   });
 

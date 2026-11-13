@@ -151,8 +151,8 @@ Timer** in the header or **Mini timer** in the tray menu.
 - 📋 The **list** button brings the window forward with the task picker open:
   that is how you start or switch a task from it.
 - ❓ **A question takes the row** until you answer it, with an amber edge:
-  the stand-up (**Skip**, **Join**), **Back at your desk?** (**Not now**,
-  **Worked through**, **▶ Resume**) and **Back to MG-12? 6 min untracked**
+  the stand-up (**Skip today**, **Join**), **Back at your desk?** (**Not now**,
+  **I worked through it**, **▶ Resume**) and **Back to MG-12? 6 min not timed**
   (**Not now**, **↩ Back +6m**, **↩ Back**), and, when nothing else is asked, a reminder
   -- see *Reminders ask once*, with the ceremonies. Answered anywhere, it
   goes everywhere.
@@ -269,8 +269,8 @@ away with **×**, and does not come back that day.
 
 📋 **Today's entries** are under the session card, newest first, one row
 each: the task, its note, its time, when it started, and where it stands
-with your provider -- **Sent**, **Sending**, **Waiting · overlaps PF-31**,
-**Not sent**, or **Local only** for work never sent. **⋯** on a row holds
+with your provider -- **Sent**, **Waiting to send**, **Waiting to send ·
+overlaps PF-31**, **Not sent**, or **Logged here** for work never sent. **⋯** on a row holds
 **Correct…**, **↳ Move…** and **Delete…**, as in History. ⚡ marks time
 that started as an interruption and was placed on its task. The heading
 counts the day -- *6h 05m · 5h 20m sent · 45m to place*: everything done
@@ -326,7 +326,7 @@ all.
 
 ### 🔎 Finding a task: the picker
 
-**Start a task**, **Switch task**, **Assign to a task…**, **Place…** and
+**Start a task**, **Switch task**, **Place on a task…**, **Place…** and
 **Move** all open the same picker. Type, and it searches every task of every
 project at once -- key, title, description or project name -- grouped by
 project. Before you type, it offers:
@@ -347,7 +347,7 @@ Arrow keys and Enter pick from the keyboard; Escape closes.
 - **A ticket made a minute ago** is not there until the next sync. Type its
   key -- `MG-77`, or a work package's number in OpenProject -- and the picker
   offers **Fetch MG-77 from Jira**: one request, about a second, and the task
-  starts. **A ticket is missing? Refresh from Jira**, at the bottom, fetches
+  starts. **A task is missing? Refresh from Jira**, at the bottom, fetches
   everything again.
 - **A task of my own…** starts work that stays in SprintTicker and is never
   sent; with something typed, it is named after it.
@@ -399,18 +399,17 @@ see below.
 
 While it runs, the session card says which task waits, and offers:
 
-- ↩ **Back to MG-12** ends the interruption and resumes the task. A task
-  that was already paused when you pressed Interrupt stays paused.
+- ↩ **Back to MG-12** ends the interruption and goes back to the task, as
+  it was: a task already paused when you pressed Interrupt stays paused.
 - ⏹️ **Stop** ends the interruption alone, and a small **Place** window
   opens in front at once, wherever you are: the interruptions of that run
   -- Marc, then Ana -- each on its own row, with its name to type and its
   own **Choose a task ▾**. Place the ones you chose; **Later** or Escape
   leaves them to place on Today, with the names you typed. The task still
-  waits, paused, and SprintTicker asks **Back to your task?**, naming it:
-  in the window, and on the bar as the task's key over **BACK TO IT?**.
-  **Resume it** goes back; **Resume, and count the time since as work**
-  also puts the minutes between the Stop and now on the task; **Leave it**
-  leaves it paused.
+  waits, paused, and SprintTicker asks **Back to MG-12?**: in the window,
+  and on the bar as the task's key over **BACK TO IT?**. **↩ Back to MG-12**
+  goes back; **↩ Back, add the 6 min** also puts the minutes between the
+  Stop and now on the task; **Not now** leaves it paused.
 - ⚡ **Another**: someone else arrives before you got back. The interruption
   ends and the next starts, waiting on the same task. Marc, then Ana, then
   Marc again is three interruptions in a row and one **Back**.
@@ -463,7 +462,7 @@ so you can place them while you remember what they were. For each:
 
 - Click its name to give it one, or **⋯** › **Rename…**.
 - **↳ Place…** opens it in the Place list on its own: name it, choose its
-  task, and **Place the 1 chosen** makes it an entry, sent like any other,
+  task, and **Place 1** makes it an entry, sent like any other,
   with ten seconds to undo.
 - Tick some, and **↳ Place 2…** puts them all on one task.
 - **Place all 3…** opens them all in one list, each with its own **Choose a
@@ -472,7 +471,7 @@ so you can place them while you remember what they were. For each:
   first part. Nothing is chosen until you click; **Keep as its own entry**
   is in each menu too. Each row has its name to type, since the name is the
   note the provider shows; a name you type is kept even if you close the
-  list. **Place the N chosen** places those; the others stay to place.
+  list. **Place N** places those; the others stay to place.
 - **⋯** › **Keep as its own entry** keeps its time in your history as an
   entry of its own, ad-hoc work, never sent to Jira -- nothing is deleted.
   With no provider, it is simply an entry in your history.
@@ -629,21 +628,21 @@ a look, each with its fix:
 - an interruption still to place -- **Place…** opens Place interruptions;
 - a correction your provider has not answered, or an entry it refused --
   **Send now** sends again what was refused;
-- a working day with untracked time in its working hours, or nothing logged
+- a working day with time not timed in its working hours, or nothing logged
   at all -- **Open** that day, where a gap opens Add time;
 - two entries that overlap -- **Fix…** opens their day; the later one is
   not sent until the overlap is fixed;
 - in a week already closed, any entry added, corrected or deleted since it
   closed: what your manager saw has moved. With none, it says so.
 
-There is no daily target to be "under": untracked time is what it shows
+There is no daily target to be "under": time not timed is what it shows
 instead.
 
 ▨ **The day as a timeline.** Under the day's figures, a strip shows your
 working hours -- from the stand-up to the wrap-up, as set in **Settings, My
 workday** -- with each entry a block named by its task, ⚡ for time that began
 as an interruption, and lunch. What no entry covers is hatched, and the strip
-says how much: *6h 50m logged · 40m untracked in working hours*. A click on a
+says how much: *6h 50m logged · 40m not timed in working hours*. A click on a
 hatched stretch opens Add time at its start and length; a click on a block
 corrects that entry. Nothing is guessed or logged from a gap -- it is only
 shown. Stretches under five minutes are not, on today the rest of the day is
@@ -679,7 +678,7 @@ rather than lost.
 **A worklog is written locally whether or not the remote accepted it.** If Jira
 refused a 40-second session, the time is still in your history — it just is not
 in Jira. Each entry says where it stands: **Sent**, **Sending**, **Not sent**,
-**Local only** (ad-hoc work, or too short for your provider), or a correction
+**Logged here** (ad-hoc work, or too short for your provider), or a correction
 on its way.
 
 <p align="center">
@@ -698,7 +697,7 @@ the ten seconds sends it at the next start.
 
 ⏸️ **Two entries that overlap are not both sent.** The same hour twice is
 the error a timesheet reviewer finds first, so the later of two overlapping
-entries says **Waiting · overlaps PF-31** and is not sent until you correct
+entries says **Waiting to send · overlaps PF-31** and is not sent until you correct
 one of them; then it goes. A correction that would make two entries overlap
 says so before you save it. Entries already sent stay as they are.
 
@@ -746,7 +745,7 @@ A page of rows, as General. The first names your account -- *Jira ·
 studio.atlassian.net*, with your email, how many projects and tasks it
 fetched and when it last refreshed -- with **Refresh now** and **Change
 account**, which opens the provider, the site and the token under it. Then
-**Tasks to fetch** -- assigned to me, everything open, or your own query
+**Tasks to fetch** -- *Mine, free and in progress*, *Everything open*, or your own query
 (JQL for Jira, a v3 filter array for OpenProject), typed under the row.
 **When I start a task** says how long a task is timed before it moves to In
 Progress and becomes yours -- right away, after one, two (the default) or
@@ -858,7 +857,7 @@ shows the day before anything is sent:
 - **every** entry of the day, nothing folded, with where it stands with Jira
   (or OpenProject), and the task still running: *stops, stays open, and is
   sent*;
-- the untracked gaps in your working hours, as a hint only -- **Check
+- the gaps not timed in your working hours, as a hint only -- **Check
   them…** opens History, **Skip** hides them; a gap never stops you ending
   the day.
 
@@ -866,8 +865,8 @@ Its button says exactly what it does: *End my day · send 1h 45m · 45m left
 to place*. One click stops the running task (it stays open in Jira) and
 sends everything on a task after the usual ten seconds to undo; **Undo**
 brings the task back as it was. Anything Jira refuses stays here, and the
-next day says so. **Later** asks again in 15 minutes. On the bar it is still
-two presses of START, and BACK closes it.
+next day says so. **Remind me in 15 min** asks again then. On the bar it is
+two presses of Pause, and the wheel's click closes it.
 
 **Then shut down the PC** is a separate choice, never ticked for you. The
 shutdown waits until the ten seconds of Undo have passed and Jira has
@@ -922,7 +921,7 @@ again, by the same rules as after lunch: once, that day, and only if you have
 not started something else meanwhile, and never when the end-of-day wrap-up
 is what stopped it. A task that left your list during the
 meeting is asked about first: **Resume after the stand-up?** in the window,
-**NOT YOURS / RESUME IT?** on the bar. **Leave it**, BACK, or leaving the
+**NOT YOURS / RESUME IT?** on the bar. **Not now**, the wheel's click, or leaving the
 question alone keeps your task running.
 
 🥪 **Lunch and Away pause the task you are tracking.** Neither is timed,
@@ -940,7 +939,7 @@ its key with **RESUME IT?**:
 
 During the break, Today has a **Lunch until 13:30** or **Away** card saying
 the task is paused and nothing is sent, with **Resume KEY** -- resuming
-during lunch is working through it -- or, for Away, **Back: resume KEY**,
+during lunch is working through it -- or, for Away, **Resume KEY**,
 which also leaves Away.
 
 The paused session is kept in the database: closing the app over lunch, or
@@ -1012,14 +1011,14 @@ Per app, choose one of three:
 | Setting | Effect |
 | :--- | :--- |
 | 🚫 **Don't show** | Ignored entirely |
-| 💬 **Default** | Claims the display at whatever *Notification — Default* scores |
-| 🔔 **High priority** | Claims it at whatever *Notification — High Priority* scores |
+| 💬 **Default** | Claims the display at whatever *Default notifications* scores |
+| 🔔 **High priority** | Claims it at whatever *High-priority notifications* scores |
 
 Note what that means: an app is assigned to a **class**, and **What the bar shows
 first** decides what that class is worth and how it behaves during Lunch and Away.
 Nothing here hardcodes which app wins. In the shipped defaults those two classes
 score 65 and 70, and a few common apps arrive pre-classified — Slack and the
-battery warning as High Priority, Discord, Gmail and Windows as Default — but
+battery warning as High priority, Discord, Gmail and Windows as Default — but
 all of it is yours to change.
 
 Each app's real icon is resolved from its MSIX manifest or Start Menu shortcut
@@ -1055,16 +1054,16 @@ the list sorts itself again; type a level from 1 to 100 to place it exactly.
 
 | Claim | Default |
 | :--- | ---: |
-| 🧳 Away mode | 100 |
+| 🧳 Away | 100 |
 | 🎛️ Bar menu | 97 |
-| 🥪 Lunch mode | 95 |
-| 🌙 End-of-day wrap-up | 80 |
-| 🥪 Resume after lunch question | 76 |
-| 🗣️ Stand-up prompt | 75 |
+| 🥪 Lunch | 95 |
+| 🌙 End my day question | 80 |
+| 🥪 Resume question | 76 |
+| 🗣️ Stand-up question | 75 |
 | ⏸️ Nothing timing | 74 |
-| 🔔 Notification — High Priority | 70 |
-| 💬 Notification — Default | 65 |
-| ⏱️ Active task tracker | 45 |
+| 🔔 High-priority notifications | 70 |
+| 💬 Default notifications | 65 |
+| ⏱️ Your timer | 45 |
 
 Every row is editable, including what each does in each mode — **Display**,
 **Suppress** or **Queue** for Work, Lunch and Away.
@@ -1161,7 +1160,7 @@ until you switch it off:
 | **Interrupt** | Ctrl+Alt+Shift+I | starts an [interruption](#-interrupt-a-timer-at-once); during one, **Another** |
 | **Switch task** | Ctrl+Alt+Shift+S | opens the task picker over the app you are in (not during an interruption) |
 | **Previous task** | Ctrl+Alt+Shift+P | goes back to the task you timed before this one (not during an interruption) |
-| **Back** | Ctrl+Alt+Shift+B | ends the interruption and resumes the task it holds; nothing otherwise |
+| **Back** | Ctrl+Alt+Shift+B | ends the interruption and goes back to the task it interrupted, as it was; nothing otherwise |
 
 **Change keys** records another chord -- press it, then the keys, or Escape to
 keep the old one. A chord needs Ctrl, Alt or Win: Shift alone only types

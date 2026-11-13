@@ -26,7 +26,7 @@ describe('the interruption running', () => {
     const bridge = installElectronApi();
     render(<InterruptionDetails interruption={RUNNING} />);
 
-    const field = await screen.findByLabelText('What is it about? OpenProject shows it as the note.');
+    const field = await screen.findByLabelText('What is it about?');
     fireEvent.change(field, { target: { value: '  Call with Marc ' } });
     fireEvent.keyDown(field, { key: 'Enter' });
     fireEvent.blur(field);
@@ -53,7 +53,7 @@ describe('the interruption running', () => {
     const bridge = installElectronApi();
     render(<InterruptionDetails interruption={RUNNING} />);
 
-    expect(screen.getByText(/those minutes come off MG-12/)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'When it started' }).getAttribute('title')).toMatch(/those minutes come off MG-12/);
     fireEvent.change(screen.getByLabelText('When it started'), { target: { value: '5' } });
 
     expect(bridge.api.moveInterruptionStart).toHaveBeenCalledWith('2026-11-10T09:35:00.000Z');
@@ -83,7 +83,7 @@ describe('the interruption running', () => {
     const bridge = installElectronApi();
     render(<InterruptionDetails interruption={{ ...RUNNING, chosenTask: { id: 'T-9', key: 'SPR-9', title: 'The real task' } }} />);
 
-    expect(screen.getByText('Its time goes there when it ends.')).toBeTruthy();
+    expect(screen.getByText('SPR-9')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Later' }));
 
     expect(bridge.api.chooseInterruptionTask).toHaveBeenCalledWith(null);

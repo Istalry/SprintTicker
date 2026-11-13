@@ -82,7 +82,7 @@ describe('PickerWindow', () => {
 
   it('AssignMode_AssignsTheSession', async () => {
     const bridge = openWith({ ...TRACKING_SESSION, isAdHoc: true }, 'assign');
-    await screen.findByRole('dialog', { name: 'Assign to a task' });
+    await screen.findByRole('dialog', { name: 'Place on a task' });
 
     await pickMG22();
 
@@ -203,7 +203,7 @@ describe('the Place window after a Stop (2026-11-12)', () => {
     await chooseFor('Call with Marc', 'Grass shader wind');
     fireEvent.change(screen.getByRole('textbox', { name: 'Name Interruption 10:12' }), { target: { value: 'Ana question' } });
     await chooseFor('Ana question', 'Wind audio');
-    fireEvent.click(screen.getByRole('button', { name: /^Place the 2 chosen/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Place 2 · / }));
 
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(api.placeInterruption).toHaveBeenCalledWith('int_1', MG22.id);
@@ -217,7 +217,7 @@ describe('the Place window after a Stop (2026-11-12)', () => {
     await screen.findByRole('dialog', { name: 'Place 2 interruptions' });
 
     await chooseFor('Call with Marc', 'Grass shader wind');
-    fireEvent.click(screen.getByRole('button', { name: /^Place the 1 chosen/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Place 1 · / }));
 
     await waitFor(() => expect(api.placeInterruption).toHaveBeenCalledWith('int_1', MG22.id));
     expect(api.placeInterruption).toHaveBeenCalledTimes(1);

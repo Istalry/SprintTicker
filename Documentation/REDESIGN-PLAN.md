@@ -2752,6 +2752,26 @@ left once the screens are real:
   one line (P15a3).
 - Tests: `focus.test.tsx` (8).
 
+**As landed: P15a3, the words (2026-11-13).**
+
+- After an interruption, one question in the glossary's words on every
+  surface: **↩ Back to MG-12**, **↩ Back, add the 6 min**, **Not now**
+  (`ResumeAfterLunchPrompt`, `MiniPromptRow`); every answer a button.
+- `UndoStateDTO.outcome` (`RestorePoint.queuesSends`) and `undoCountdown`:
+  the Undo bar, the mini timer and the toast say Sent in 7 s only when
+  something will be sent; the countdown is out of the live region (A9).
+- `sendDestinationName`: the session card names the session's provider,
+  never the active one.
+- `END_MY_DAY` / `BarWord.END_MY_DAY`, `WhoseWord`, `toPlaceHint` and
+  `couldNot` hold words that surfaces spelled apart; the bar says END MY DAY
+  and STAND-UP.
+- The ⚡ card: the name and the timer first, the help in one muted line, the
+  first-time tip in two (C15, the user's choice).
+- Place, not Assign; Resume for Away; Cancel in the confirmations; "not
+  timed", not "untracked"; the badges' `StateWord`; Correct's Duration and
+  Note; the scope *Mine, free and in progress*; the priority panel in
+  sentence case with the Notifications page's names; "—" for a dash.
+
 ---
 
 ## 21. Verification, all phases
@@ -2827,5 +2847,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus) done | P15a1 `e2dafc9`, P15a2 (2026-11-13) |
+| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words) done | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 (2026-11-13) |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

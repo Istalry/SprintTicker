@@ -50,7 +50,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Working days', group: 'workday', keywords: ['week', 'holidays', 'days off'] },
   { label: 'Stand-up', group: 'workday', keywords: ['standup', 'daily', 'meeting', 'ceremonies'] },
   { label: 'Lunch', group: 'workday', keywords: ['break', 'quiet hours'] },
-  { label: 'End of day', group: 'workday', keywords: ['eod', 'wrap-up', 'shutdown'] },
+  { label: 'End my day', group: 'workday', keywords: ['eod', 'end of day', 'wrap-up', 'shutdown'] },
   { label: 'My week closes', group: 'workday', keywords: ['closed week', 'timesheet', 'friday'] },
   { label: 'Nothing timing in working hours', group: 'workday', keywords: ['reminder', 'idle', 'not timing'] },
   { label: 'A pause that runs long', group: 'workday', keywords: ['reminder', 'paused', 'still paused'] },

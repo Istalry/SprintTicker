@@ -91,6 +91,8 @@ export function stopUndoably(
   const fragment = active.interruption;
   deps.undo.offer({
     kind: 'stop',
+    // A fragment waits to be placed; work kept here queues nothing.
+    outcome: fragment ? 'to-place' : point.queuesSends() ? 'sent' : 'kept',
     label: fragment
       ? undoLabel('stop', fragment.title, formatHoursAndMinutes(active.elapsedSeconds))
       : undoLabel(markDone ? 'done' : 'stop', active.taskKey, formatHoursAndMinutes(result.loggedSeconds)),
@@ -111,6 +113,7 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
   const fragment = active.interruption;
   deps.undo.offer({
     kind: 'discard',
+    outcome: 'nothing',
     label: undoLabel('discard', fragment ? fragment.title : active.taskKey, formatHoursAndMinutes(result.discardedSeconds)),
     undo: () => reopen(deps, point, fragment?.interruptedSessionId ?? null)
   });
@@ -135,6 +138,7 @@ function offerWorklogUndo(
   deps.undo.offer({
     kind,
     label,
+    outcome: point.queuesSends() ? 'sent' : 'kept',
     undo: () => {
       if (!point.restore()) return false;
       deps.onRestored();
@@ -230,6 +234,7 @@ export function endDayUndoably(
   point.seal();
   deps.undo.offer({
     kind: 'end-day',
+    outcome: point.queuesSends() ? 'sent' : 'kept',
     label: undoLabel('end-day', ''),
     undo: () => {
       hooks.onUndo?.();

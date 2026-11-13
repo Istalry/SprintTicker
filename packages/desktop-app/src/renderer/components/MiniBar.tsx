@@ -11,7 +11,7 @@ import type { InterruptionSource } from '../../shared/interruption';
 import type { ActiveSessionDTO, StandupRunningDTO, TaskDTO } from '../../shared/dtos';
 import { FlowSettingKey } from '../../shared/flow-settings';
 import { formatHoursAndMinutes } from '../../shared/time-format';
-import { toPlaceLabel, Verb } from '../../shared/words';
+import { toPlaceLabel, undoCountdown, Verb } from '../../shared/words';
 import { SessionTitle } from './SessionTitle';
 import { useUndo } from './UndoBar';
 import { STARTED_AGO_CHOICES } from './InterruptionDetails';
@@ -215,7 +215,7 @@ export const MiniBar: React.FC = () => {
             <button
               type="button"
               onClick={undo.run}
-              title={`Sent in ${undo.secondsLeft}s`}
+              title={undoCountdown(undo.state.outcome, undo.secondsLeft)}
               className="px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-primary text-dark-900 hover:bg-white"
             >
               {Verb.UNDO}
@@ -393,7 +393,7 @@ export const MiniBar: React.FC = () => {
           {interruption.interruptedSessionId && (
             <button
               type="button"
-              title={`${Verb.BACK} to ${interruption.interruptedTaskKey}: end the interruption and resume it`}
+              title={`${Verb.BACK} to ${interruption.interruptedTaskKey}: end the interruption and go back to it`}
               aria-label={`${Verb.BACK} to ${interruption.interruptedTaskKey}`}
               className={button}
               onClick={run('Back', back)}
@@ -443,7 +443,7 @@ export const MiniBar: React.FC = () => {
         )}
         <button
           type="button"
-          title={`End the session: ${Verb.DONE}, ${Verb.STOP} or ${Verb.DISCARD}`}
+          title={`${Verb.DONE}, ${Verb.STOP} or ${Verb.DISCARD}`}
           aria-label={Verb.STOP}
           className={button}
           onClick={() => setEnding('choose')}
@@ -456,8 +456,8 @@ export const MiniBar: React.FC = () => {
         {isAdHocSession(session) && (
           <button
             type="button"
-            title="Assign this session to a task: all of its time goes there"
-            aria-label="Assign to a task"
+            title="Put its time on a task: all of it goes there"
+            aria-label="Place on a task"
             className={button}
             onClick={run('Open the assign picker', () => api.openAssignPicker())}
           >
@@ -504,17 +504,17 @@ export const MiniBar: React.FC = () => {
 
           {choosing === 'choose' && session && (
             // The devices' order (S28, S29): Done, Stop, Discard.
-            <div className="flex items-center gap-1" role="group" aria-label="End the session">
+            <div className="flex items-center gap-1" role="group" aria-label="End the timer">
               <button type="button" title="Log the time and mark the task done" className={`${choice} text-accent-green hover:bg-accent-green/15`} onClick={finishNeedsConfirmation(session) ? () => setEnding('finish') : end('Finish', () => complete(undefined, true))}>
                 {Verb.DONE}
               </button>
               <button type="button" title="Log the time; the task stays open" className={`${choice} bg-primary text-dark-900 hover:bg-white`} onClick={end('Stop', () => complete(undefined, false))}>
                 {Verb.STOP}
               </button>
-              <button type="button" title="Keep nothing: no worklog, nothing sent" className={`${choice} text-text-secondary hover:text-accent-red hover:bg-accent-red/15`} onClick={() => setEnding('discard')}>
+              <button type="button" title="Keep nothing: no entry, nothing sent" className={`${choice} text-text-secondary hover:text-accent-red hover:bg-accent-red/15`} onClick={() => setEnding('discard')}>
                 {Verb.DISCARD}…
               </button>
-              <button type="button" title="Keep the session running" aria-label="Keep the session" className={button} onClick={() => setEnding(null)}
+              <button type="button" title="Keep timing" aria-label="Keep timing" className={button} onClick={() => setEnding(null)}
                 // The choices replace the button that asked for them: the
                 // safe one takes the focus (REVIEW-2026-11 A4).
                 autoFocus>
@@ -526,7 +526,7 @@ export const MiniBar: React.FC = () => {
           {choosing === 'finish' && (
             <div className="flex items-center gap-1" role="alertdialog" aria-label="Not yours: mark it done anyway?">
               <span className="text-[11px] text-accent-amber font-bold" title="Reassigned, closed or moved since you started it">Not yours. {Verb.DONE}?</span>
-              <button type="button" title="Mark it done anyway: your completion transition is applied" className={`${choice} bg-accent-green/90 hover:bg-accent-green text-dark-900`} onClick={end('Finish', () => complete(undefined, true))}>
+              <button type="button" title="Mark it done anyway: it moves to your done status" className={`${choice} bg-accent-green/90 hover:bg-accent-green text-dark-900`} onClick={end('Finish', () => complete(undefined, true))}>
                 Yes
               </button>
               <button type="button" title="Back to the choices" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')} autoFocus>
@@ -536,12 +536,12 @@ export const MiniBar: React.FC = () => {
           )}
 
           {choosing === 'discard' && (
-            <div className="flex items-center gap-1" role="alertdialog" aria-label="Discard the session?">
+            <div className="flex items-center gap-1" role="alertdialog" aria-label="Discard this time?">
               <span className="text-[11px] text-accent-red font-bold">{Verb.DISCARD}?</span>
-              <button type="button" title="Throw the session away: nothing kept, nothing sent" className={`${choice} bg-accent-red/90 hover:bg-accent-red text-white`} onClick={end('Discard', discard)}>
+              <button type="button" title="Throw this time away: nothing kept, nothing sent" className={`${choice} bg-accent-red/90 hover:bg-accent-red text-white`} onClick={end('Discard', discard)}>
                 Yes
               </button>
-              <button type="button" title="Keep the session" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')} autoFocus>
+              <button type="button" title="Keep it" className={`${choice} text-text-secondary hover:text-white hover:bg-dark-700`} onClick={() => setEnding('choose')} autoFocus>
                 No
               </button>
             </div>

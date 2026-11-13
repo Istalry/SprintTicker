@@ -8,7 +8,7 @@ import {
   describeAccelerator
 } from '../../shared/interrupt-shortcut';
 import { Verb } from '../../shared/words';
-import { ipcErrorMessage } from '../utils/formatters';
+import { couldNot, ipcErrorMessage } from '../utils/formatters';
 import { SettingButton, SettingProblem, SettingRow, SettingSwitch } from './SettingRow';
 
 /** Each shortcut's name and what it does, in the words of the rest of the app. */
@@ -19,7 +19,7 @@ const ROWS: Record<ShortcutAction, { name: string; does: string }> = {
   },
   switch: { name: `${Verb.SWITCH} task`, does: 'Opens the task picker over whatever app you are in.' },
   previous: { name: `${Verb.PREVIOUS} task`, does: 'Goes back to the task you timed before this one.' },
-  back: { name: Verb.BACK, does: 'Ends the interruption and resumes the task it holds; nothing otherwise.' }
+  back: { name: Verb.BACK, does: 'Ends the interruption and goes back to the task it interrupted, as it was; nothing otherwise.' }
 };
 
 /**
@@ -52,7 +52,7 @@ export const ShortcutSettings: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.electronAPI?.getShortcuts().then(setStatus, (err: unknown) => setError(ipcErrorMessage(err)));
+    window.electronAPI?.getShortcuts().then(setStatus, (err: unknown) => setError(couldNot('read them', err)));
   }, []);
 
   const apply = async (action: ShortcutAction, enabled: boolean, accelerator: string): Promise<void> => {
@@ -71,7 +71,7 @@ export const ShortcutSettings: React.FC = () => {
     try {
       await window.electronAPI.setShortcutsRecording(true);
     } catch (err) {
-      setError(ipcErrorMessage(err));
+      setError(couldNot('change them', err));
     }
   };
 
@@ -80,7 +80,7 @@ export const ShortcutSettings: React.FC = () => {
     try {
       setStatus(await window.electronAPI.setShortcutsRecording(false));
     } catch (err) {
-      setError(ipcErrorMessage(err));
+      setError(couldNot('change them', err));
     }
   };
 
@@ -168,7 +168,7 @@ export const ShortcutSettings: React.FC = () => {
           </SettingRow>
         );
       })}
-      {error && <div className="py-3"><SettingProblem>Could not change them: {error}</SettingProblem></div>}
+      {error && <div className="py-3"><SettingProblem>{error}</SettingProblem></div>}
       <p className="py-3 text-xs text-text-muted">
         Shortcuts work from any app, except while an app run as administrator has the focus: Windows does not pass them on then.
       </p>

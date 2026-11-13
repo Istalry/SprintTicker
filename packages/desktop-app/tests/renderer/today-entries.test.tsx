@@ -51,7 +51,7 @@ describe('Today entries', () => {
 
     const rows = within(screen.getByRole('region', { name: "Today's entries" })).getAllByRole('row').slice(1);
     expect(rows[0].textContent).toMatch(/^⚡OPS-4/);
-    expect(within(rows[0]).getByText('Sending')).toBeTruthy();
+    expect(within(rows[0]).getByText('Waiting to send')).toBeTruthy();
     expect(rows[1].textContent).toMatch(/^PF-31Hammer and quench sounds1h 40m/);
     expect(within(rows[1]).getByText('Sent')).toBeTruthy();
     expect(await screen.findByRole('columnheader', { name: 'OpenProject' })).toBeTruthy();
@@ -104,7 +104,7 @@ describe('Today entries', () => {
     fireEvent.click(screen.getByRole('button', { name: /^More for PF-31 at / }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Correct…' }));
 
-    expect(screen.getByRole('dialog', { name: 'Correct a worklog' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Correct an entry' })).toBeTruthy();
   });
 
   it('Menu_Delete_AsksFirst', () => {
@@ -114,7 +114,7 @@ describe('Today entries', () => {
     fireEvent.click(screen.getByRole('button', { name: /^More for PF-31 at / }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Delete…' }));
 
-    expect(screen.getByRole('dialog', { name: 'Delete a worklog' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Delete an entry' })).toBeTruthy();
   });
 
   it('Menu_Move_SendsItToTheTaskPicked', async () => {

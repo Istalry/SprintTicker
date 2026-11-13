@@ -19,8 +19,8 @@ function toLocalInput(date: Date): string {
 /** What a change does beyond this window, by where the worklog stands. */
 function reachNote(worklog: WorklogDTO, providerName: string): string {
   return worklog.syncState === 'local' || worklog.syncState === undefined
-    ? 'This worklog is kept in SprintTicker only.'
-    : `The change also goes to ${providerName}, through the sync queue.`;
+    ? 'This entry is kept here only.'
+    : `The change also goes to ${providerName}.`;
 }
 
 interface EditWorklogModalProps {
@@ -119,13 +119,13 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label={mode === 'edit' ? 'Correct a worklog' : 'Delete a worklog'}
+        aria-label={mode === 'edit' ? 'Correct an entry' : 'Delete an entry'}
         className="w-full max-w-lg bg-dark-800 border border-border-dark rounded-xl shadow-2xl p-6 space-y-5"
       >
         {mode === 'delete' ? (
           <>
             <ConfirmPanel
-              title="Delete this worklog?"
+              title="Delete this entry?"
               tone="danger"
               message={
                 <>
@@ -139,7 +139,7 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                 </>
               }
               confirmLabel="Delete"
-              cancelLabel="Back"
+              cancelLabel="Cancel"
               onConfirm={() => run(() => window.electronAPI.deleteWorklog(worklog.id))}
               onCancel={onClose}
             />
@@ -157,27 +157,30 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <label className="space-y-1">
-                <span className="text-text-secondary">Hours</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={hours}
-                  onChange={e => setHours(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-text-secondary">Minutes</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  value={minutes}
-                  onChange={e => setMinutes(e.target.value)}
-                  className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
-                />
-              </label>
+              <div className="space-y-1 col-span-2">
+                <span className="text-text-secondary">Duration</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    aria-label="Hours"
+                    type="number"
+                    min={0}
+                    value={hours}
+                    onChange={e => setHours(e.target.value)}
+                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
+                  />
+                  <span className="text-text-secondary">h</span>
+                  <input
+                    aria-label="Minutes"
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={minutes}
+                    onChange={e => setMinutes(e.target.value)}
+                    className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-1.5 text-white focus:outline-none focus:border-focus"
+                  />
+                  <span className="text-text-secondary">min</span>
+                </div>
+              </div>
               <label className="space-y-1 col-span-2">
                 <span className="text-text-secondary">Started</span>
                 <input
@@ -191,7 +194,9 @@ export const EditWorklogModal: React.FC<EditWorklogModalProps> = ({ worklog, mod
                 />
               </label>
               <label className="space-y-1 col-span-2">
-                <span className="text-text-secondary">Comment</span>
+                <span className="text-text-secondary">
+                  {worklog.syncState === 'local' || worklog.syncState === undefined ? 'Note' : `Note, shown in ${providerName}`}
+                </span>
                 <textarea
                   value={comment}
                   maxLength={WORKLOG_COMMENT_MAX_CHARS}

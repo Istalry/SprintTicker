@@ -126,7 +126,7 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
         {([
           ['jira', 'Jira', 'Your site, email and an API token.'],
           ['openproject', 'OpenProject', "Your server's address and an API key."],
-          ['none', 'No account -- my own tasks only', 'Time stays on this computer. You can add an account later in Settings › Account.']
+          ['none', 'No account — my own tasks only', 'Time stays on this computer. You can add an account later in Settings › Account.']
         ] as const).map(([value, label, hint]) => (
           <div key={value} className={choiceCard(choice === value)}>
             <label className="flex items-start gap-3 cursor-pointer">

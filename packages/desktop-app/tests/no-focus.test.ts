@@ -252,7 +252,7 @@ describe('Prompts without focus', () => {
       at(17, 30);
       service.evaluateSchedule();
 
-      expect(sent(IPCChannel.ON_CEREMONY_PROMPT).at(-1)).toEqual({ type: 'EOD', title: 'End-of-Day Wrap-Up', at: '17:30' });
+      expect(sent(IPCChannel.ON_CEREMONY_PROMPT).at(-1)).toEqual({ type: 'EOD', title: 'End my day', at: '17:30' });
       expect(outlet.announce).toHaveBeenCalledWith(expect.objectContaining({ title: 'Time to end your day' }));
       expect(raised.show).not.toHaveBeenCalled();
       expect(raised.focus).not.toHaveBeenCalled();

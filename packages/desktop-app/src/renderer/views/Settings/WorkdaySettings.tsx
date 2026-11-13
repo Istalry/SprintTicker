@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { couldNot } from '../../utils/formatters';
+import { END_MY_DAY } from '../../../shared/words';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { ScheduleSettingsDTO } from '../../../shared/dtos';
 import { DEFAULT_SCHEDULE_SETTINGS, checkScheduleSettings } from '../../../shared/schedule-defaults';
@@ -79,7 +81,7 @@ export const WorkdaySettings: React.FC = () => {
         .finally(() => setLoaded(true));
     }
     window.electronAPI?.getFlowSetting?.(FlowSettingKey.PROMPT_DELAYS)
-      .then(setDelays, (err: unknown) => setDelayProblem(String(err)));
+      .then(setDelays, (err: unknown) => setDelayProblem(couldNot('change the reminders', err)));
   }, []);
 
   const settings: ScheduleSettingsDTO = {
@@ -117,19 +119,19 @@ export const WorkdaySettings: React.FC = () => {
     setDelays(next);
     setDelayProblem(null);
     window.electronAPI.saveFlowSetting(FlowSettingKey.PROMPT_DELAYS, next)
-      .then(setDelays, (err: unknown) => setDelayProblem(String(err)));
+      .then(setDelays, (err: unknown) => setDelayProblem(couldNot('change the reminders', err)));
   };
 
   const showStandup = (): void => {
     window.electronAPI?.triggerStandupPrompt?.()
       .then(res => setShown(res.success ? 'The stand-up reminder is up, on Today and the bar.' : 'Could not show the stand-up reminder.'),
-        (err: unknown) => setShown(`Could not show it: ${String(err)}`));
+        (err: unknown) => setShown(couldNot('show it', err)));
   };
 
   const showEndOfDay = (): void => {
     window.electronAPI?.triggerEodPrompt?.()
       .then(res => setShown(res.success ? 'The end-of-day prompt is up.' : 'Could not show the end-of-day prompt.'),
-        (err: unknown) => setShown(`Could not show it: ${String(err)}`));
+        (err: unknown) => setShown(couldNot('show it', err)));
   };
 
   const closes = closingDay(workingDays);
@@ -186,7 +188,7 @@ export const WorkdaySettings: React.FC = () => {
         </SettingRow>
 
         <SettingRow
-          title="End of day"
+          title={END_MY_DAY}
           description="Offers to check today's time and send it."
           control={
             <>
@@ -255,7 +257,7 @@ export const WorkdaySettings: React.FC = () => {
       </SettingsList>
 
       {shown && <p role="status" className="text-xs text-text-secondary">{shown}</p>}
-      {delayProblem && <SettingProblem>Could not change the reminders: {delayProblem}</SettingProblem>}
+      {delayProblem && <SettingProblem>{delayProblem}</SettingProblem>}
       {saveStatus === 'error' && !refusal && <SettingProblem>Could not save your workday. Nothing changed.</SettingProblem>}
     </div>
   );

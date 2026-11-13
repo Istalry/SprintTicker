@@ -22,7 +22,7 @@ describe('UndoToasts', () => {
     });
     service.start();
     const offer = (label = 'Stopped MG-12 · 1h 24m', kind: UndoStateDTO['kind'] = 'stop') =>
-      undo.offer({ kind, label, undo: () => true });
+      undo.offer({ kind, label, outcome: kind === 'discard' ? 'nothing' : undefined, undo: () => true });
     return { undo, toasts, screen, service, offer, tick: (ms: number) => { now += ms; }, expire: () => fire?.() };
   }
 
@@ -33,7 +33,7 @@ describe('UndoToasts', () => {
 
     expect(toasts.show).toHaveBeenCalledWith({
       title: 'Stopped MG-12 · 1h 24m',
-      body: 'Sent in 10 s. Click within 10 s to undo.',
+      body: 'Sent in 10 s. Click to undo.',
       route: 'undo'
     });
   });
@@ -66,7 +66,7 @@ describe('UndoToasts', () => {
     offer('Discarded PF-2 · 5m', 'discard');
 
     expect(toasts.show).toHaveBeenCalledTimes(2);
-    expect(toasts.show).toHaveBeenLastCalledWith(expect.objectContaining({ body: 'Nothing kept or sent. Click within 10 s to undo.' }));
+    expect(toasts.show).toHaveBeenLastCalledWith(expect.objectContaining({ body: 'Nothing kept or sent · 10 s to undo. Click to undo.' }));
   });
 
   it('Stopped_NoMoreToasts', () => {
@@ -78,12 +78,14 @@ describe('UndoToasts', () => {
     expect(toasts.show).not.toHaveBeenCalled();
   });
 
+  // The toast says what the action comes to, as the Undo bar does: a
+  // fragment to place or a discard never reads as time going out (C3).
   it.each([
-    ['stop', 'Sent in 10 s. Click within 10 s to undo.'],
-    ['end-day', 'Sent in 10 s. Click within 10 s to undo.'],
-    ['discard', 'Nothing kept or sent. Click within 10 s to undo.'],
-    ['keep-off', 'Click within 10 s to undo.']
-  ] as const)('DescribeUndoToast_%s', (kind, body) => {
-    expect(describeUndoToast({ kind, label: 'L' }, 10)).toEqual({ title: 'L', body, route: 'undo' });
+    ['sent', 'Sent in 10 s. Click to undo.'],
+    ['kept', 'Kept here · 10 s to undo. Click to undo.'],
+    ['to-place', 'Waits to place · 10 s to undo. Click to undo.'],
+    ['nothing', 'Nothing kept or sent · 10 s to undo. Click to undo.']
+  ] as const)('DescribeUndoToast_%s', (outcome, body) => {
+    expect(describeUndoToast({ kind: 'stop', label: 'L', outcome }, 10)).toEqual({ title: 'L', body, route: 'undo' });
   });
 });

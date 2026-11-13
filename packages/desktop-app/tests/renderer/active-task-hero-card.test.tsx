@@ -49,13 +49,13 @@ describe('ActiveTaskHeroCard', () => {
     card();
 
     expect(screen.queryByLabelText(/^Rename /)).toBeNull();
-    expect(screen.queryByText('Assign to a task…')).toBeNull();
+    expect(screen.queryByText('Place…')).toBeNull();
   });
 
   it('Render_UnsortedInterruption_SaysWhatToDoWithIt', () => {
     card(INTERRUPTION);
 
-    expect(screen.getByText(/name it, or assign it to a task/)).toBeTruthy();
+    expect(screen.getByText(/name it, or place it on a task/)).toBeTruthy();
   });
 
   it('Assign_AdHocSession_OpensThePicker', () => {
@@ -73,7 +73,7 @@ describe('ActiveTaskHeroCard', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Assign to a task…'));
+    fireEvent.click(screen.getByText('Place…'));
 
     expect(onAssign).toHaveBeenCalledTimes(1);
   });
@@ -111,7 +111,7 @@ describe('ActiveTaskHeroCard', () => {
       />
     );
 
-    expect(screen.getByText('No task running')).toBeTruthy();
+    expect(screen.getByText('What are you working on?')).toBeTruthy();
     expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual(['Start a task', 'Interrupt']);
     fireEvent.click(screen.getByText('Start a task'));
     expect(onOpenTaskModal).toHaveBeenCalledTimes(1);
@@ -266,12 +266,12 @@ describe('ActiveTaskHeroCard', () => {
       expect(onComplete).toHaveBeenCalledWith(undefined, true);
     });
 
-    it('MarkDone_UnlistedThenBack_FinishesNothing', () => {
+    it('MarkDone_UnlistedThenCancel_FinishesNothing', () => {
       const onComplete = card(UNLISTED);
 
       more();
       done();
-      fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
       expect(onComplete).not.toHaveBeenCalled();
       expect(screen.getByRole('menuitem', { name: /^✓ Done/ })).toBeTruthy();
@@ -288,8 +288,8 @@ describe('ActiveTaskHeroCard', () => {
     });
 
     it.each([
-      ['closed', /Closed on the provider/],
-      ['gone', /No longer on the provider/],
+      ['closed', /Closed in your provider/],
+      ['gone', /No longer in your provider/],
       ['reassigned', /No longer assigned to you/]
     ] as const)('Render_LeftBecause%s_SaysWhy', (reason, text) => {
       card({ ...UNLISTED, taskLeftBecause: reason });
@@ -385,7 +385,7 @@ describe('ActiveTaskHeroCard', () => {
       />
     );
 
-    expect(screen.getByText(/SPR-142 waits, as it was: nothing is sent/)).toBeTruthy();
+    expect(screen.getByText(/SPR-142 waits, (running|paused) as it was; nothing is sent/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'More ways to stop' })).toBeNull();
     // Choosing a task does nothing during an interruption (2026-11-12).

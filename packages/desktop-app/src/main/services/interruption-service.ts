@@ -130,6 +130,7 @@ export class InterruptionService {
     point.seal();
     this._deps.undo.offer({
       kind,
+      outcome: kind === 'discard' ? 'nothing' : point.queuesSends() ? 'sent' : 'kept',
       label: undoLabel(kind, key, formatHoursAndMinutes(seconds)),
       undo: () => {
         if (!point.restore()) return false;

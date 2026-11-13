@@ -206,7 +206,7 @@ describe('Work History, interruptions to place', () => {
     await screen.findByRole('dialog', { name: 'Place Interruption 10:30' });
     fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Interruption 10:30' }));
     await pick();
-    fireEvent.click(screen.getByRole('button', { name: /^Place the 1 chosen/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Place 1 · / }));
   };
 
   it('Place_OnTheTaskPicked', async () => {
@@ -227,7 +227,7 @@ describe('Work History, interruptions to place', () => {
     fireEvent.change(await screen.findByRole('textbox', { name: 'Name Interruption 10:30' }), { target: { value: 'Printer jam' } });
     fireEvent.click(screen.getByRole('button', { name: 'Choose a task for Printer jam' }));
     await pick();
-    fireEvent.click(screen.getByRole('button', { name: /^Place the 1 chosen/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Place 1 · / }));
 
     await waitFor(() => expect(bridge.api.placeInterruption).toHaveBeenCalledWith('int_1', 'T-9'));
     expect(bridge.api.renameInterruption).toHaveBeenCalledWith('int_1', 'Printer jam');
@@ -257,7 +257,7 @@ describe('Work History, interruptions to place', () => {
       fireEvent.click(screen.getByRole('button', { name: `Choose a task for ${name}` }));
       await pick();
     };
-    const placeButton = () => screen.getByRole('button', { name: /^Place the \d+ chosen/ });
+    const placeButton = () => screen.getByRole('button', { name: /^Place(:| \d+ ·)/ });
 
     it('Opens_ARowEach_NothingChosen', async () => {
       const { dialog } = await placeAll();
@@ -472,7 +472,7 @@ describe('Work History, time in a closed week', () => {
 
     const question = screen.getByRole('alertdialog', { name: 'Move time from a closed week?' });
     expect(question.textContent).toMatch(/timesheet/);
-    fireEvent.click(within(question).getByRole('button', { name: 'Back' }));
+    fireEvent.click(within(question).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(screen.queryByRole('dialog', { name: /to a task|on a task/ })).toBeNull();
   });

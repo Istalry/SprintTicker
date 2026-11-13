@@ -83,7 +83,7 @@ describe('prompt cards', () => {
       const left: string[] = [];
       render(<BreakCard mode="AWAY" session={PAUSED} onLeaveAway={() => left.push('away')} />);
 
-      fireEvent.click(screen.getByRole('button', { name: 'Back: resume SPR-142' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Resume SPR-142' }));
       await act(async () => undefined);
 
       expect(bridge.api.resumeSession).toHaveBeenCalledTimes(1);

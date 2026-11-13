@@ -107,7 +107,7 @@ describe('a session left running', () => {
     fireEvent.click(screen.getByLabelText(/At another time/));
     fireEvent.change(screen.getByLabelText('End time'), { target: { value: '2000-01-01T09:00' } });
 
-    expect(screen.getByRole('alert').textContent).toMatch(/after the session started/);
+    expect(screen.getByRole('alert').textContent).toMatch(/after it started/);
     expect((screen.getByRole('button', { name: 'Log and stop' }) as HTMLButtonElement).disabled).toBe(true);
     click('Log and stop');
     expect(bridge.api.resolveForgottenSession).not.toHaveBeenCalled();
@@ -160,12 +160,12 @@ describe('a session left running', () => {
     expect(bridge.api.resolveForgottenSession).toHaveBeenCalledWith(expect.objectContaining({ action: 'discard' }));
   });
 
-  it('Discard_Back_ReturnsToTheQuestion', async () => {
+  it('Discard_Cancel_ReturnsToTheQuestion', async () => {
     const bridge = await open();
 
     fireEvent.click(screen.getByLabelText(/Discard it/));
     click('Discard');
-    click('Back');
+    click('Cancel');
 
     expect(bridge.api.resolveForgottenSession).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Discard' })).toBeTruthy();
@@ -237,7 +237,7 @@ describe('a session left running', () => {
       const bridge = installElectronApi();
       render(<MiniPromptRow resume={null} ceremony={null} forgotten={{ ...REVIEW, deferred: true }} onAnswered={() => undefined} />);
 
-      expect(screen.getByRole('alertdialog').textContent).toMatch(/MG-12 ran all night.*nothing logged/);
+      expect(screen.getAllByRole('group').map(g => g.textContent).join(' ')).toMatch(/MG-12 ran all night.*nothing logged/);
       fireEvent.click(screen.getByRole('button', { name: 'Answer' }));
 
       expect(bridge.api.resolveForgottenSession).toHaveBeenCalledWith({ action: 'ask' });

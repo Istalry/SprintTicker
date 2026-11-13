@@ -311,7 +311,7 @@ export class InputDecoder {
             return this.report('CONFIRM_EOD_WRAP_UP_STEP_1', key);
           }
           this._eodConfirmStep = 0;
-          this._renderer?.renderCeremonyPrompt('EOD', 'Wrapping Up...');
+          this._renderer?.renderCeremonyPrompt('EOD', 'Ending the day...');
           return this.report('EXECUTE_EOD_WRAP_UP', key);
         }
         this._eodConfirmStep = 0;

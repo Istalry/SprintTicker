@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { couldNot } from '../utils/formatters';
 import { FlowSettingKey } from '../../shared/flow-settings';
 import { SETTING_SELECT_CLASS, SettingProblem, SettingRow } from './SettingRow';
 
@@ -13,12 +14,12 @@ export const CloseToTraySetting: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.electronAPI?.getFlowSetting(FlowSettingKey.CLOSE_TO_TRAY).then(setKeepRunning, (err: unknown) => setError(String(err)));
+    window.electronAPI?.getFlowSetting(FlowSettingKey.CLOSE_TO_TRAY).then(setKeepRunning, (err: unknown) => setError(couldNot('read it', err)));
   }, []);
 
   const choose = (next: boolean): void => {
     setError(null);
-    window.electronAPI.saveFlowSetting(FlowSettingKey.CLOSE_TO_TRAY, next).then(setKeepRunning, (err: unknown) => setError(String(err)));
+    window.electronAPI.saveFlowSetting(FlowSettingKey.CLOSE_TO_TRAY, next).then(setKeepRunning, (err: unknown) => setError(couldNot('change it', err)));
   };
 
   return (
@@ -38,7 +39,7 @@ export const CloseToTraySetting: React.FC = () => {
         </select>
       }
     >
-      {error && <SettingProblem>Could not change it: {error}</SettingProblem>}
+      {error && <SettingProblem>{error}</SettingProblem>}
     </SettingRow>
   );
 };

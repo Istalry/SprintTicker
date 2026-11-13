@@ -41,7 +41,9 @@ export function parseTaskScope(value: string | undefined | null): TaskScopeValue
 
 /** Human-readable labels, so main and the renderer cannot disagree on wording. */
 export const TASK_SCOPE_LABELS: Record<TaskScopeValue, string> = {
-  [TaskScope.ASSIGNED_TO_ME]: 'Assigned to me',
-  [TaskScope.ALL_OPEN]: 'Everything open in the project',
+  // Not "Assigned to me": it fetches open tasks nobody has and teammates'
+  // tasks in progress too (REVIEW-2026-11 C10).
+  [TaskScope.ASSIGNED_TO_ME]: 'Mine, free and in progress',
+  [TaskScope.ALL_OPEN]: 'Everything open',
   [TaskScope.CUSTOM]: 'Custom query'
 };

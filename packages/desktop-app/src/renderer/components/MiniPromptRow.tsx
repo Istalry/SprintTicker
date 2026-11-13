@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { CeremonyPromptDTO, ForgottenSessionReviewDTO, ReminderDTO, ResumePromptDTO } from '../../shared/dtos';
+import { Verb } from '../../shared/words';
 import { reminderView } from './ReminderPrompt';
 import { askAgain, forgottenHeading, forgottenStanding } from './ForgottenSessionModal';
 
 const MS_PER_MINUTE = 60_000;
 
-/** How often "6 min untracked" is counted again. */
-const UNTRACKED_TICK_MS = 15_000;
+/** How often "6 min not timed" is counted again. */
+const GAP_TICK_MS = 15_000;
 
 const choice =
   'px-1 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-colors [-webkit-app-region:no-drag]';
@@ -38,10 +39,10 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
   resume, ceremony, inInterruption = false, forgotten = null, reminder = null, onAnswered
 }) => {
   const api = window.electronAPI;
-  // The clock "Back to MG-12? 6 min untracked" counts from (S25).
+  // The clock "Back to MG-12? 6 min not timed" counts from (S25).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), UNTRACKED_TICK_MS);
+    const timer = setInterval(() => setNow(Date.now()), GAP_TICK_MS);
     return () => clearInterval(timer);
   }, []);
   const answer = (yes: boolean, gap?: number, workedThrough?: boolean) => () => {
@@ -60,9 +61,9 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
       question = 'Back at your desk?';
       buttons = (
         <>
-          <button type="button" className={quiet} onClick={answer(false)}>Not now</button>
+          <button type="button" className={quiet} onClick={answer(false)}>{Verb.NOT_NOW}</button>
           <button type="button" className={quiet} title="Count the break as work: the pause is taken back" onClick={answer(true, undefined, true)}>
-            Worked through
+            I worked through it
           </button>
           <button type="button" className={main} title={`Resume ${key}`} onClick={answer(true)}>▶ Resume</button>
         </>
@@ -71,12 +72,12 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
       const endedAt = resume.interruptionEndedAtUtc ? Date.parse(resume.interruptionEndedAtUtc) : NaN;
       const gap = Number.isNaN(endedAt) ? null : Math.max(0, Math.round((now - endedAt) / MS_PER_MINUTE));
       heading = 'Nothing timing';
-      question = gap ? `Back to ${key}? ${gap} min untracked` : `Back to ${key}?`;
+      question = gap ? `${Verb.BACK} to ${key}? ${gap} min not timed` : `${Verb.BACK} to ${key}?`;
       buttons = (
         <>
-          <button type="button" className={quiet} onClick={answer(false)}>Not now</button>
+          <button type="button" className={quiet} onClick={answer(false)}>{Verb.NOT_NOW}</button>
           {gap !== null && gap > 0 && (
-            <button type="button" className={quiet} title={`Resume it, and count the ${gap} min since the interruption ended as work`}
+            <button type="button" className={quiet} title={`Back to ${key}, and count the ${gap} min since the interruption ended as work`}
               onClick={() => answer(true, Math.max(0, Math.round((Date.now() - endedAt) / MS_PER_MINUTE)))()}>
               ↩ Back +{gap}m
             </button>
@@ -89,7 +90,7 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
       question = 'It is no longer assigned to you';
       buttons = (
         <>
-          <button type="button" className={quiet} onClick={answer(false)}>Leave it</button>
+          <button type="button" className={quiet} onClick={answer(false)}>{Verb.NOT_NOW}</button>
           <button type="button" className={main} onClick={answer(true)}>Resume</button>
         </>
       );
@@ -108,7 +109,7 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
     question = inInterruption ? 'Join? It ends the interruption' : 'Your task keeps running until you Join';
     buttons = (
       <>
-        <button type="button" className={quiet} onClick={() => { onAnswered(); api.cancelStandupPrompt().catch(warn('Skip')); }}>Skip</button>
+        <button type="button" className={quiet} onClick={() => { onAnswered(); api.cancelStandupPrompt().catch(warn('Skip today')); }}>Skip today</button>
         <button type="button" className={main} onClick={() => { onAnswered(); api.joinStandup().catch(warn('Join')); }}>Join</button>
       </>
     );
@@ -134,7 +135,9 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
   }
 
   return (
-    <div role="alertdialog" aria-label={question} className="flex flex-1 min-w-0 items-center gap-2">
+    // A group, not an alertdialog: a question here never takes the focus
+    // (CLAUDE.md §5), and an alertdialog promises it does (REVIEW-2026-11 A4).
+    <div role="group" aria-label={question} className="flex flex-1 min-w-0 items-center gap-2">
       <div className="flex-1 min-w-0 leading-tight">
         <div className="text-[11px] font-bold text-accent-amber truncate">{heading}</div>
         <div className="text-[11px] text-text-primary truncate" title={question}>{question}</div>

@@ -211,7 +211,7 @@ describe('what the user is told', () => {
     expect(taskLeftLabel('reassigned', 'Bob Stone')).toBe('Assigned to Bob Stone');
     expect(taskLeftLabel(undefined, ' Bob ')).toBe('Assigned to Bob');
     expect(taskLeftLabel('reassigned', '  ')).toBe('No longer assigned to you');
-    expect(taskLeftLabel('closed', 'Bob')).toBe('Closed on the provider');
+    expect(taskLeftLabel('closed', 'Bob')).toBe('Closed in your provider');
   });
 
   it('Describe_NoNames_FallBackToWords', () => {

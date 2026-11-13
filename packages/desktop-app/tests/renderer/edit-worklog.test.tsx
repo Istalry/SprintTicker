@@ -40,15 +40,15 @@ describe('Work History corrections', () => {
   it('Render_EachRow_SaysWhereItStands', async () => {
     await open([SENT, LOCAL]);
 
-    expect(screen.getByText('Sent').getAttribute('title')).toMatch(/At the provider/);
-    expect(screen.getByText('Local only')).toBeTruthy();
+    expect(screen.getByText('Sent').getAttribute('title')).toMatch(/Your provider has it/);
+    expect(screen.getByText('Logged here')).toBeTruthy();
   });
 
   it('Render_AnEntryAnOverlapHolds_SaysWhichOne', async () => {
     const held: WorklogDTO = { ...SENT, id: 'w3', taskKey: 'PF-40', syncState: 'held-overlap', overlapsTaskKey: 'MG-12' };
     await open([SENT, held]);
 
-    expect(screen.getByText('Waiting · overlaps MG-12')).toBeTruthy();
+    expect(screen.getByText('Waiting to send · overlaps MG-12')).toBeTruthy();
   });
 
   it('Correct_IntoAnotherEntry_WarnsBeforeSaving', async () => {
@@ -58,7 +58,7 @@ describe('Work History corrections', () => {
 
     entry('MG-12', 'Correct…');
 
-    const dialog = screen.getByRole('dialog', { name: 'Correct a worklog' });
+    const dialog = screen.getByRole('dialog', { name: 'Correct an entry' });
     const note = within(dialog).getAllByRole('note').find(n => /It overlaps/.test(n.textContent ?? ''));
     expect(note?.textContent).toMatch(/PF-40.*by 30m.*that entry waits/);
   });
@@ -67,7 +67,7 @@ describe('Work History corrections', () => {
     const bridge = await open();
 
     entry('MG-12', 'Correct…');
-    const dialog = screen.getByRole('dialog', { name: 'Correct a worklog' });
+    const dialog = screen.getByRole('dialog', { name: 'Correct an entry' });
     fireEvent.change(within(dialog).getByLabelText('Minutes'), { target: { value: '30' } });
     click('Save');
 
@@ -84,7 +84,7 @@ describe('Work History corrections', () => {
     const bridge = await open();
 
     entry('MG-12', 'Correct…');
-    fireEvent.change(screen.getByLabelText('Comment'), { target: { value: 'Pairing with Sam' } });
+    fireEvent.change(screen.getByLabelText(/^Note/), { target: { value: 'Pairing with Sam' } });
     click('Save');
 
     expect(bridge.api.updateWorklog).toHaveBeenCalledWith('w1', expect.objectContaining({ durationSeconds: 7397, comment: 'Pairing with Sam' }));
@@ -155,11 +155,11 @@ describe('Work History corrections', () => {
     expect(screen.getByRole('alertdialog').textContent).toMatch(/kept nowhere else/);
   });
 
-  it('Delete_Back_DeletesNothing', async () => {
+  it('Delete_Cancel_DeletesNothing', async () => {
     const bridge = await open();
 
     entry('MG-12', 'Delete…');
-    click('Back');
+    click('Cancel');
 
     expect(bridge.api.deleteWorklog).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).toBeNull();

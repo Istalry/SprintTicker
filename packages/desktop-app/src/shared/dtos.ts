@@ -995,4 +995,13 @@ export interface UndoStateDTO {
   /** What was done, as the bar says it: "Stopped MG-12 · 1h 05m". */
   label: string;
   expiresAtUtc: string;
+  /**
+   * What happens when the window ends (P15a3): sent to the provider, kept
+   * here, waiting to be placed, or nothing at all. The bar said "Sent in 7s"
+   * for every one of them (REVIEW-2026-11 C3).
+   */
+  outcome: UndoOutcome;
 }
+
+/** What an action Undo still holds comes to; `undoCountdown` says it. */
+export type UndoOutcome = 'sent' | 'kept' | 'to-place' | 'nothing';

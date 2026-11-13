@@ -68,6 +68,21 @@ export class RestorePoint {
     this._after = this._before.map(({ scope }) => ({ scope, rows: read(this._db, scope) }));
   }
 
+  /**
+   * True when the action queued something for the provider: a queue row it
+   * added or changed. Read after `seal`, to say "Sent in 7 s" only then.
+   */
+  public queuesSends(): boolean {
+    if (!this._after) return false;
+    for (const { scope, rows } of this._after) {
+      if (scope.table !== 'worklog_sync_queue') continue;
+      const before = this._before.find(b => b.scope === scope)?.rows ?? [];
+      const byRowid = new Map(before.map(row => [row.rowid, row]));
+      if (rows.some(row => !byRowid.has(row.rowid) || !sameRow(byRowid.get(row.rowid)!, row))) return true;
+    }
+    return false;
+  }
+
   /** True when every queue row is as the action left it: nothing claimed or sent since. */
   public isUntouched(): boolean {
     if (!this._after) return false;

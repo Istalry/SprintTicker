@@ -73,7 +73,7 @@ export const TaskPicker: React.FC<TaskPickerProps> = props =>
 const MODE_TITLE: Record<PickerMode, string> = {
   start: 'Start a task',
   switch: 'Switch task',
-  assign: 'Assign to a task',
+  assign: 'Place on a task',
   place: 'Place on a task',
   move: 'Move to a task'
 };
@@ -337,7 +337,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     ? `Filter my ${myOpenTasks(tasks).length} tasks`
     : project
     ? `Search in ${project.name}`
-    : `Search all ${tasks.length} tasks -- key, title or project`;
+    : `Search all ${tasks.length} tasks — key, title or project`;
 
   // As its own window it is frameless: the border is its only edge against
   // a dark desktop or a dark app behind it.
@@ -380,7 +380,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             className="w-full bg-dark-900 border border-border-dark rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
           />
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setNaming(false)} className="px-3 py-1.5 text-xs rounded-lg text-text-secondary hover:text-white">Back</button>
+            <button type="button" onClick={() => setNaming(false)} className="px-3 py-1.5 text-xs rounded-lg text-text-secondary hover:text-white">Cancel</button>
             <button
               type="button"
               disabled={!ownTitle.trim()}
@@ -526,7 +526,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-border-dark">
             <button type="button" onClick={refresh} disabled={busy === 'refresh'} className="flex items-center gap-1.5 text-[11px] text-text-secondary hover:text-white">
               <RefreshCw className={`w-3.5 h-3.5 ${busy === 'refresh' ? 'animate-spin' : ''}`} />
-              A ticket is missing? Refresh from {providerName}
+              A task is missing? Refresh from {providerName}
             </button>
             <div className="flex items-center gap-2">
               {onKeepOff && (

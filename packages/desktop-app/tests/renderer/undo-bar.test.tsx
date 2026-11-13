@@ -15,12 +15,12 @@ describe('UndoBar', () => {
 
   it('AStop_ShowsItAndUndoRunsIt', async () => {
     const bridge = installElectronApi({
-      getUndo: async () => ({ kind: 'stop', label: 'Stopped MG-12 · 1h 05m', expiresAtUtc: inSeconds(10) })
+      getUndo: async () => ({ kind: 'stop', label: 'Stopped MG-12 · 1h 05m', expiresAtUtc: inSeconds(10), outcome: 'sent' as const })
     });
     render(<UndoBar />);
 
     expect(await screen.findByText('Stopped MG-12 · 1h 05m')).toBeTruthy();
-    expect(screen.getByText(/Sent in 10s/)).toBeTruthy();
+    expect(screen.getByText(/Sent in 10 s/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
 
     expect(bridge.api.runUndo).toHaveBeenCalledTimes(1);
@@ -29,7 +29,7 @@ describe('UndoBar', () => {
   it('OpenRoute_Undo_FocusesUndo', async () => {
     // The Undo toast's click (P12c): Enter then undoes.
     const bridge = installElectronApi({
-      getUndo: async () => ({ kind: 'stop', label: 'Stopped MG-12 · 1h 05m', expiresAtUtc: inSeconds(10) })
+      getUndo: async () => ({ kind: 'stop', label: 'Stopped MG-12 · 1h 05m', expiresAtUtc: inSeconds(10), outcome: 'sent' as const })
     });
     render(<UndoBar />);
     await screen.findByText('Stopped MG-12 · 1h 05m');
@@ -41,7 +41,7 @@ describe('UndoBar', () => {
 
   it('MainSaysItEnded_TheBarGoes', async () => {
     const bridge = installElectronApi({
-      getUndo: async () => ({ kind: 'delete', label: 'Deleted A-1 · 30m', expiresAtUtc: inSeconds(5) })
+      getUndo: async () => ({ kind: 'delete', label: 'Deleted A-1 · 30m', expiresAtUtc: inSeconds(5), outcome: 'sent' as const })
     });
     render(<UndoBar />);
     await screen.findByText('Deleted A-1 · 30m');

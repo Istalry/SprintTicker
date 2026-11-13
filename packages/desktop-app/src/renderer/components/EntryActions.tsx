@@ -99,7 +99,7 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
               title="Move time from a closed week?"
               message={<><strong className="text-white">{askingMove.label}</strong>. {closedWeekWarning(providerName)}</>}
               confirmLabel="Choose a task"
-              cancelLabel="Back"
+              cancelLabel="Cancel"
               onConfirm={() => { setMoving(askingMove); setAskingMove(null); }}
               onCancel={() => setAskingMove(null)}
             />

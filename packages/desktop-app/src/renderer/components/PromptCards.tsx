@@ -3,6 +3,7 @@ import { Coffee, Play, Users, UtensilsCrossed } from 'lucide-react';
 import { ActiveSessionDTO, CeremonyPromptDTO, UserMode } from '../../shared/dtos';
 import { normalizeScheduleSettings } from '../../shared/schedule-defaults';
 import { formatHoursMinutes } from '../utils/formatters';
+import { Verb } from '../../shared/words';
 
 const STANDUP_REMIND_MINUTES = 10;
 /** "joined ▾": how long ago, in minutes; the minutes come off the task it replaces. */
@@ -94,7 +95,7 @@ function useLunchEnd(active: boolean): string | null {
 /**
  * Lunch or Away, on Today (S6): the task is paused, as it was, and nothing
  * is sent. Resume during lunch is working through it -- main ends Lunch for
- * the day -- and Back during Away resumes the task and leaves Away.
+ * the day -- and Resume during Away resumes the task and leaves Away.
  */
 export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | null; onLeaveAway: () => void }> = ({
   mode,
@@ -142,7 +143,7 @@ export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | n
         <div className="flex justify-end">
           <button type="button" className={primary} onClick={resume}>
             <Play className="w-3.5 h-3.5" />
-            {lunch ? `Resume ${held.taskKey}` : `Back: resume ${held.taskKey}`}
+            {`${Verb.RESUME} ${held.taskKey}`}
           </button>
         </div>
       )}

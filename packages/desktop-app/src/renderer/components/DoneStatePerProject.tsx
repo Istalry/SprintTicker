@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { couldNot } from '../utils/formatters';
 import { AlertTriangle } from 'lucide-react';
 import { OpStatusDTO, ProjectDTO } from '../../shared/dtos';
 import { DoneStateByProjectSetting, FlowSettingKey } from '../../shared/flow-settings';
@@ -23,10 +24,10 @@ export const DoneStatePerProject: React.FC<DoneStatePerProjectProps> = ({ provid
   useEffect(() => {
     const api = window.electronAPI;
     if (!api) return;
-    api.getFlowSetting(FlowSettingKey.DONE_STATE_BY_PROJECT).then(setSetting, (err: unknown) => setError(String(err)));
+    api.getFlowSetting(FlowSettingKey.DONE_STATE_BY_PROJECT).then(setSetting, (err: unknown) => setError(couldNot('read it', err)));
     api.getProjects().then(
       all => setProjects(all.filter(p => p.providerId === providerId).sort((a, b) => a.name.localeCompare(b.name))),
-      (err: unknown) => setError(String(err))
+      (err: unknown) => setError(couldNot('change it', err))
     );
   }, [providerId]);
 
@@ -43,7 +44,7 @@ export const DoneStatePerProject: React.FC<DoneStatePerProjectProps> = ({ provid
       const stored = await window.electronAPI?.saveFlowSetting(FlowSettingKey.DONE_STATE_BY_PROJECT, next);
       if (stored) setSetting(stored);
     } catch (err) {
-      setError(String(err));
+      setError(couldNot('change it', err));
     }
   };
 
@@ -93,7 +94,7 @@ export const DoneStatePerProject: React.FC<DoneStatePerProjectProps> = ({ provid
       {error && (
         <p className="mt-2 flex items-center space-x-1.5 text-accent-amber">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          <span>Could not change it: {error}</span>
+          <span>{error}</span>
         </p>
       )}
     </details>

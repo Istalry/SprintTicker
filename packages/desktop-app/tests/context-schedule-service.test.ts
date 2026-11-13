@@ -279,8 +279,8 @@ describe('ContextScheduleService Unit Tests', () => {
     vi.setSystemTime(new Date(2026, 6, 28, 18, 0, 0)); // Clock ticks to 18:00 EOD
     svc.evaluateSchedule(); // Scheduled evaluation at 18:00 -> prompt triggered!
 
-    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'EOD', title: 'End-of-Day Wrap-Up' }));
+    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End my day?');
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'EOD', title: 'End my day' }));
 
     svc.dispose();
     vi.useRealTimers();
@@ -308,12 +308,12 @@ describe('ContextScheduleService Unit Tests', () => {
 
     svc.triggerEodPrompt();
 
-    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+    expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End my day?');
     // P8c: a prompt never takes the focus, even of a minimised window.
     expect(mockWindow.restore).not.toHaveBeenCalled();
     expect(mockWindow.show).not.toHaveBeenCalled();
     expect(mockWindow.focus).not.toHaveBeenCalled();
-    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'EOD', title: 'End-of-Day Wrap-Up' }));
+    expect(mockSend).toHaveBeenCalledWith(IPCChannel.ON_CEREMONY_PROMPT, expect.objectContaining({ type: 'EOD', title: 'End my day' }));
 
     svc.dispose();
   });
@@ -406,7 +406,7 @@ describe('ContextScheduleService Unit Tests', () => {
       vi.setSystemTime(new Date(2026, 6, 29, 18, 30, 0));
       service.evaluateSchedule();
 
-      expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+      expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End my day?');
     });
 
     it('EvaluateSchedule_AnEarlierThrow_DoesNotLeaveTheInitialCheckFlagStuck', () => {
@@ -427,7 +427,7 @@ describe('ContextScheduleService Unit Tests', () => {
       vi.setSystemTime(new Date(2026, 6, 28, 18, 30, 0));
       service.evaluateSchedule();
 
-      expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End-of-Day Wrap-Up');
+      expect(mockRenderer.renderCeremonyPrompt).toHaveBeenCalledWith('EOD', 'End my day?');
     });
 
     it('EvaluateSchedule_TriggerThrows_RetriesOnTheNextTickRatherThanSkippingTheDay', () => {

@@ -41,7 +41,7 @@ export const SyncQueuePanel: React.FC = () => {
     if (!window.electronAPI?.getSyncQueue) return Promise.resolve();
     return window.electronAPI.getSyncQueue().then(
       snapshot => setRead({ snapshot, readAtMs: Date.now() }),
-      err => setNotice(err instanceof Error ? err.message : 'Could not read the sync queue.')
+      err => setNotice(err instanceof Error ? err.message : 'Could not read the entries waiting to send.')
     );
   }, []);
 

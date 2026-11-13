@@ -83,7 +83,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({ device, onOpenSettings
     const run = queue && queue.counts.failed > 0 ? api.retryFailedWorklogs().then(() => undefined) : api.syncProviderNow().then(() => undefined);
     run
       .then(() => readQueue())
-      .catch(err => setNotice(err instanceof Error ? err.message : 'Could not reach the provider.'));
+      .catch(err => setNotice(err instanceof Error ? err.message : `Could not reach ${providerName}.`));
   };
 
   return (

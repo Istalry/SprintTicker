@@ -1,4 +1,5 @@
 import React from 'react';
+import { WhoseWord } from '../../shared/words';
 import { User } from 'lucide-react';
 import { TaskVisibility, ownerLabel } from '../../shared/task-visibility';
 import { TaskDTO } from '../../shared/dtos';
@@ -28,7 +29,7 @@ export const TaskVisibilityToggle: React.FC<TaskVisibilityToggleProps> = ({ visi
         onChange={e => onChange({ ...visibility, unassigned: e.target.checked })}
         className="accent-primary"
       />
-      <span>Unassigned</span>
+      <span>{WhoseWord.UNASSIGNED}</span>
     </label>
     <label className="flex items-center gap-1.5 cursor-pointer">
       <input
@@ -37,7 +38,7 @@ export const TaskVisibilityToggle: React.FC<TaskVisibilityToggleProps> = ({ visi
         onChange={e => onChange({ ...visibility, others: e.target.checked })}
         className="accent-primary"
       />
-      <span>Teammates&apos;</span>
+      <span>{WhoseWord.TEAMMATES}</span>
     </label>
     {hiddenCount > 0 && <span className="text-text-secondary/70">({hiddenCount} hidden)</span>}
   </div>

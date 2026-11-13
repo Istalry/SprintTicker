@@ -73,7 +73,7 @@ describe('the screen icon', () => {
 
     const icon = renderer.getScreenIcon();
     expect(icon?.pixels).toBe(CLOCK_16X16_BITMAP);
-    expect(icon?.label).toMatch(/EOD WRAP-UP/);
+    expect(icon?.label).toMatch(/END MY DAY/);
   });
 
   it('RenderNotificationBanner_AppsOwnIcon_IsThatIcon', () => {

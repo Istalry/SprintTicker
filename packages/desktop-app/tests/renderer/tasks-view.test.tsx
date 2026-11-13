@@ -120,7 +120,7 @@ describe('Tasks', () => {
     render(<ProjectTaskManagerView />);
     await screen.findByText('Firefly flocking');
 
-    fireEvent.click(screen.getByRole('button', { name: /unassigned/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Unassigned/ }));
 
     expect(screen.queryByText('Firefly flocking')).toBeNull();
     expect(bridge.api.setTaskVisibility).toHaveBeenCalledWith({ unassigned: false, others: false });

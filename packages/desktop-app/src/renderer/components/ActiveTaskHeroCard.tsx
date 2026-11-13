@@ -7,6 +7,7 @@ import { taskLeftLabel } from '../../shared/task-left';
 import { hasTaskPage } from '../../shared/task-page';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { sendDestinationName } from '../../shared/provider-names';
 import { TaskPageButton } from './TaskPageButton';
 import { SessionTitle } from './SessionTitle';
 import { InterruptionDetails } from './InterruptionDetails';
@@ -25,7 +26,7 @@ interface ActiveTaskHeroCardProps {
   onOpenTaskModal: () => void;
   /** Interrupt: a timer at once, the task running waits paused. During one, Another. */
   onInterrupt: () => void;
-  /** Ends the interruption and resumes the task it interrupted. */
+  /** Ends the interruption and goes back to the task it interrupted, as it was. */
   onBack?: () => void;
   /** Ends the interruption; it waits to be placed. */
   onStopInterruption?: () => void;
@@ -95,17 +96,25 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   const interruption = session?.interruption ?? null;
   const previous = usePreviousTask(session && !interruption ? session.taskId : null);
 
-  const keptHere = session ? isAdHocSession(session) || session.providerId === OWN_PROJECT_PROVIDER_ID : false;
+  // The provider this session's time goes to, not the active one (C2).
+  const destination = session ? sendDestinationName(session.providerId, providerName) : null;
+  const keptHere = session ? isAdHocSession(session) || session.providerId === OWN_PROJECT_PROVIDER_ID || destination === null : false;
   // Done where the provider can move tasks, and for work kept here, where it
   // marks the task done locally. Unknown capabilities still offer it: the
   // provider's own refusal is the fallback, never a hidden Done.
   const offerDone = keptHere || capabilities?.canTransition !== false;
-  const doneMeans = keptHere ? 'and marks it done here' : `and ${providerName || 'your provider'} moves it to its done state`;
+  const doneMeans = keptHere ? 'and marks it done here' : `and ${destination} moves it to its done state`;
   const sendLine = !session
     ? null
     : keptHere
     ? 'kept on this computer, never sent'
-    : `sent to ${providerName || 'your provider'} when you stop, after 10 s to undo`;
+    : `sent to ${destination} when you stop, after 10 s to undo`;
+
+  const timer = (
+    <div className="text-4xl font-extrabold font-mono text-white tracking-widest" aria-label="Elapsed time">
+      {formatSeconds(session?.elapsedSeconds || 0)}
+    </div>
+  );
 
   const state = !session ? StateWord.NOTHING_TIMING : session.status === 'TRACKING' ? StateWord.RUNNING : StateWord.PAUSED;
 
@@ -137,7 +146,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
       </div>
 
       {interruption ? (
-        <InterruptionDetails key={interruption.id} interruption={interruption} />
+        <InterruptionDetails key={interruption.id} interruption={interruption} timer={timer} />
       ) : (
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight">
@@ -148,12 +157,12 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               inputClassName="w-full bg-dark-900 border border-focus rounded-lg px-3 py-1 text-xl font-bold text-white focus:outline-none font-sans"
             />
           ) : (
-            'No task running'
+            'What are you working on?'
           )}
         </h2>
         {session?.unsorted && (
           <div className="mt-1 text-xs text-accent-amber">
-            Interruption -- name it, or assign it to a task so its time reaches your provider.
+            Interruption: name it, or {Verb.PLACE.toLowerCase()} it on a task so {destination ?? 'your provider'} gets its time.
           </div>
         )}
         {session?.taskUnlisted && (
@@ -162,15 +171,13 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             className="mt-2 inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-accent-amber/10 border border-accent-amber/30 text-accent-amber text-xs"
           >
             <AlertTriangle className="w-3.5 h-3.5" />
-            <span>{taskLeftLabel(session.taskLeftBecause, session.taskOwnerName)} -- time is still logged</span>
+            <span>{taskLeftLabel(session.taskLeftBecause, session.taskOwnerName, destination)} — time is still logged</span>
           </div>
         )}
       </div>
       )}
 
-      <div className="text-4xl font-extrabold font-mono text-white tracking-widest" aria-label="Elapsed time">
-        {formatSeconds(session?.elapsedSeconds || 0)}
-      </div>
+      {!interruption && timer}
 
       <div className="flex flex-wrap items-center gap-3">
         {/* Idle, the one thing to do is start: Resume and Stop had nothing to act on. */}
@@ -196,7 +203,7 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               <button
                 type="button"
                 onClick={onBack}
-                title={`End the interruption and resume ${interruption.interruptedTaskKey}`}
+                title={`End the interruption and go back to ${interruption.interruptedTaskKey}`}
                 className={PRIMARY_GREEN}
               >
                 <Undo2 className="w-4 h-4" />
@@ -272,11 +279,11 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
               <button
                 type="button"
                 onClick={onAssign}
-                title="Move this session to a task: all of its time goes there"
+                title="Put its time on a task: all of it goes there"
                 className={PLAIN}
               >
                 <Link2 className="w-4 h-4" />
-                <span>Assign to a task…</span>
+                <span>{Verb.PLACE}…</span>
               </button>
             )}
           </>

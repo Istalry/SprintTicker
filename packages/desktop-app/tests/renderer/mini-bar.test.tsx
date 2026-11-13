@@ -71,7 +71,7 @@ describe('mini timer', () => {
     render(<MiniBar />);
     await screen.findByText('Interruption 10:30');
 
-    fireEvent.click(screen.getByLabelText('Assign to a task'));
+    fireEvent.click(screen.getByLabelText('Place on a task'));
 
     await waitFor(() => expect(bridge.api.openAssignPicker).toHaveBeenCalledTimes(1));
   });
@@ -81,7 +81,7 @@ describe('mini timer', () => {
     render(<MiniBar />);
     await screen.findByText('SPR-142');
 
-    expect(screen.queryByLabelText('Assign to a task')).toBeNull();
+    expect(screen.queryByLabelText('Place on a task')).toBeNull();
   });
 
   it('Render_Tracking_ShowsTheTaskAndTheElapsedTime', async () => {
@@ -169,7 +169,7 @@ describe('mini timer', () => {
     it('Stop_ThenKeep_GivesTheButtonsBack', async () => {
       const bridge = await openEndings();
 
-      fireEvent.click(screen.getByLabelText('Keep the session'));
+      fireEvent.click(screen.getByLabelText('Keep timing'));
 
       expect(screen.getByLabelText('Pause')).toBeTruthy();
       expect(bridge.api.completeSession).not.toHaveBeenCalled();
@@ -193,7 +193,7 @@ describe('mini timer', () => {
         getCurrentSession: async () => ({ ...TRACKING_SESSION, taskUnlisted: true, taskLeftBecause: 'closed' as const })
       });
       render(<MiniBar />);
-      expect(await screen.findByText('SPR-142 · Closed on the provider')).toBeTruthy();
+      expect(await screen.findByText('SPR-142 · Closed in your provider')).toBeTruthy();
       fireEvent.click(screen.getByLabelText('Stop'));
 
       fireEvent.click(screen.getByText('Done'));
@@ -341,7 +341,7 @@ describe('mini timer: the screen icon', () => {
       expect(screen.getByText('Lunch over · SPR-142')).toBeTruthy();
       expect(screen.queryByLabelText('Resume')).toBeNull();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Worked through' }));
+      fireEvent.click(screen.getByRole('button', { name: 'I worked through it' }));
 
       expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, undefined, true);
       expect(screen.queryByText('Back at your desk?')).toBeNull();
@@ -491,7 +491,7 @@ describe('mini timer: the states of S25', () => {
 
     expect(screen.getByText('Stop SPR-142')).toBeTruthy();
     expect(screen.getByText(/logs 1h 23m · Discard keeps nothing/)).toBeTruthy();
-    expect(labels()).toEqual(['Done', 'Stop', 'Discard…', 'Keep the session']);
+    expect(labels()).toEqual(['Done', 'Stop', 'Discard…', 'Keep timing']);
   });
 
   it('Tour_FirstOpen_NamesTheButtons_UntilPutAway', async () => {
@@ -519,7 +519,7 @@ describe('mini timer: the states of S25', () => {
       />
     );
 
-    expect(screen.getByText('Back to SPR-142? 6 min untracked')).toBeTruthy();
+    expect(screen.getByText('Back to SPR-142? 6 min not timed')).toBeTruthy();
     fireEvent.click(screen.getByText('↩ Back +6m'));
     expect(window.electronAPI.answerResumePrompt).toHaveBeenCalledWith(true, 6, undefined);
   });

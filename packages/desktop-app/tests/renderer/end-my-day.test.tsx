@@ -52,7 +52,7 @@ describe('End my day', () => {
     expect(rows.map(r => r.textContent)).toEqual([
       'TaskTimeOpenProject',
       'PF-31 PF-31 title1h 40mSent',
-      'OPS-4 OPS-4 title20mSending',
+      'OPS-4 OPS-4 title20mWaiting to send',
       'MG-12 Fix the lantern glow at dusk1h 45mrunning · stops, stays open, and is sent'
     ]);
     expect(screen.getByRole('region', { name: 'Interruptions to place' })).toBeTruthy();
@@ -88,7 +88,7 @@ describe('End my day', () => {
   it('Later_AsksAgainIn15Minutes', async () => {
     const { props } = open();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remind me in 15 min' }));
 
     expect(props.onLater).toHaveBeenCalledWith(15);
   });
@@ -106,7 +106,7 @@ describe('End my day', () => {
     });
 
     const hint = await screen.findByRole('note');
-    expect(hint.textContent).toMatch(/untracked gaps? today .*only a hint/);
+    expect(hint.textContent).toMatch(/gaps? not timed today .*only a hint/);
     fireEvent.click(within(hint).getByRole('button', { name: 'Check them…' }));
     expect(props.onCheckGaps).toHaveBeenCalledTimes(1);
   });
@@ -142,7 +142,7 @@ describe('End my day, the bar', () => {
     await button();
 
     press('start', 'CONFIRM_EOD_WRAP_UP_STEP_1');
-    expect(screen.getByRole('button', { name: 'Press START again to end the day' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Press Pause on the bar again to end the day' })).toBeTruthy();
     press('start', 'EXECUTE_EOD_WRAP_UP');
 
     expect(bridge.api.triggerEodWrapUp).toHaveBeenCalledTimes(1);

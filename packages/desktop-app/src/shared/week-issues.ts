@@ -165,7 +165,7 @@ export function checkWeek(input: WeekCheckInput): WeekCheck {
       const nothing = !week.some(e => dayOf(e.startedAtUtc) === dateKey);
       issues.push({
         kind: 'gaps',
-        title: nothing ? `Nothing logged on ${name}` : `${name} has ${formatHoursAndMinutes(gapSeconds(gaps))} untracked`,
+        title: nothing ? `Nothing logged on ${name}` : `${name} has ${formatHoursAndMinutes(gapSeconds(gaps))} not timed`,
         details: [nothing
           ? `${formatHoursAndMinutes(gapSeconds(gaps))} of working hours`
           : `${plural(gaps.length, 'gap', 'gaps')} · ${gaps.map(g => `${clock(g.startMs)}–${clock(g.endMs)}`).join(', ')}`],

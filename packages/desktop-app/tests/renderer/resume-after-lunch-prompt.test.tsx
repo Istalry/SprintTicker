@@ -17,16 +17,16 @@ describe('resume after lunch', () => {
     await act(async () => undefined);
 
     expect(bridge.api.getResumePrompt).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('region')).toBeNull();
   });
 
   it('Render_AskedBeforeTheWindowOpened_ShowsTheQuestion', async () => {
     installElectronApi({ getResumePrompt: async () => QUESTION });
     render(<ResumeAfterLunchPrompt />);
 
-    expect(await screen.findByRole('alertdialog')).toBeTruthy();
+    expect(await screen.findByRole('region')).toBeTruthy();
     expect(screen.getByText('SCRUM-2')).toBeTruthy();
-    expect(screen.getByRole('alertdialog').textContent).toMatch(/no longer assigned to you/);
+    expect(screen.getByRole('region').textContent).toMatch(/no longer assigned to you/);
   });
 
   it('Render_AfterAnInterruption_AsksBackToTheTask', async () => {
@@ -34,8 +34,11 @@ describe('resume after lunch', () => {
     installElectronApi({ getResumePrompt: async () => ({ ...QUESTION, after: 'interruption' as const }) });
     render(<ResumeAfterLunchPrompt />);
 
-    expect(await screen.findByText('Back to your task?')).toBeTruthy();
-    expect(screen.getByRole('alertdialog').textContent).not.toMatch(/no longer assigned/);
+    expect(await screen.findByRole('heading', { name: 'Back to SCRUM-2?' })).toBeTruthy();
+    // The glossary's answers: Back, never Resume (REVIEW-2026-11 C1).
+    expect(screen.getByRole('button', { name: '↩ Back to SCRUM-2' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Resume/ })).toBeNull();
+    expect(screen.getByRole('region').textContent).not.toMatch(/no longer assigned/);
   });
 
   it('Render_AfterAnInterruption_TaskLeftTheList_SaysSo', async () => {
@@ -43,7 +46,7 @@ describe('resume after lunch', () => {
     installElectronApi({ getResumePrompt: async () => ({ ...QUESTION, after: 'interruption' as const, unlisted: true as const }) });
     render(<ResumeAfterLunchPrompt />);
 
-    expect((await screen.findByRole('alertdialog')).textContent).toMatch(/no longer assigned to you/);
+    expect((await screen.findByRole('region')).textContent).toMatch(/no longer assigned to you/);
   });
 
   it('Render_AskedWhileOpen_ShowsTheQuestion', async () => {
@@ -53,12 +56,12 @@ describe('resume after lunch', () => {
 
     act(() => bridge.emit('onResumePrompt', QUESTION));
 
-    expect(screen.getByRole('alertdialog')).toBeTruthy();
+    expect(screen.getByRole('region')).toBeTruthy();
   });
 
   it.each([
-    ['Resume it', true],
-    ['Leave it', false]
+    ['▶ Resume SCRUM-2 anyway', true],
+    ['Not now', false]
   ])('Answer_%s_TellsMainAndCloses', async (label, resume) => {
     const bridge = installElectronApi({ getResumePrompt: async () => QUESTION });
     render(<ResumeAfterLunchPrompt />);
@@ -66,16 +69,16 @@ describe('resume after lunch', () => {
     fireEvent.click(await screen.findByRole('button', { name: label }));
 
     expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(resume, undefined, undefined);
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('region')).toBeNull();
   });
 
   it('Render_AfterTheStandup_SaysSo', async () => {
     installElectronApi({ getResumePrompt: async () => ({ ...QUESTION, after: 'standup' as const }) });
     render(<ResumeAfterLunchPrompt />);
 
-    const dialog = await screen.findByRole('alertdialog');
+    const dialog = await screen.findByRole('region');
 
-    expect(dialog.textContent).toMatch(/Resume after the stand-up\?/);
+    expect(dialog.textContent).toMatch(/Resume SCRUM-2\?/);
     expect(dialog.textContent).toMatch(/The stand-up stopped/);
     expect(dialog.textContent).not.toMatch(/lunch/i);
   });
@@ -83,11 +86,11 @@ describe('resume after lunch', () => {
     it('AnsweredOnTheBar_TheDialogCloses', async () => {
     const bridge = installElectronApi({ getResumePrompt: async () => QUESTION });
     render(<ResumeAfterLunchPrompt />);
-    await screen.findByRole('alertdialog');
+    await screen.findByRole('region');
 
     act(() => bridge.emit('onResumePrompt', null));
 
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('region')).toBeNull();
     expect(bridge.api.answerResumePrompt).not.toHaveBeenCalled();
   });
   it('AfterAnInterruption_ResumeCountingTheGap_SendsItsMinutes', async () => {
@@ -98,7 +101,7 @@ describe('resume after lunch', () => {
     });
     render(<ResumeAfterLunchPrompt />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Resume, and count the time since as work' }));
+    fireEvent.click(await screen.findByRole('button', { name: '↩ Back, add the 12 min' }));
 
     expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, 12, undefined);
   });
@@ -110,10 +113,10 @@ describe('resume after lunch', () => {
       installElectronApi({ getResumePrompt: async () => HELD });
       render(<ResumeAfterLunchPrompt />);
 
-      const dialog = await screen.findByRole('alertdialog', { name: 'Back at your desk?' });
+      const dialog = await screen.findByRole('region', { name: 'Back at your desk?' });
 
       expect(dialog.textContent).toMatch(/is paused, as it was: Lunch is not timed/);
-      expect(screen.getByRole('button', { name: `Resume ${QUESTION.taskKey}` })).toBeTruthy();
+      expect(screen.getByRole('button', { name: `▶ Resume ${QUESTION.taskKey}` })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Not now' })).toBeTruthy();
     });
 
@@ -130,15 +133,15 @@ describe('resume after lunch', () => {
       installElectronApi({ getResumePrompt: async () => ({ ...HELD, after: 'away' as const }) });
       render(<ResumeAfterLunchPrompt />);
 
-      expect((await screen.findByRole('alertdialog')).textContent).toMatch(/Away is not timed/);
+      expect((await screen.findByRole('region')).textContent).toMatch(/Away is not timed/);
     });
   });
 
   it('AfterLunch_NoGapToCount', async () => {
     installElectronApi({ getResumePrompt: async () => QUESTION });
     render(<ResumeAfterLunchPrompt />);
-    await screen.findByRole('alertdialog');
+    await screen.findByRole('region');
 
-    expect(screen.queryByRole('button', { name: /count the time since/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /add the/ })).toBeNull();
   });
 });

@@ -88,7 +88,7 @@ describe('ProjectTaskManagerView task visibility', () => {
     render(<ProjectTaskManagerView />);
     await screen.findByText('Free todo');
 
-    fireEvent.click(screen.getByRole('button', { name: /unassigned/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Unassigned/ }));
 
     expect(screen.queryByText('Free todo')).toBeNull();
     expect(titlesInOrder()).toEqual(['Mine todo']);

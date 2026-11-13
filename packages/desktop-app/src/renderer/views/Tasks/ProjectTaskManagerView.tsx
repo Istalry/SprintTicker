@@ -3,7 +3,7 @@ import { MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
 import { END_THE_INTERRUPTION_FIRST } from '../../../shared/interruption';
 import { pickTask } from '../../utils/pick-task';
-import { Verb } from '../../../shared/words';
+import { Verb, WhoseWord } from '../../../shared/words';
 import { ConfirmPanel } from '../../components/ConfirmPanel';
 import { useModal } from '../../hooks/useModal';
 import { useMenu } from '../../hooks/useMenu';
@@ -526,8 +526,8 @@ const TaskFilters: React.FC<{
     </label>
     <div role="group" aria-label="Whose tasks" className="flex items-center gap-1"
       title="Your own tasks are always listed. The bar's own picker follows the same setting.">
-      <span className={`rounded-full border px-2.5 py-1 text-[11px] ${PILL_ON}`}>✓ mine</span>
-      {([['unassigned', 'unassigned'], ['others', "teammates'"]] as const).map(([field, label]) => (
+      <span className={`rounded-full border px-2.5 py-1 text-[11px] ${PILL_ON}`}>✓ {WhoseWord.MINE}</span>
+      {([['unassigned', WhoseWord.UNASSIGNED], ['others', WhoseWord.TEAMMATES]] as const).map(([field, label]) => (
         <button key={field} type="button" aria-pressed={visibility[field]}
           onClick={() => onVisibility({ ...visibility, [field]: !visibility[field] })}
           className={`rounded-full border px-2.5 py-1 text-[11px] ${visibility[field] ? PILL_ON : PILL_OFF}`}>
@@ -717,7 +717,7 @@ const ImportDialog: React.FC<{
     <Modal label={label} onClose={onCancel}>
       <h3 className="text-sm font-semibold text-text-primary">{label}</h3>
       <p className="text-xs text-text-secondary">
-        One task a line, <span className="font-mono text-text-primary">KEY, Title, todo</span> -- or a title alone -- or a JSON
+        One task a line, <span className="font-mono text-text-primary">KEY, Title, todo</span> — or a title alone — or a JSON
         array of <span className="font-mono text-text-primary">{'{ "key", "title" }'}</span>.
       </p>
       <textarea rows={6} aria-label="Tasks to import" value={text} onChange={e => { setText(e.target.value); setResult(null); }}

@@ -251,7 +251,7 @@ describe('TaskPicker', () => {
     const { bridge } = open();
     await screen.findByText('Recent');
 
-    await act(async () => { fireEvent.click(screen.getByText(/A ticket is missing\?/)); });
+    await act(async () => { fireEvent.click(screen.getByText(/A task is missing\?/)); });
 
     expect(bridge.api.syncProviderNow).toHaveBeenCalled();
     await waitFor(() => expect(bridge.api.getPickerData).toHaveBeenCalledTimes(2));

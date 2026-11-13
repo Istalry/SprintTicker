@@ -227,6 +227,22 @@
 
 ### Changed
 
+- **One word for each thing, everywhere.** After an interruption the window,
+  the mini timer and the bar all ask **Back to MG-12?** -- **↩ Back**,
+  **↩ Back, add the 6 min**, **Not now** -- where the window said Resume it
+  and Leave it. The end of the day is **End my day** on every surface, the
+  bar included (END MY DAY, where it said EOD WRAP-UP), and the stand-up is
+  STAND-UP. **Place** is the one word for putting time on a task (no more
+  Assign), Away's card says **Resume**, the confirmations say **Cancel**,
+  and "untracked" is **not timed**. The Undo bar says what the action comes
+  to -- *Sent in 7 s*, *Kept here*, *Waits to place*, *Nothing kept or
+  sent* -- instead of "Sent" for a Discard. The session card names the
+  provider the time goes to, the send badges read **Logged here**,
+  **Waiting to send** and **Sent**, Correct names its fields as Add time
+  does (Duration, Note), the task scope is *Mine, free and in progress*,
+  the priority panel's rows have plain names, and a setting that fails
+  says why and what to do, rather than "Error invoking remote method".
+
 - **The bar's buttons each do one thing.** **Pause** says yes -- pause,
   resume, back to your task from an interruption, join, dismiss -- and with
   nothing running opens the task picker on the computer. **Pause again**

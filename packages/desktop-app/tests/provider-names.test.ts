@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  sendDestinationName,
   ProviderId,
   providerDisplayName,
   selectableProviders,
@@ -64,5 +65,23 @@ describe('providerDisplayName', () => {
     } finally {
       db.close();
     }
+  });
+});
+
+/** Where a session's time goes (P15a3, REVIEW-2026-11 C2). */
+describe('sendDestinationName', () => {
+  it.each([
+    // The session's own provider, whichever is active now.
+    ['openproject', 'This computer', 'OpenProject'],
+    ['jira', 'OpenProject', 'Jira'],
+    // `local` is "not known": the active provider.
+    [UNKNOWN_PROJECT_PROVIDER_ID, 'Jira', 'Jira'],
+    [undefined, '', 'your provider'],
+    // Kept here: nothing is sent.
+    [OWN_PROJECT_PROVIDER_ID, 'Jira', null],
+    ['adhoc', 'Jira', null],
+    [UNKNOWN_PROJECT_PROVIDER_ID, 'This computer', null]
+  ])('SendDestinationName_%s_Active%s_Is%s', (session, active, expected) => {
+    expect(sendDestinationName(session, active)).toBe(expected);
   });
 });

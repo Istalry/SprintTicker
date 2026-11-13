@@ -106,7 +106,8 @@ describe('UndoService', () => {
     expect(service.current()).toEqual({
       kind: 'stop',
       label: 'Stopped A-1',
-      expiresAtUtc: new Date(now + UNDO_WINDOW_MS).toISOString()
+      expiresAtUtc: new Date(now + UNDO_WINDOW_MS).toISOString(),
+      outcome: 'sent'
     });
     vi.advanceTimersByTime(UNDO_WINDOW_MS);
     expect(service.current()).toBeNull();
@@ -246,6 +247,30 @@ describe('undoable commands', () => {
 
     expect(undo.run()).toBe(false);
     expect(engine.getCurrentSession()?.taskId).toBe(B.id);
+  });
+
+  // What the Undo bar says beside its button (P15a3, REVIEW-2026-11 C3):
+  // "Sent in 7 s" only when something will be.
+  it('Stop_SaysItWillBeSent', () => {
+    runA();
+    stopUndoably(deps, renderer, 'Over');
+
+    expect(undo.current()?.outcome).toBe('sent');
+  });
+
+  it('StopAnInterruption_SaysItWaitsToPlace', () => {
+    runA();
+    engine.startInterruption();
+    stopUndoably(deps, renderer);
+
+    expect(undo.current()?.outcome).toBe('to-place');
+  });
+
+  it('Discard_SaysNothingIsKept', () => {
+    runA();
+    discardUndoably(deps);
+
+    expect(undo.current()?.outcome).toBe('nothing');
   });
 
   it('DiscardThenUndo_BringsTheSessionBack', () => {

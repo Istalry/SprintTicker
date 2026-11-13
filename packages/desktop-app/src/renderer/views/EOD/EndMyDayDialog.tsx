@@ -18,7 +18,7 @@ export interface EndMyDayDialogProps {
   isOpen: boolean;
   /** Closed for today: the prompt is not asked again. */
   onClose: () => void;
-  /** Later: asked again in `END_DAY_LATER_MINUTES`. */
+  /** Remind me: asked again in `END_DAY_LATER_MINUTES`. */
   onLater: (minutes: number) => void;
   /** The day was ended; Undo is the window's bar now. */
   onEnded: () => void;
@@ -177,7 +177,6 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
         <div className="p-6 space-y-4 overflow-y-auto">
           <InterruptionsToPlace
             compact
-            hint="Each one is sent once you choose its task. Those you leave stay here, unsent, and the morning card and the week list them."
           />
 
           <table aria-label="Today's entries" className="w-full text-xs">
@@ -219,7 +218,7 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
             <div role="note" className="flex items-start justify-between gap-3 bg-dark-900/60 border border-border-dark rounded-lg p-3 text-xs">
               <div className="space-y-0.5">
                 <div className="font-semibold text-white">
-                  {gaps.length === 1 ? '1 untracked gap' : `${gaps.length} untracked gaps`} today ({formatHoursAndMinutes(gapSeconds(gaps))})
+                  {gaps.length === 1 ? '1 gap not timed' : `${gaps.length} gaps not timed`} today ({formatHoursAndMinutes(gapSeconds(gaps))})
                 </div>
                 <div className="text-text-secondary">
                   {gaps.map(g => `${clock(g.startMs)}–${clock(g.endMs)}`).join(', ')} · only a hint: a gap never stops you ending the day.
@@ -254,7 +253,7 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
             onClick={() => onLater(END_DAY_LATER_MINUTES)}
             className="px-3 py-2 text-xs font-semibold rounded-lg border border-border-dark text-text-secondary hover:text-white"
           >
-            Later
+            Remind me in {END_DAY_LATER_MINUTES} min
           </button>
           <button
             type="button"
@@ -262,7 +261,7 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
             disabled={busy || !day}
             className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-dark-900"
           >
-            {armed ? 'Press START again to end the day' : endDayButtonLabel(figures)}
+            {armed ? 'Press Pause on the bar again to end the day' : endDayButtonLabel(figures)}
           </button>
         </div>
       </div>

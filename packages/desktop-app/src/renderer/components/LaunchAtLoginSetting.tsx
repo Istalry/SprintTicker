@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { couldNot } from '../utils/formatters';
 import { LaunchAtLoginStatusDTO } from '../../shared/dtos';
 import { SettingProblem, SettingRow, SettingSwitch } from './SettingRow';
 
@@ -22,7 +23,7 @@ export const LaunchAtLoginSetting: React.FC = () => {
 
   useEffect(() => {
     const read = (): void => {
-      window.electronAPI?.getLaunchAtLogin().then(setStatus, (err: unknown) => setError(String(err)));
+      window.electronAPI?.getLaunchAtLogin().then(setStatus, (err: unknown) => setError(couldNot('read it', err)));
     };
     read();
     window.addEventListener('focus', read);
@@ -35,7 +36,7 @@ export const LaunchAtLoginSetting: React.FC = () => {
       const applied = await window.electronAPI?.setLaunchAtLogin(next);
       if (applied) setStatus(applied);
     } catch (err) {
-      setError(String(err));
+      setError(couldNot('change it', err));
     }
   };
 
@@ -54,7 +55,7 @@ export const LaunchAtLoginSetting: React.FC = () => {
         />
       }
     >
-      {error && <SettingProblem>Could not change it: {error}</SettingProblem>}
+      {error && <SettingProblem>{error}</SettingProblem>}
     </SettingRow>
   );
 };

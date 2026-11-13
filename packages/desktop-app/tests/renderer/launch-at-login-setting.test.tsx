@@ -58,7 +58,7 @@ describe('LaunchAtLoginSetting', () => {
 
     fireEvent.click(checkbox());
 
-    expect(await screen.findByText(/Could not change it: Error: Access denied/)).toBeTruthy();
+    expect(await screen.findByText(/Could not change it: Access denied. Try again/)).toBeTruthy();
     expect(checkbox().checked).toBe(false);
   });
 });

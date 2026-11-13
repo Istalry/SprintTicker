@@ -1374,6 +1374,9 @@ takes back here what the provider already has. Anything new that sends --
 a move to a third provider, a Done transition -- holds too, or Undo lies.
 And never hand-write an inverse of an action: the restore point records the
 rows, so a rule the action follows is not copied into its undo.
+An offer says what it comes to (`outcome`, from `RestorePoint.queuesSends`
+after `seal`): the Undo bar said "Sent in 7s" for a Discard and for time
+kept here (P15a3).
 
 **An overlapping entry is held, never sent.** Of two entries that overlap,
 the later one's first send waits until one of them is corrected

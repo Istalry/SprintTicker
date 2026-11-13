@@ -82,7 +82,7 @@ export const DeviceSettings: React.FC = () => {
           <SettingsList label="BUSY Bar">
             <SettingRow
               title="No bar on this computer"
-              description="SprintTicker keeps time without one. Add one here: the address and token you set before come back."
+              description="SprintTicker works without one. Add brings your bar back, with the address and token you used before."
               control={
                 <SettingButton tone="primary" disabled={!config} onClick={() => { if (config) void saveConfig({ ...config, enabled: true }); }}>
                   Add

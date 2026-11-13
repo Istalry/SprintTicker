@@ -55,6 +55,19 @@ export function providerDisplayName(providerId: string | null | undefined, serve
   return id;
 }
 
+/**
+ * Where a session's time goes, by name: the provider recorded on the session
+ * when it started (CLAUDE.md §7), never the one active now -- the session
+ * card said "sent to This computer" for an OpenProject task once the user
+ * had chosen no account (REVIEW-2026-11 C2). `local`, the old default, means
+ * *not known*, and keeps the active provider. Null when the time stays here.
+ */
+export function sendDestinationName(sessionProviderId: string | null | undefined, activeProviderName: string): string | null {
+  const id = (sessionProviderId ?? '').trim();
+  const name = id && id !== UNKNOWN_PROJECT_PROVIDER_ID ? providerDisplayName(id) : activeProviderName.trim() || UNNAMED_PROVIDER;
+  return name === ON_THIS_COMPUTER ? null : name;
+}
+
 /** The providers the user can choose, in the order the choice lists them. */
 export const SELECTABLE_PROVIDERS: readonly ProviderIdValue[] = [ProviderId.OPENPROJECT, ProviderId.JIRA, ProviderId.ADHOC];
 

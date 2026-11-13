@@ -23,7 +23,7 @@ export const AutoSaveIndicator: React.FC<AutoSaveIndicatorProps> = ({
     return (
       <div className="flex items-center space-x-2 px-3 py-2 text-xs rounded-lg bg-accent-red/10 border border-accent-red/30 text-accent-red">
         <CloudOff className="w-4 h-4" />
-        <span>Could not save — see the console for details</span>
+        <span>Not saved. Change it again to retry; if it still fails, restart SprintTicker.</span>
       </div>
     );
   }

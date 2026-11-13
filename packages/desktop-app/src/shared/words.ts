@@ -52,6 +52,23 @@ export const Verb = {
   UNDO: 'Undo'
 } as const;
 
+/**
+ * The end of the day, one name on every surface (P15a3, REVIEW-2026-11
+ * C9/W11): the header's button, the prompt, Settings and the bar said End
+ * my day, End-of-Day Wrap-Up, End of day and EOD WRAP-UP.
+ */
+export const END_MY_DAY = 'End my day';
+
+/**
+ * Whose tasks a list shows (W26): the picker said "Unassigned" and
+ * "Teammates'", Tasks "unassigned" and "teammates'".
+ */
+export const WhoseWord = {
+  MINE: 'Mine',
+  UNASSIGNED: 'Unassigned',
+  TEAMMATES: 'Teammates’'
+} as const;
+
 /** Union of the verb strings above. */
 export type VerbValue = (typeof Verb)[keyof typeof Verb];
 
@@ -109,6 +126,18 @@ export function keepAsOwnEntryMeaning(providerName: string, local: boolean): str
 }
 
 /**
+ * What the interruptions to place are, said once under their list wherever
+ * it is (Today, End my day, History). `local` when no provider receives time.
+ */
+export function toPlaceHint(providerName: string, local: boolean): string {
+  const name = providerName.trim();
+  if (local || !name) {
+    return `Name each and ${Verb.PLACE.toLowerCase()} it on a task, or ${KEEP_AS_OWN_ENTRY.toLowerCase()} in your history. Tick some to ${Verb.PLACE.toLowerCase()} them together.`;
+  }
+  return `${name} gets this time once it is on a task. ${KEEP_AS_OWN_ENTRY} keeps it in your history, never sent. Tick some to ${Verb.PLACE.toLowerCase()} them together.`;
+}
+
+/**
  * "Keep off Jira": keep an entry the provider refused on this computer only
  * (P11c). The provider's own name, from `providerDisplayName`, never a
  * generic one. Interruptions say {@link KEEP_AS_OWN_ENTRY} instead.
@@ -155,6 +184,23 @@ export function undoLabel(
   }
 }
 
+/**
+ * What the Undo bar says beside its button while the window runs, by what
+ * the action comes to: "Sent in 7 s" only when something will be.
+ */
+export function undoCountdown(outcome: 'sent' | 'kept' | 'to-place' | 'nothing', seconds: number): string {
+  switch (outcome) {
+    case 'sent':
+      return `Sent in ${seconds} s`;
+    case 'kept':
+      return `Kept here · ${seconds} s to undo`;
+    case 'to-place':
+      return `Waits to place · ${seconds} s to undo`;
+    case 'nothing':
+      return `Nothing kept or sent · ${seconds} s to undo`;
+  }
+}
+
 /** "3 to place", for the window, the tray and the mini timer. */
 export function toPlaceLabel(count: number): string {
   return `${wholeCount(count)} to place`;
@@ -197,6 +243,7 @@ export const BarWord = {
   NOT_NOW: 'NOT NOW',
   NOTHING_TIMING: 'NOTHING TIMING',
   STAND_UP: 'STAND-UP',
+  END_MY_DAY: 'END MY DAY',
   NOT_YOURS: 'NOT YOURS',
   DONE_ANYWAY: 'DONE ANYWAY',
   // Pause says yes everywhere and the wheel's click no on a question (P14b),

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { couldNot } from '../utils/formatters';
 import { FlowSettingKey, StartSideEffectsSetting as StartSideEffects } from '../../shared/flow-settings';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { SETTING_SELECT_CLASS, SettingProblem, SettingRow } from './SettingRow';
@@ -26,7 +27,7 @@ export const StartSideEffectsSetting: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    window.electronAPI?.getFlowSetting(FlowSettingKey.START_SIDE_EFFECTS).then(setSetting, (err: unknown) => setError(String(err)));
+    window.electronAPI?.getFlowSetting(FlowSettingKey.START_SIDE_EFFECTS).then(setSetting, (err: unknown) => setError(couldNot('read it', err)));
   }, []);
 
   if (!capabilities || !(capabilities.canTransition || capabilities.canAssign) || !setting) return null;
@@ -38,7 +39,7 @@ export const StartSideEffectsSetting: React.FC = () => {
       const stored = await window.electronAPI?.saveFlowSetting(FlowSettingKey.START_SIDE_EFFECTS, next);
       if (stored) setSetting(stored);
     } catch (err) {
-      setError(String(err));
+      setError(couldNot('change it', err));
     }
   };
 
@@ -65,7 +66,7 @@ export const StartSideEffectsSetting: React.FC = () => {
         </select>
       }
     >
-      {error && <SettingProblem>Could not change it: {error}</SettingProblem>}
+      {error && <SettingProblem>{error}</SettingProblem>}
     </SettingRow>
   );
 };

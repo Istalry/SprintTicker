@@ -273,15 +273,16 @@ Every claim on the display carries a score, and the highest score holds it:
 
 | Claim | Score |
 | :--- | ---: |
-| 🧳 Away mode | 100 |
-| 🎛️ Bar task picker | 97 |
-| 🥪 Lunch mode | 95 |
-| 🌙 End-of-day wrap-up | 80 |
-| 🥪 Resume after lunch question | 76 |
-| 🗣️ Standup prompt | 75 |
-| 🔔 Notification — High Priority | 70 |
-| 💬 Notification — Default | 65 |
-| ⏱️ Active task tracker | 45 |
+| 🧳 Away | 100 |
+| 🎛️ Bar menu | 97 |
+| 🥪 Lunch | 95 |
+| 🌙 End my day question | 80 |
+| 🥪 Resume question | 76 |
+| 🗣️ Stand-up question | 75 |
+| ⏸️ Nothing timing | 74 |
+| 🔔 High-priority notifications | 70 |
+| 💬 Default notifications | 65 |
+| ⏱️ Your timer | 45 |
 
 Per application you choose `Don't show`, `Default` or `High priority`; the table
 decides what that means in context. With the ordering above, notifications do

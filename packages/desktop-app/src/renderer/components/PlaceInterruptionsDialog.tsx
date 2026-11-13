@@ -176,7 +176,7 @@ export const PlaceInterruptionsDialog: React.FC<PlaceInterruptionsDialogProps> =
                     onChange={e => setNames(current => ({ ...current, [item.id]: e.target.value }))}
                     placeholder={choice?.kind === 'task'
                       ? `What was it? Sent as the note on ${choice.task.key}`
-                      : `${item.title} -- what was it?`}
+                      : `${item.title} — what was it?`}
                     className="w-full bg-dark-800 border border-border-dark focus:border-focus rounded px-2 py-1 font-bold text-white outline-none"
                   />
                   <div className="text-[10px] text-text-secondary truncate">
@@ -215,7 +215,7 @@ export const PlaceInterruptionsDialog: React.FC<PlaceInterruptionsDialogProps> =
               onClick={confirmPlace}
               className="px-3 py-1.5 text-xs font-bold rounded-lg bg-primary text-dark-900 disabled:opacity-40"
             >
-              {Verb.PLACE} the {chosen.length} chosen · {formatHoursAndMinutes(chosenSeconds)}
+              {chosen.length === 0 ? `${Verb.PLACE}: choose a task for each` : `${Verb.PLACE} ${chosen.length} · ${formatHoursAndMinutes(chosenSeconds)}`}
             </button>
           </div>
         </div>

@@ -69,7 +69,7 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ day, entries, schedule
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
         <span>
           <span className="font-mono text-text-primary">{formatHoursAndMinutes(logged)}</span> logged
-          {window && <> · <span className="font-mono text-text-primary">{formatHoursAndMinutes(gapSeconds(gaps))}</span> untracked in working hours</>}
+          {window && <> · <span className="font-mono text-text-primary">{formatHoursAndMinutes(gapSeconds(gaps))}</span> not timed in working hours</>}
         </span>
         {window && <span className="font-mono">{clock(window.startMs)} – {clock(window.endMs)}</span>}
       </div>
@@ -114,8 +114,8 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ day, entries, schedule
           <button
             key={gap.startMs}
             type="button"
-            aria-label={`${clock(gap.startMs)}–${clock(gap.endMs)} untracked: add time`}
-            title={`${clock(gap.startMs)}–${clock(gap.endMs)} untracked`}
+            aria-label={`${clock(gap.startMs)}–${clock(gap.endMs)} not timed: add time`}
+            title={`${clock(gap.startMs)}–${clock(gap.endMs)} not timed`}
             onClick={() => onGap(gap)}
             style={{ ...place(gap), ...HATCH }}
             className="absolute inset-y-1 rounded border border-dashed border-border-dark hover:border-focus"
@@ -143,10 +143,10 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({ day, entries, schedule
             onClick={() => onGap(gap)}
             className="hover:text-white underline-offset-2 hover:underline"
           >
-            ▨ {clock(gap.startMs)}–{clock(gap.endMs)} untracked · add time
+            ▨ {clock(gap.startMs)}–{clock(gap.endMs)} not timed · add time
           </button>
         ))}
-        <span className="ml-auto">Each block names its task · ⚡ marks an interruption · hatched is untracked</span>
+        <span className="ml-auto">Each block names its task · ⚡ marks an interruption · hatched is not timed</span>
       </div>
     </div>
   );

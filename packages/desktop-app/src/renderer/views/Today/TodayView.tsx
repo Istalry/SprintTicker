@@ -14,8 +14,6 @@ import { DeviceStatusDTO } from '../../../shared/dtos';
 import { SettingsGroupId } from '../Settings/settings-groups';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { TodayEntries } from '../../components/TodayEntries';
-import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
-import { KEEP_AS_OWN_ENTRY } from '../../../shared/words';
 
 interface TodayViewProps {
   session: ActiveSessionDTO | null;
@@ -60,14 +58,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const ceremony = useCeremonyPrompt();
   const [reminder, setReminder] = useReminder();
   const [mode, setMode] = useUserMode();
-  const { providerName, capabilities } = useProviderCapabilities();
   const [morning, putMorningAway] = useMorning();
   // When Today opened: the morning card's "in 22 minutes" counts from it.
   const [openedAt] = useState(() => new Date());
-  // Said for what the provider is: with none (This computer), nothing is sent either way.
-  const toPlaceHint = capabilities?.providerId === 'adhoc' || !providerName
-    ? `Name each and place it on a task, or ${KEEP_AS_OWN_ENTRY.toLowerCase()} in your history. Tick some to place them together.`
-    : `${providerName} gets this time once it is on a task. ${KEEP_AS_OWN_ENTRY} keeps it in your history, never sent. Tick some to place them together.`;
   const leaveAway = () => {
     setMode('WORK');
     window.electronAPI.setUserMode('WORK').catch(err => console.warn('[TodayView] Leaving Away failed:', err));
@@ -101,7 +94,7 @@ export const TodayView: React.FC<TodayViewProps> = ({
       onPrevious={onPrevious}
     />
 
-    <InterruptionsToPlace hint={toPlaceHint} />
+    <InterruptionsToPlace />
 
     <TodayEntries session={session} worklogs={worklogs} />
   </div>

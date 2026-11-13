@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import type { UndoStateDTO } from '../../shared/dtos';
-import { Verb } from '../../shared/words';
+import { undoCountdown, Verb } from '../../shared/words';
 
 /** How often the seconds left are redrawn. */
 const COUNTDOWN_TICK_MS = 250;
@@ -63,12 +63,14 @@ export const UndoBar: React.FC = () => {
   if (!state) return null;
   return (
     <div
-      role="status"
+      role="group"
       aria-label="Undo"
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 rounded-lg border border-border-dark bg-dark-700 px-4 py-2 shadow-lg"
     >
-      <span className="text-sm text-text-primary">{state.label}</span>
-      <span className="text-xs text-text-muted">{`Sent in ${secondsLeft}s`}</span>
+      {/* Announced once; the countdown beside it is not, or a screen
+          reader read it out every second for ten (REVIEW-2026-11 A9). */}
+      <span role="status" className="text-sm text-text-primary">{state.label}</span>
+      <span aria-hidden="true" className="text-xs text-text-muted">{undoCountdown(state.outcome, secondsLeft)}</span>
       <button
         ref={button}
         type="button"

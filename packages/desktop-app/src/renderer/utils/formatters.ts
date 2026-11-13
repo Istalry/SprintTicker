@@ -133,3 +133,16 @@ export function ipcErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   return raw.replace(/^Error invoking remote method '[^']*': /, '').replace(/^\w*(?:Error|Exception): /, '');
 }
+
+/** What a failed setting row says next: there is nothing else to press. */
+export const TRY_AGAIN = 'Try again; if it still fails, restart SprintTicker.';
+
+/**
+ * "Could not change it: <the reason>. Try again; ..." -- the reason main
+ * gave, never `String(err)`, which read "Error invoking remote method"
+ * (REVIEW-2026-11 W16), and a next step.
+ */
+export function couldNot(what: string, err: unknown): string {
+  const reason = ipcErrorMessage(err).trim().replace(/[.]+$/, '');
+  return `Could not ${what}${reason ? `: ${reason}` : ''}. ${TRY_AGAIN}`;
+}

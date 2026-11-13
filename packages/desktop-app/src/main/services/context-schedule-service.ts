@@ -1,4 +1,5 @@
 import type { UserMode } from '../../shared/dtos';
+import { END_MY_DAY } from '../../shared/words';
 import { powerMonitor, BrowserWindow } from 'electron';
 import { IPCChannel } from '../../shared/ipc-channels';
 import { PriorityPreemptionEngine } from './priority-preemption-engine';
@@ -648,11 +649,11 @@ export class ContextScheduleService {
   /// Broadcasts EOD Wrap-Up ceremony prompt to renderer window.
   /// </summary>
   public triggerEodPrompt(): void {
-    this._renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
+    this._renderer.renderCeremonyPrompt('EOD', `${END_MY_DAY}?`);
     const settings = this.schedule();
     const at = settings.eodWrapUpTime || settings.eodTime || '18:00';
     // The window opens the wrap-up where it is, without coming forward (P8c).
-    this.askCeremony({ type: 'EOD', title: 'End-of-Day Wrap-Up', at }, {
+    this.askCeremony({ type: 'EOD', title: END_MY_DAY, at }, {
       title: 'Time to end your day',
       body: 'Click to review today and send it.'
     });

@@ -1031,7 +1031,7 @@ export class DisplayRenderer {
       const isLunch = type === 'LUNCH';
       const iconId: BitmapIconId = isLunch ? 'burger' : 'clock';
       const accentColor = isEod ? '#A855F7' : isLunch ? '#F59E0B' : '#3B82F6';
-      const label = isEod ? 'EOD WRAP-UP' : isLunch ? 'LUNCH TIME' : 'DAILY STANDUP';
+      const label = isEod ? BarWord.END_MY_DAY : isLunch ? 'LUNCH TIME' : BarWord.STAND_UP;
 
       if (type === 'STANDUP') {
         this.canvas.clear();

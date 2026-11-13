@@ -18,7 +18,7 @@ export const TaskPageButton: React.FC<TaskPageButtonProps> = ({ taskId, taskKey,
   <button
     type="button"
     aria-label={`Open ${taskKey} on its provider`}
-    title="Open on the provider, in the browser"
+    title={`Open ${taskKey} in your browser`}
     onClick={() => {
       window.electronAPI
         ?.openTaskPage?.(taskId)

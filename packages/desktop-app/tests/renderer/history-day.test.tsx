@@ -182,8 +182,8 @@ describe("History's timeline", () => {
     await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue(EVERY_DAY) });
     const strip = screen.getByRole('group', { name: 'The day as a timeline' });
 
-    expect(strip.textContent).toMatch(/6h 50m logged · 40m untracked in working hours/);
-    expect(within(strip).getAllByRole('button', { name: /untracked: add time$/ })).toHaveLength(2);
+    expect(strip.textContent).toMatch(/6h 50m logged · 40m not timed in working hours/);
+    expect(within(strip).getAllByRole('button', { name: /not timed: add time$/ })).toHaveLength(2);
     expect(within(strip).getByRole('button', { name: /^Correct PF-31/ }).textContent).toBe('⚡ PF-31');
     expect(within(strip).getByTitle('Lunch')).toBeTruthy();
   });
@@ -191,7 +191,7 @@ describe("History's timeline", () => {
   it('Timeline_AGapClicked_OpensAddTimeWithItsTimes', async () => {
     await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue(EVERY_DAY) });
 
-    fireEvent.click(within(screen.getByRole('group', { name: 'The day as a timeline' })).getAllByRole('button', { name: /untracked: add time$/ })[1]);
+    fireEvent.click(within(screen.getByRole('group', { name: 'The day as a timeline' })).getAllByRole('button', { name: /not timed: add time$/ })[1]);
 
     const dialog = screen.getByRole('dialog', { name: 'Add time' });
     expect((within(dialog).getByLabelText('Started') as HTMLInputElement).value).toBe(`${YESTERDAY}T12:20`);
@@ -204,15 +204,15 @@ describe("History's timeline", () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Correct MG-12, / }));
 
-    expect(screen.getByRole('dialog', { name: 'Correct a worklog' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Correct an entry' })).toBeTruthy();
   });
 
   it('Timeline_ADayOff_OnlyTheEntries_NothingUntracked', async () => {
     await historyOnYesterday(MOCKUP_DAY, { getScheduleSettings: vi.fn().mockResolvedValue({ ...EVERY_DAY, workingDays: [(dayOfYesterday() + 1) % 7] }) });
     const strip = screen.getByRole('group', { name: 'The day as a timeline' });
 
-    expect(strip.textContent).not.toMatch(/untracked in working hours/);
-    expect(within(strip).queryAllByRole('button', { name: /untracked/ })).toEqual([]);
+    expect(strip.textContent).not.toMatch(/not timed in working hours/);
+    expect(within(strip).queryAllByRole('button', { name: /not timed/ })).toEqual([]);
   });
 
   it('Timeline_TheScheduleUnread_TheDayStillShows', async () => {
@@ -221,8 +221,8 @@ describe("History's timeline", () => {
 
     expect(screen.getAllByRole('button', { name: /^More for / })).toHaveLength(2);
     const strip = screen.getByRole('group', { name: 'The day as a timeline' });
-    expect(strip.textContent).not.toMatch(/untracked in working hours/);
-    expect(within(strip).queryAllByRole('button', { name: /untracked/ })).toEqual([]);
+    expect(strip.textContent).not.toMatch(/not timed in working hours/);
+    expect(within(strip).queryAllByRole('button', { name: /not timed/ })).toEqual([]);
   });
 
   it('Timeline_Today_TheSessionRunningIsCovered', async () => {
@@ -239,6 +239,6 @@ describe("History's timeline", () => {
 
     const strip = await screen.findByRole('group', { name: 'The day as a timeline' });
     expect(within(strip).getByTitle('MG-12 · running')).toBeTruthy();
-    expect(within(strip).queryAllByRole('button', { name: /untracked/ })).toEqual([]);
+    expect(within(strip).queryAllByRole('button', { name: /not timed/ })).toEqual([]);
   });
 });

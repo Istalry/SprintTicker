@@ -205,7 +205,6 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
       )}
 
       <InterruptionsToPlace
-        hint="Put each on the task it was for, and its time is sent there. Kept off, it stays in SprintTicker only."
         onJumpToDay={openDay}
       />
 

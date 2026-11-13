@@ -3,7 +3,7 @@ import { Link2, Zap } from 'lucide-react';
 import { InterruptionToPlaceDTO } from '../../shared/interruption';
 import { localDateKey } from '../../shared/local-date';
 import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
-import { INTERRUPTION_SOURCE_WORDS, KEEP_AS_OWN_ENTRY, Verb, keepAsOwnEntryMeaning } from '../../shared/words';
+import { INTERRUPTION_SOURCE_WORDS, KEEP_AS_OWN_ENTRY, Verb, keepAsOwnEntryMeaning, toPlaceHint } from '../../shared/words';
 import { formatClockTime, formatDay, formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { InlineRename } from './InlineRename';
@@ -13,8 +13,6 @@ import { PlaceInterruptionsDialog } from './PlaceInterruptionsDialog';
 import { RowMenu } from './RowMenu';
 
 interface InterruptionsToPlaceProps {
-  /** One line under the heading: what placing does, said for where the list is. */
-  hint: string;
   /** Jumps to the day an interruption began; History passes it, the wrap-up does not. */
   onJumpToDay?: (dateKey: string) => void;
   /** Tighter rows, for a dialog. */
@@ -61,7 +59,7 @@ export function useInterruptionsToPlace(): InterruptionToPlaceDTO[] {
  * or the deck, or placed in the other window, arrives on
  * `onInterruptionsUpdated`.
  */
-export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint, onJumpToDay, compact = false }) => {
+export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ onJumpToDay, compact = false }) => {
   const waiting = useInterruptionsToPlace();
   const [placing, setPlacing] = useState<Placing | null>(null);
   // A place of closed-week time, waiting for the user to say go on.
@@ -129,6 +127,9 @@ export const InterruptionsToPlace: React.FC<InterruptionsToPlaceProps> = ({ hint
   const primary = 'flex items-center gap-1 px-2 py-0.5 rounded bg-primary text-dark-900 font-semibold hover:bg-primary/90';
   const today = localDateKey();
   const keepMeaning = keepAsOwnEntryMeaning(providerName, localOnly);
+  // One explanation wherever the list is -- Today, End my day, History --
+  // which said it three ways, one with the retired "Kept off" (W4, W20).
+  const hint = toPlaceHint(providerName, localOnly);
 
   return (
     <section aria-label="Interruptions to place" className={`bg-accent-amber/5 border border-accent-amber/30 rounded-xl ${compact ? 'p-4 space-y-2' : 'p-5 space-y-3'}`}>

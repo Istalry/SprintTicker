@@ -36,7 +36,7 @@ describe('Settings · My workday', () => {
       .map(g => g.getAttribute('aria-labelledby') && document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent)
       .filter(Boolean);
     expect(titles).toEqual([
-      'Working days', 'Stand-up', 'Lunch', 'End of day', 'My week closes',
+      'Working days', 'Stand-up', 'Lunch', 'End my day', 'My week closes',
       'Nothing timing in working hours', 'A pause that runs long', 'A stand-up still running', 'An interruption still running',
       'A timer left running overnight', 'A long pause starts a new entry'
     ]);
@@ -203,7 +203,7 @@ describe('Settings · My workday', () => {
     const bridge = installElectronApi();
     render(<WorkdaySettings />);
 
-    fireEvent.click(within(await screen.findByRole('group', { name: 'End of day' })).getByRole('button', { name: 'Show me' }));
+    fireEvent.click(within(await screen.findByRole('group', { name: 'End my day' })).getByRole('button', { name: 'Show me' }));
 
     expect(await screen.findByText('The end-of-day prompt is up.')).toBeTruthy();
     expect(bridge.api.triggerEodPrompt).toHaveBeenCalledTimes(1);

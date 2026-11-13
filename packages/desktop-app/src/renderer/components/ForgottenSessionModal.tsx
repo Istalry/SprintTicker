@@ -164,7 +164,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
         {confirming === 'discard' ? (
           <ConfirmPanel
             takeFocus
-            title="Discard this session?"
+            title="Discard this time?"
             tone="danger"
             message={
               <>
@@ -173,7 +173,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
               </>
             }
             confirmLabel="Discard"
-            cancelLabel="Back"
+            cancelLabel="Cancel"
             onConfirm={() => answer('discard')}
             onCancel={() => setConfirming(null)}
           />
@@ -184,7 +184,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
             message={
               <>
                 <span className="font-mono text-text-primary font-bold">{review.taskKey}</span> left your list: reassigned,
-                closed or moved. Its time is logged either way. Start tracking it again anyway?
+                closed or moved. Its time is logged either way. Start timing it again anyway?
               </>
             }
             confirmLabel="Restart it"
@@ -236,7 +236,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                 )}
                 {choice === 'custom' && !customValid && (
                   <span role="alert" className="block mt-1 text-[11px] text-accent-red">
-                    Pick a time after the session started, and not in the future.
+                    Pick a time after it started, and not in the future.
                   </span>
                 )}
               </EndOption>
@@ -244,7 +244,7 @@ const ForgottenSessionDialog: React.FC<{ review: ForgottenSessionReviewDTO; onAn
                 checked={choice === 'all-along'}
                 onSelect={() => select('all-along')}
                 label="I was working all along"
-                note={`Logs ${formatHoursAndMinutes(worked(nowUtc))}, to now -- ${review.cause === 'closed' ? 'all the time it was closed' : 'the whole night'}.`}
+                note={`Logs ${formatHoursAndMinutes(worked(nowUtc))}, to now — ${review.cause === 'closed' ? 'all the time it was closed' : 'the whole night'}.`}
               />
               <EndOption
                 checked={choice === 'discard'}

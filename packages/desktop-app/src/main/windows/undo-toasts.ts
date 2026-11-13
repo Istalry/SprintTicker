@@ -1,26 +1,15 @@
-import type { UndoKind, UndoStateDTO } from '../../shared/dtos';
+import type { UndoStateDTO } from '../../shared/dtos';
+import { undoCountdown } from '../../shared/words';
 import type { ToastPresenter, ToastRequest } from '../services/toast-presenter';
 
 /**
  * What a toast says about an action Undo can still take back (P12c, S26):
- * what was done, and that a click undoes it. A discard sends nothing, so it
- * says so rather than "Sent in 10 s", which would read as time going out.
+ * what was done, what it comes to -- the Undo bar's words, so a discard or
+ * an interruption to place never reads as time going out -- and that a
+ * click undoes it.
  */
-export function describeUndoToast(state: Pick<UndoStateDTO, 'kind' | 'label'>, seconds: number): ToastRequest {
-  const within = `Click within ${seconds} s to undo.`;
-  const body: Record<UndoKind, string> = {
-    stop: `Sent in ${seconds} s. ${within}`,
-    discard: `Nothing kept or sent. ${within}`,
-    correct: `Sent in ${seconds} s. ${within}`,
-    move: `Sent in ${seconds} s. ${within}`,
-    delete: `Sent in ${seconds} s. ${within}`,
-    place: `Sent in ${seconds} s. ${within}`,
-    'end-day': `Sent in ${seconds} s. ${within}`,
-    add: `Sent in ${seconds} s. ${within}`,
-    split: `Sent in ${seconds} s. ${within}`,
-    'keep-off': within
-  };
-  return { title: state.label, body: body[state.kind] ?? within, route: 'undo' };
+export function describeUndoToast(state: Pick<UndoStateDTO, 'kind' | 'label' | 'outcome'>, seconds: number): ToastRequest {
+  return { title: state.label, body: `${undoCountdown(state.outcome ?? 'sent', seconds)}. Click to undo.`, route: 'undo' };
 }
 
 export interface UndoToastDeps {

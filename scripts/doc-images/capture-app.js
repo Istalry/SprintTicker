@@ -663,7 +663,7 @@ async function captureEveryScreen(page, profile) {
   await step('end my day', async () => {
     await page.press('End my day');
     await page.shot('s12-end-my-day');
-    await page.press('Later');
+    await page.press('Remind me in 15 min');
   });
 
   await step('tasks', async () => {

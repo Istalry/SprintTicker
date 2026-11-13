@@ -128,10 +128,10 @@ const StopMenuPanel: React.FC<PanelProps> = ({ menuRef, session, offerDone, done
       ) : asking === 'done' ? (
         <div className="p-2 space-y-3">
           <ConfirmPanel
-            title={`${Verb.DONE} -- but ${session.taskKey} is no longer yours`}
-            message={<>It left your list since you started it: reassigned, or moved. Your {logged} are logged either way. Marking it done applies your completion transition to it.</>}
+            title={`${Verb.DONE} — but ${session.taskKey} is no longer yours`}
+            message={<>It left your list since you started it: reassigned, or moved. Your {logged} are logged either way. Marking it done moves it to your done status.</>}
             confirmLabel="Mark it done anyway"
-            cancelLabel="Back"
+            cancelLabel="Cancel"
             takeFocus
             onConfirm={onDone}
             onCancel={() => setAsking(null)}
@@ -150,12 +150,12 @@ const StopMenuPanel: React.FC<PanelProps> = ({ menuRef, session, offerDone, done
               className={item}
             >
               <span className="font-bold text-accent-green">✓ {Verb.DONE}</span>
-              <span className="text-text-secondary"> -- logs {logged}, {doneMeans}</span>
+              <span className="text-text-secondary"> — logs {logged}, {doneMeans}</span>
             </button>
           )}
           <button type="button" role="menuitem" onClick={() => setAsking('discard')} className={item}>
             <span className="font-bold text-accent-red">{Verb.DISCARD}…</span>
-            <span className="text-text-secondary"> -- nothing kept or sent</span>
+            <span className="text-text-secondary"> — nothing kept or sent</span>
           </button>
           {daySplit && <p className="px-3 pt-1 pb-1 text-[11px] text-text-secondary">Across midnight, so filed as {daySplit}.</p>}
         </>

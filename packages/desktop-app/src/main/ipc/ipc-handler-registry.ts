@@ -1,5 +1,6 @@
 import type { NoticeService } from '../services/notice-service';
 import type { NoticeKind, NoticesDTO, SyncHealthDTO } from '../../shared/sync-health';
+import { END_MY_DAY } from '../../shared/words';
 import { INITIAL_SYNC_HEALTH } from '../../shared/sync-health';
 import type { FirstRunService } from '../services/first-run-service';
 import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../../shared/first-run';
@@ -1341,7 +1342,7 @@ export class IPCHandlerRegistry {
           this.renderer.renderCeremonyPrompt('STANDUP', 'Daily Stand-Up');
           return true;
         case 'CEREMONY_EOD':
-          this.renderer.renderCeremonyPrompt('EOD', 'End-of-Day Wrap-Up');
+          this.renderer.renderCeremonyPrompt('EOD', `${END_MY_DAY}?`);
           return true;
         case 'EOD_COMPLETE':
           this.renderer.renderEodCompleted();

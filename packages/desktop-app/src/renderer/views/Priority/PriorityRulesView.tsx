@@ -78,16 +78,16 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
   const saveStatus = useAutoSave(handleSave, [rules], loaded);
 
   const baseItems: PriorityItemDef[] = [
-    { key: 'highNotificationPriority', label: 'High Priority App / System Notification', desc: 'Critical notifications (e.g. Discord high alerts, low battery, urgent messages)' },
-    { key: 'awayModePriority', label: 'Away Mode Screen / Windows Lock', desc: 'Away screen banner displayed when Windows session is locked or suspended' },
-    { key: 'standupPromptPriority', label: 'Daily Stand-Up Ceremonies Prompt', desc: 'Interactive dialog for daily stand-up tracking' },
-    { key: 'lunchModePriority', label: 'Lunch Mode Screen / Scheduled Break', desc: 'Lunch time screen displayed during configured lunch hours' },
-    { key: 'messagingPriority', label: 'Default Chat / App Notifications', desc: 'Standard third-party notifications; auto-suppressed during Lunch or Away' },
-    { key: 'eodWrapUpPriority', label: 'End-of-Day Wrap-Up Prompt', desc: 'Interactive end-of-day prompt for logging remaining time' },
-    { key: 'menuPriority', label: 'Bar Menu', desc: 'The menu the wheel opens on the bar; above Lunch so it works during the break' },
-    { key: 'nothingTimingPriority', label: 'Nothing Timing', desc: 'Asks on the bar, in working hours, when no task has been timed for a while' },
-    { key: 'resumePromptPriority', label: 'Resume After Lunch Question', desc: 'Asks whether to resume a task reassigned, closed or moved over lunch' },
-    { key: 'activeTrackerPriority', label: 'Active Session Time Tracker / Idle', desc: 'Base UI tracker state' }
+    { key: 'highNotificationPriority', label: 'High-priority notifications', desc: 'Apps you set to High priority in Notifications, and the low-battery warning' },
+    { key: 'awayModePriority', label: 'Away', desc: 'While Windows is locked or asleep' },
+    { key: 'standupPromptPriority', label: 'Stand-up question', desc: 'Asks whether to join the stand-up, at its time' },
+    { key: 'lunchModePriority', label: 'Lunch', desc: 'During your lunch hours' },
+    { key: 'messagingPriority', label: 'Default notifications', desc: 'Apps you set to Default; ranked below Lunch and Away, they wait for the break to end' },
+    { key: 'eodWrapUpPriority', label: 'End my day question', desc: 'Asks whether to end the day, at your end of day' },
+    { key: 'menuPriority', label: 'Bar menu', desc: 'The menu the wheel opens on the bar; above Lunch so it works during the break' },
+    { key: 'nothingTimingPriority', label: 'Nothing timing', desc: 'Asks on the bar, in working hours, when no task has been timed for a while' },
+    { key: 'resumePromptPriority', label: 'Resume question', desc: 'Asks whether to resume a task that left your list over the break' },
+    { key: 'activeTrackerPriority', label: 'Your timer', desc: 'The task running, or the clock when nothing is' }
   ];
 
   // Sort items descending by priority score
@@ -117,7 +117,7 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
             <Zap className="w-5 h-5 text-accent-amber" />
             <span>What the bar shows first</span>
           </h2>
-          <p className="text-xs text-text-secondary">When two things want the bar -- a call, a build, your timer -- the higher level wins. What each does depends on the mode (Work, Lunch, Away), chosen in the header.</p>
+          <p className="text-xs text-text-secondary">When two things want the bar — a call, a message, your timer — the higher level wins. What each does depends on the mode (Work, Lunch, Away), chosen in the header.</p>
         </div>
 
         <AutoSaveIndicator status={saveStatus} />

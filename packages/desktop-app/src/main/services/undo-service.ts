@@ -1,10 +1,12 @@
-import { ArgumentException, ArgumentNullException, UndoKind, UndoStateDTO } from '../../shared/dtos';
+import { ArgumentException, ArgumentNullException, UndoKind, UndoOutcome, UndoStateDTO } from '../../shared/dtos';
 import { UNDO_WINDOW_MS } from '../sync/sync-constants';
 
 /** An action that can be taken back while its sends are held. */
 export interface UndoableAction {
   kind: UndoKind;
   label: string;
+  /** What it comes to when the window ends; sent when not said. */
+  outcome?: UndoOutcome;
   /**
    * Puts things back. False when it could not -- something was sent after
    * all -- and nothing changed.
@@ -76,7 +78,7 @@ export class UndoService {
   public current(): UndoStateDTO | null {
     if (!this._current || this._now() >= this._current.expiresAt) return null;
     const { action, expiresAt } = this._current;
-    return { kind: action.kind, label: action.label, expiresAtUtc: new Date(expiresAt).toISOString() };
+    return { kind: action.kind, label: action.label, expiresAtUtc: new Date(expiresAt).toISOString(), outcome: action.outcome ?? 'sent' };
   }
 
   /** The kind of action that can still be undone, or null. */

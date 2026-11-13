@@ -18,12 +18,13 @@ export function finishNeedsConfirmation(session: Pick<ActiveSessionDTO, 'taskUnl
  * What the window says about a task that left the list; unknown reads as
  * reassigned, and a reassigned task names its new owner when it is known.
  */
-export function taskLeftLabel(reason: TaskLeftReason | undefined, ownerName?: string): string {
+export function taskLeftLabel(reason: TaskLeftReason | undefined, ownerName?: string, providerName?: string | null): string {
+  const where = providerName?.trim() || 'your provider';
   switch (reason) {
     case 'closed':
-      return 'Closed on the provider';
+      return `Closed in ${where}`;
     case 'gone':
-      return 'No longer on the provider';
+      return `No longer in ${where}`;
     default:
       return ownerName?.trim() ? `Assigned to ${ownerName.trim()}` : 'No longer assigned to you';
   }

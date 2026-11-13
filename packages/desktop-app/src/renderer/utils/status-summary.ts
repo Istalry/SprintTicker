@@ -62,7 +62,7 @@ export function statusRows(inputs: StatusInputs): StatusRow[] {
         id: 'sending',
         severity: 'problem',
         title: `${entries(queue.counts.failed)} could not be sent`,
-        detail: `${inputs.providerName} refused them. They are kept here; see Settings, Account, to retry.`,
+        detail: `${inputs.providerName} did not take them yet — no answer, or the sign-in was refused. They are kept here and sent again once it works: Settings › Account › Entries waiting to send.`,
         headerWord: 'Sending stopped'
       });
     } else if (waiting > 0) {

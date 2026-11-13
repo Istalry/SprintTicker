@@ -74,7 +74,7 @@ export function paletteActions(state: PaletteState): PaletteAction[] {
     add({ id: 'stop', label: Verb.STOP, glyph: '■', words: ['finish', 'end', 'log', 'log time', 'not done', 'stop timer'] });
     add({ id: 'interrupt', label: Verb.INTERRUPT, glyph: '⚡', words: ['interruption', 'call', 'meeting', 'someone at my desk'] });
     if (isAdHocSession(session)) {
-      add({ id: 'assign', label: 'Assign to a task…', glyph: '↳', words: ['sort', 'file', 'put on a task', 'link'] });
+      add({ id: 'assign', label: 'Place on a task…', glyph: '↳', words: ['sort', 'file', 'put on a task', 'link'] });
     }
   } else {
     add({ id: 'interrupt', label: Verb.INTERRUPT, glyph: '⚡', words: ['interruption', 'call', 'meeting', 'someone at my desk'] });
