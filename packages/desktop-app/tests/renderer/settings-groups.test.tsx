@@ -69,7 +69,7 @@ describe('settings groups', () => {
     await openSettings();
     expect(within(screen.getByRole('navigation', { name: 'Settings groups' })).queryByRole('button', { name: 'Developer' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Show developer tools/ }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Show developer tools' }));
     fireEvent.click(group('Developer'));
 
     expect(await screen.findByText(/act on the real app/)).toBeTruthy();

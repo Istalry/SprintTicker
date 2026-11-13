@@ -1,18 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { ShortcutsCard } from '../../src/renderer/components/ShortcutsCard';
+import { ShortcutSettings } from '../../src/renderer/components/ShortcutSettings';
 import { installElectronApi, SHORTCUTS } from './electron-api-mock';
 import type { ShortcutsStatusDTO } from '../../src/shared/dtos';
 
-const checkbox = (name: string) => screen.getByRole('checkbox', { name: `Use the shortcut for ${name}` }) as HTMLInputElement;
-const row = (name: string) => screen.getByRole('listitem', { name });
+const checkbox = (name: string) => screen.getByRole('switch', { name: `Use the shortcut for ${name}` }) as HTMLInputElement;
+const row = (name: string) => screen.getByRole('group', { name: `${name} shortcut` });
 const withInterrupt = (over: Record<string, unknown>): ShortcutsStatusDTO => ({ ...SHORTCUTS, interrupt: { ...SHORTCUTS.interrupt, ...over } });
 
 /** The four global shortcuts (P12e): on by default, each recorded on its own. */
-describe('ShortcutsCard', () => {
+describe('ShortcutSettings', () => {
   it('Mount_FourShortcuts_OnWithTheirChords', async () => {
     installElectronApi();
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
 
     await vi.waitFor(() => expect(checkbox('Interrupt').disabled).toBe(false));
     for (const [name, chord] of [
@@ -26,7 +26,7 @@ describe('ShortcutsCard', () => {
 
   it('Toggle_Off_StoresThatShortcutAlone', async () => {
     const bridge = installElectronApi();
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
     await vi.waitFor(() => expect(checkbox('Back').disabled).toBe(false));
 
     fireEvent.click(checkbox('Back'));
@@ -39,7 +39,7 @@ describe('ShortcutsCard', () => {
   it('Taken_SaysNotActive_OnItsRow', async () => {
     // On, but Windows gave the chord to another app: never shown as working.
     installElectronApi({ getShortcuts: vi.fn().mockResolvedValue(withInterrupt({ registered: false, problem: 'taken' })) });
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
 
     await screen.findByText(/Not active: another app holds Ctrl\+Alt\+Shift\+I/);
     expect(within(row('Interrupt')).getByRole('alert')).toBeTruthy();
@@ -49,7 +49,7 @@ describe('ShortcutsCard', () => {
   it('Record_NewChord_LetsGoThenStoresAndRegisters', async () => {
     const after = { ...SHORTCUTS, switch: { ...SHORTCUTS.switch, accelerator: 'Ctrl+Shift+F9' } };
     const bridge = installElectronApi({ setShortcutsRecording: vi.fn().mockResolvedValue(after) });
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
     fireEvent.click(await screen.findByRole('button', { name: 'Change the shortcut for Switch task' }));
     expect(bridge.api.setShortcutsRecording).toHaveBeenCalledWith(true);
 
@@ -64,7 +64,7 @@ describe('ShortcutsCard', () => {
 
   it('Record_ShiftOnly_RefusedAndStillRecording', async () => {
     const bridge = installElectronApi();
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
     fireEvent.click(await screen.findByRole('button', { name: 'Change the shortcut for Interrupt' }));
 
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'I', code: 'KeyI', shiftKey: true });
@@ -76,7 +76,7 @@ describe('ShortcutsCard', () => {
 
   it('Record_Escape_GivesTheChordsBack', async () => {
     const bridge = installElectronApi();
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
     fireEvent.click(await screen.findByRole('button', { name: 'Change the shortcut for Interrupt' }));
 
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape', code: 'Escape' });
@@ -88,14 +88,14 @@ describe('ShortcutsCard', () => {
 
   it('CtrlAltAlone_CautionsAboutAltGr', async () => {
     installElectronApi({ getShortcuts: vi.fn().mockResolvedValue(withInterrupt({ accelerator: 'Ctrl+Alt+E' })) });
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
 
     expect(await screen.findByText(/AltGr/)).toBeTruthy();
   });
 
   it('SetRefused_SaysWhyOnItsRow', async () => {
     installElectronApi({ setShortcut: vi.fn().mockRejectedValue(new Error("That shortcut is already Back's.")) });
-    render(<ShortcutsCard />);
+    render(<ShortcutSettings />);
     await vi.waitFor(() => expect(checkbox('Interrupt').disabled).toBe(false));
 
     fireEvent.click(checkbox('Interrupt'));

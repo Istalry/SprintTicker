@@ -1,14 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { LaunchAtLoginCard } from '../../src/renderer/components/LaunchAtLoginCard';
+import { LaunchAtLoginSetting } from '../../src/renderer/components/LaunchAtLoginSetting';
 import { installElectronApi } from './electron-api-mock';
 
-const checkbox = () => screen.getByRole('checkbox', { name: /Start at sign-in/ }) as HTMLInputElement;
+const checkbox = () => screen.getByRole('switch', { name: 'Start with Windows' }) as HTMLInputElement;
 
-describe('LaunchAtLoginCard', () => {
+describe('LaunchAtLoginSetting', () => {
   it('Mount_ShowsWhatWindowsReports', async () => {
     installElectronApi({ getLaunchAtLogin: vi.fn().mockResolvedValue({ enabled: true, available: true, reason: null }) });
-    render(<LaunchAtLoginCard />);
+    render(<LaunchAtLoginSetting />);
 
     await vi.waitFor(() => expect(checkbox().checked).toBe(true));
     expect(checkbox().disabled).toBe(false);
@@ -20,7 +20,7 @@ describe('LaunchAtLoginCard', () => {
     const bridge = installElectronApi({
       setLaunchAtLogin: vi.fn().mockResolvedValue({ enabled: false, available: true, reason: null })
     });
-    render(<LaunchAtLoginCard />);
+    render(<LaunchAtLoginSetting />);
     await vi.waitFor(() => expect(checkbox().disabled).toBe(false));
 
     fireEvent.click(checkbox());
@@ -34,7 +34,7 @@ describe('LaunchAtLoginCard', () => {
     // window was in the background.
     const get = vi.fn().mockResolvedValue({ enabled: true, available: true, reason: null });
     installElectronApi({ getLaunchAtLogin: get });
-    render(<LaunchAtLoginCard />);
+    render(<LaunchAtLoginSetting />);
     await vi.waitFor(() => expect(checkbox().checked).toBe(true));
 
     get.mockResolvedValue({ enabled: false, available: true, reason: null });
@@ -45,7 +45,7 @@ describe('LaunchAtLoginCard', () => {
 
   it('NotPackaged_DisablesTheSwitchAndSaysWhy', async () => {
     installElectronApi({ getLaunchAtLogin: vi.fn().mockResolvedValue({ enabled: false, available: false, reason: 'not-packaged' }) });
-    render(<LaunchAtLoginCard />);
+    render(<LaunchAtLoginSetting />);
 
     expect(await screen.findByText(/not in development/)).toBeTruthy();
     expect(checkbox().disabled).toBe(true);
@@ -53,7 +53,7 @@ describe('LaunchAtLoginCard', () => {
 
   it('SetFails_SaysSo', async () => {
     installElectronApi({ setLaunchAtLogin: vi.fn().mockRejectedValue(new Error('Access denied')) });
-    render(<LaunchAtLoginCard />);
+    render(<LaunchAtLoginSetting />);
     await vi.waitFor(() => expect(checkbox().disabled).toBe(false));
 
     fireEvent.click(checkbox());

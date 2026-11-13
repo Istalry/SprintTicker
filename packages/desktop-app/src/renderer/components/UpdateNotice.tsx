@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Download, X, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { UpdateStatusDTO } from '../../shared/dtos';
+import { SettingButton, SettingProblem, SettingRow, SettingSwitch } from './SettingRow';
 
 /**
  * Update notices.
@@ -12,7 +13,7 @@ import { UpdateStatusDTO } from '../../shared/dtos';
  *
  * The banner appears only for an available update, because that is the only
  * state the user can act on. A check that *failed* is reported where the user
- * asks for it, in the card below, rather than as a banner on every launch: the
+ * asks for it, in Settings' row below, rather than as a banner on every launch: the
  * rule inherited from audit F-18 is that the app must never claim to be up to
  * date when it does not know, not that it must interrupt to say so.
  */
@@ -65,13 +66,13 @@ export const UpdateBanner: React.FC = () => {
 };
 
 /**
- * The manual control: check on demand, and turn the check off.
+ * "Check for updates" (S19): check on demand, and turn the check off.
  *
  * Turning it off stops the request being made at all, rather than hiding its
  * result -- this is the app's only outbound connection, and someone running an
  * offline-first tracker may reasonably want none.
  */
-export const UpdateSettingsCard: React.FC = () => {
+export const UpdateCheckSetting: React.FC = () => {
   const [enabled, setEnabled] = useState(true);
   const [status, setStatus] = useState<UpdateStatusDTO | null>(null);
   const [checking, setChecking] = useState(false);
@@ -97,65 +98,37 @@ export const UpdateSettingsCard: React.FC = () => {
   };
 
   return (
-    <div className="rounded-lg border border-border-dark bg-dark-800 p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary">Updates</h3>
-          <p className="mt-1 text-xs text-text-secondary">
-            Checks GitHub for a newer release. Nothing is downloaded or installed.
-          </p>
-        </div>
-        <label className="flex items-center space-x-2 text-xs text-text-secondary">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={e => void toggle(e.target.checked)}
-            className="h-4 w-4 accent-primary"
-          />
-          <span>Check automatically</span>
-        </label>
-      </div>
-
-      <div className="flex items-center space-x-3">
+    <SettingRow
+      title="Check for updates"
+      description="Asks GitHub once a day whether a newer release is out. Nothing is downloaded or installed."
+      control={
+        <>
+          <SettingButton tone="ghost" disabled={checking} onClick={() => void runCheck()}>
+            <RefreshCw className={`h-3.5 w-3.5 ${checking ? 'animate-spin' : ''}`} />
+            {checking ? 'Checking…' : 'Check now'}
+          </SettingButton>
+          <SettingSwitch label="Check for updates automatically" checked={enabled} onChange={next => void toggle(next)} />
+        </>
+      }
+    >
+      {status?.status === 'up-to-date' && (
+        <p className="flex items-center gap-1.5 text-xs text-accent-green">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          <span>Up to date ({status.currentVersion}).</span>
+        </p>
+      )}
+      {status?.status === 'update-available' && (
         <button
           type="button"
-          disabled={checking}
-          onClick={() => void runCheck()}
-          className="flex items-center space-x-2 rounded border border-border-dark px-3 py-1.5 text-xs font-semibold text-text-primary transition-colors hover:bg-dark-700 disabled:opacity-50"
+          onClick={() => void window.electronAPI?.openReleasePage(status.releaseUrl)}
+          className="text-xs font-semibold text-text-primary hover:underline"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${checking ? 'animate-spin' : ''}`} />
-          <span>{checking ? 'Checking…' : 'Check now'}</span>
+          You have {status.currentVersion}; {status.latestVersion} is out — view release
         </button>
-
-        {status?.status === 'up-to-date' && (
-          <span className="flex items-center space-x-1.5 text-xs text-accent-green">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Up to date ({status.currentVersion}).</span>
-          </span>
-        )}
-
-        {status?.status === 'update-available' && (
-          <button
-            type="button"
-            onClick={() => void window.electronAPI?.openReleasePage(status.releaseUrl)}
-            className="text-xs font-semibold text-text-primary hover:underline"
-          >
-            {status.latestVersion} is available — view release
-          </button>
-        )}
-
-        {status?.status === 'disabled' && (
-          <span className="text-xs text-text-secondary">Automatic checking is off.</span>
-        )}
-
-        {/* Stated plainly rather than shown as "up to date". */}
-        {status?.status === 'failed' && (
-          <span className="flex items-center space-x-1.5 text-xs text-accent-amber">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            <span>Could not check: {status.reason}</span>
-          </span>
-        )}
-      </div>
-    </div>
+      )}
+      {status?.status === 'disabled' && <p className="text-xs text-text-secondary">Automatic checking is off.</p>}
+      {/* Stated plainly rather than shown as "up to date". */}
+      {status?.status === 'failed' && <SettingProblem>Could not check: {status.reason}</SettingProblem>}
+    </SettingRow>
   );
 };

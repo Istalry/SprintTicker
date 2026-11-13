@@ -5,11 +5,12 @@ import { CeremoniesView } from '../Ceremonies/CeremoniesView';
 import { DeviceDiagnosticsView } from '../Device/DeviceDiagnosticsView';
 import { NotificationSettingsView } from '../Notifications/NotificationSettingsView';
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
-import { CloseToTrayCard } from '../../components/CloseToTrayCard';
-import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
-import { ShortcutsCard } from '../../components/ShortcutsCard';
+import { CloseToTraySetting } from '../../components/CloseToTraySetting';
+import { LaunchAtLoginSetting } from '../../components/LaunchAtLoginSetting';
+import { ShortcutSettings } from '../../components/ShortcutSettings';
+import { SettingButton, SettingRow, SettingsList, SettingSwitch } from '../../components/SettingRow';
 import { StartSideEffectsCard } from '../../components/StartSideEffectsCard';
-import { UpdateSettingsCard } from '../../components/UpdateNotice';
+import { UpdateCheckSetting } from '../../components/UpdateNotice';
 import { BarRemotePad } from '../../components/BarRemotePad';
 import {
   SETTINGS_GROUPS,
@@ -141,37 +142,28 @@ const Card: React.FC<{ title: string; children: React.ReactNode; description?: s
   </div>
 );
 
+/** General (S19): one row per setting, in the mockup's order. */
 const GeneralGroup: React.FC<{ showDeveloper: boolean; onShowDeveloper: (value: boolean) => void; onRunSetup: () => void }> = ({
   showDeveloper,
   onShowDeveloper,
   onRunSetup
 }) => (
-  <>
-    <LaunchAtLoginCard />
-    <CloseToTrayCard />
-    <ShortcutsCard />
-    <UpdateSettingsCard />
-    <Card title="Set up again" description="The first-run questions: account, bar, your day.">
-      <button
-        type="button"
-        onClick={onRunSetup}
-        className="rounded-lg border border-border-dark bg-dark-700 px-3 py-1.5 text-xs font-semibold text-text-primary hover:bg-dark-600"
-      >
-        Run setup
-      </button>
-    </Card>
-    <label className="flex items-center gap-2 text-xs text-text-secondary">
-      <input
-        type="checkbox"
-        checked={showDeveloper}
-        onChange={e => onShowDeveloper(e.target.checked)}
-        className="accent-primary"
-      />
-      <span>
-        <span className="text-text-primary">Show developer tools</span> -- the display debugger, test notifications, logs
-      </span>
-    </label>
-  </>
+  <SettingsList label="General">
+    <LaunchAtLoginSetting />
+    <CloseToTraySetting />
+    <ShortcutSettings />
+    <UpdateCheckSetting />
+    <SettingRow
+      title="Set up again"
+      description="The first-run questions: account, bar, your day."
+      control={<SettingButton onClick={onRunSetup}>Run setup</SettingButton>}
+    />
+    <SettingRow
+      title="Show developer tools"
+      description="The display debugger, test notifications, logs: a Developer group below Data."
+      control={<SettingSwitch label="Show developer tools" checked={showDeveloper} onChange={onShowDeveloper} />}
+    />
+  </SettingsList>
 );
 
 const DevicesGroup: React.FC<{ hasBar: boolean }> = ({ hasBar }) => (

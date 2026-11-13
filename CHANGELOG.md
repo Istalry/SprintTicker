@@ -244,6 +244,11 @@
   ask for a second Pause and can be undone in the app; a click, or six
   seconds untouched, closes it. A stand-up prompt that arrived while
   Windows was locked no longer plays over lunch when the menu closes.
+- **Settings · General is a page of rows**: each setting a name, one
+  sentence and its control at the right -- Start with Windows, When I close
+  the window, a row per shortcut with its chord and **Change keys**, Check
+  for updates, Set up again and Show developer tools. Switches say On or
+  Off. The other groups follow.
 - **The bar's words.** The stand-up reads **STAND-UP** over its time; a task
   given to someone else reads **MG-12 > RIN**; interruptions waiting to be
   placed show as **3 TO PLACE** in amber on a task's screen, the time

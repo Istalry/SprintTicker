@@ -206,7 +206,9 @@ first, then to do by priority -- since you have no Recent or Starred yet.
 
 Six groups, each one page, with a search box above them that finds a setting
 by its name or by the name it used to have -- *sync queue*, *priority*,
-*ceremonies*:
+*ceremonies*. **General** is a page of rows, each a name, one sentence and
+its control at the right -- a switch that says **On** or **Off**, a menu or
+a button; the other groups follow:
 
 | Group | Holds |
 | :--- | :--- |
@@ -1079,7 +1081,7 @@ switch it on again from the new place. A build run from source
 (`pnpm dev`) shows the switch greyed out.
 
 ⌨️ **Shortcuts** work from any app, with the window closed. Each is on
-until you untick it:
+until you switch it off:
 
 | Shortcut | Chord | Does |
 | :--- | :--- | :--- |
@@ -1088,11 +1090,11 @@ until you untick it:
 | **Previous task** | Ctrl+Alt+Shift+P | goes back to the task you timed before this one (not during an interruption) |
 | **Back** | Ctrl+Alt+Shift+B | ends the interruption and resumes the task it holds; nothing otherwise |
 
-**Change** records another chord -- press it, then the keys, or Escape to
+**Change keys** records another chord -- press it, then the keys, or Escape to
 keep the old one. A chord needs Ctrl, Alt or Win: Shift alone only types
 capitals, and two shortcuts cannot share one. Avoid Ctrl+Alt without Shift
 on AZERTY and other layouts where it is AltGr, or the shortcut takes a
-character you type -- the card says so. If you had turned the Interrupt
+character you type -- its row says so. If you had turned the Interrupt
 shortcut on or off before, your choice stays.
 - **"Not active: another app holds it"** means Windows gave that chord to
   another app first. Choose another; SprintTicker tries yours again at its

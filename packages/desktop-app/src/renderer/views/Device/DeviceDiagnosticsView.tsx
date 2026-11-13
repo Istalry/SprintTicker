@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Monitor, Wifi, Cpu, Battery, Activity, HardDrive, RefreshCw, Trash2, AlertTriangle, Bell, Keyboard, Download, Network, Eye, EyeOff } from 'lucide-react';
 import { useDeviceStatus } from '../../hooks/useDeviceStatus';
 import { AnimationDebugPanel } from '../../components/AnimationDebugPanel';
-import { UpdateSettingsCard } from '../../components/UpdateNotice';
-import { LaunchAtLoginCard } from '../../components/LaunchAtLoginCard';
-import { ShortcutsCard } from '../../components/ShortcutsCard';
 import { ColorThemeId, DeviceConfigDTO } from '../../../shared/dtos';
 import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
@@ -601,14 +598,6 @@ export const DeviceDiagnosticsView: React.FC<{ part?: DeviceDiagnosticsPart }> =
       </div>
 
       </>)}
-      </>)}
-
-      {part === 'all' && (<>
-      <LaunchAtLoginCard />
-
-      <ShortcutsCard />
-
-      <UpdateSettingsCard />
       </>)}
 
       {/* ⚠️ Danger Zone: Factory Data Wipe */}

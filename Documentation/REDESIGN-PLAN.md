@@ -2457,6 +2457,39 @@ setting; the Tasks view's filters, stars and delete-asks.
 **Docs:** `USER-GUIDE.md`'s Tasks and Settings sections; the pictures
 (`pnpm docs:images`); `CHANGELOG.md`.
 
+**Split** (2026-11-13), each its own commit:
+
+- **P16a, the row and General (S19).** `SettingRow`, `SettingSwitch`,
+  `SettingButton`, `SettingsList` -- the one layout -- and General rebuilt
+  on them.
+- **P16b, Account (S20).**
+- **P16c, My workday (S21),** the four prompt delays included.
+- **P16d, Desk devices (S22).**
+- **P16e, Data and Developer (S23, S24).**
+- **P16f, Tasks (S13).**
+
+**As landed: P16a, the row and General (2026-11-13).**
+
+- `components/SettingRow.tsx`: `SettingsList` (one raised surface, rows
+  divided by hairlines), `SettingRow` (name, sentence, control at the
+  right, problems under it; a `group` named by its title, so tests and
+  screen readers find a row by name), `SettingSwitch` (a native checkbox
+  with the switch role, On / Off beside it), `SettingButton` (the
+  mockups' `.btn.s`, four tones), `SETTING_SELECT_CLASS`, `SettingProblem`.
+- General as S19 draws it, in its order: Start with Windows, When I close
+  the window, a row per shortcut (its chord and **Change keys** in the
+  sentence, the switch at the right), Check for updates (Check now and the
+  switch; the answer under the row), Set up again, Show developer tools.
+  The cards became settings and were renamed so: `LaunchAtLoginSetting`,
+  `CloseToTraySetting`, `ShortcutSettings`, `UpdateCheckSetting`. The copies
+  `DeviceDiagnosticsView` still rendered in its test-only `all` part went.
+- The other groups keep their cards until their sub-phase; `Card` in
+  `SettingsPage` goes with the last of them.
+- Tests: `settings-general.test.tsx` -- every row of S19 in order, every
+  search entry of the group on the page, the close menu, the update switch
+  and Check now, Run setup and the developer switch, each through the bridge.
+- No picture shows General; none was remade.
+
 ---
 
 ## 20. P15 -- Documents, pictures, release
@@ -2572,4 +2605,4 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
 | P15 | not started | |
-| P16 | not started; added 2026-11-10 | |
+| P16 | in progress: split P16a-P16f (§19b); P16a (the row, General) done | P16a (2026-11-13) |
