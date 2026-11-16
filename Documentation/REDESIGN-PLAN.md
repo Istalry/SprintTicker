@@ -2874,6 +2874,10 @@ refresh the counts with the next full run.
 What the trial finds is fixed here, as its own commit; then the user
 raises the version and tags 2.0.0.
 
+**The trial is closed (the user's call, 2026-11-16).** Items 1-6 and 8
+passed; item 7 is now the user's ordinary use of rc8, not a checklist,
+and what it finds is fixed as it comes.
+
 **Open, outside the trial's list** (each its own change, none blocks 2.0):
 - Notification icons for apps we never drew: the first message after a
   start showed the bell (Claude's, on rc2), the lookup's answer being kept
