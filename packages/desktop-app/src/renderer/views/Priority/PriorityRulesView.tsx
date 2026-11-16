@@ -185,15 +185,16 @@ export const PriorityRulesView: React.FC<{ embedded?: boolean }> = ({ embedded =
                   </div>
                 </div>
 
-                {/* Per-Mode Action Toggles */}
-                <div className="flex items-center space-x-6 pl-10 text-xs bg-dark-900/60 p-2.5 rounded-lg border border-border-dark/50">
-                  <span className="text-text-secondary font-semibold">In each mode:</span>
+                {/* Per-Mode Action Toggles. They wrap: on one line the third
+                    select ran off a narrow window (rc6, 2026-11-16). */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pl-10 text-xs bg-dark-900/60 p-2.5 rounded-lg border border-border-dark/50">
+                  <span className="text-text-secondary font-semibold whitespace-nowrap">In each mode:</span>
 
                   {(['WORK', 'LUNCH', 'AWAY'] as UserMode[]).map(m => {
                     const currentAction = m === 'LUNCH' ? rule.actionOnLunch : m === 'AWAY' ? rule.actionOnAway : rule.actionOnWork;
                     return (
                       <div key={m} className="flex items-center space-x-2">
-                        <span aria-hidden="true" className="text-text-secondary">{m === 'WORK' ? 'Work' : m === 'LUNCH' ? 'Lunch' : 'Away'}</span>
+                        <span aria-hidden="true" className="text-text-secondary whitespace-nowrap">{m === 'WORK' ? 'Work' : m === 'LUNCH' ? 'Lunch' : 'Away'}</span>
                         <select
                           aria-label={`${def.label} in ${m === 'WORK' ? 'Work' : m === 'LUNCH' ? 'Lunch' : 'Away'}`}
                           value={currentAction || 'DISPLAY'}
