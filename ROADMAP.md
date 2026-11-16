@@ -1348,11 +1348,6 @@ Ordered; each says what has to be true first.
   (`packages/anim-studio/STYLE-GUIDE.md`). The static faces need the same
   pass: their glyphs and text sizes were set before any key was seen on a
   device.
-- **Personal days off.** OpenProject 17 records a user's own days off
-  (`/api/v3/users/{id}/non_working_times`, the *My working times* page). The
-  working calendar reads only the instance's holidays; a personal day off
-  could silence the ceremonies too. Blocked on nothing but worth it only
-  once someone takes days off through OpenProject.
 
 ---
 
@@ -1666,5 +1661,10 @@ nobody got to.
   wrap-up's scene save. Its routes now answer 404, and its stored priority
   rules are dropped on load. Bringing it back starts from the history
   before that date, and from the traps `CLAUDE.md` recorded with it.
+- **Personal days off from OpenProject** -- withdrawn on 2026-11-16, the
+  user's decision. OpenProject 17 records a user's own days off
+  (`/api/v3/users/{id}/non_working_times`); the working calendar reads the
+  instance's holidays only, and a SprintTicker server's `calendar` may
+  include the user's leave itself (PROVIDER-API 7.3).
 - Becoming a general-purpose BUSY Bar SDK. The device's own API is documented
   by its authors at [github.com/busy-app](https://github.com/busy-app).
