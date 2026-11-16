@@ -349,8 +349,8 @@ months of history: every screen answers within about a tenth of a second.
   bar's own task picker, its paused menu and "hold BACK = done" are gone:
   the bar sends no long press, and choosing is the app's.
 - **Turning the bar's wheel opens a short menu**, one entry at a time: DONE,
-  DISCARD, your previous task, up to three recent ones and OPEN APP -- only
-  DISCARD and OPEN APP during an interruption. Pause picks; DONE and DISCARD
+  DISCARD, your previous task and up to three recent ones -- only DISCARD
+  during an interruption. Pause picks; DONE and DISCARD
   ask for a second Pause and can be undone in the app; a click, or six
   seconds untouched, closes it. A stand-up prompt that arrived while
   Windows was locked no longer plays over lunch when the menu closes.
@@ -473,9 +473,9 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Fixed
 
-- **OPEN APP on the bar sometimes left the window behind**, its taskbar
-  button flashing: the helper that brings it forward was stopped after 5 s,
-  and it can take longer to start. It now has 15 s.
+- **A window opened from the bar or the Stream Deck could stay behind**,
+  its taskbar button flashing: the helper that brings it forward was
+  stopped after 5 s, and it can take longer to start. It now has 15 s.
 - **An app's first notification showed the bell, or our drawn icon,** while
   its icon was still being looked up, and its own logo only from the second
   message on: the icons found were forgotten at every start. They are kept

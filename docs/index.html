@@ -1974,13 +1974,13 @@
       list (<strong>2/5</strong>):</p>
       <ul>
       <li>while a task runs or is paused: <strong>DONE</strong>, <strong>DISCARD</strong>, your previous
-      task, up to three recent ones, <strong>OPEN APP</strong>;</li>
-      <li>during an interruption: <strong>DISCARD</strong> and <strong>OPEN APP</strong> -- a task is never
-      chosen during one;</li>
-      <li>with nothing running: your previous task, the recent ones, <strong>OPEN APP</strong>.</li>
+      task, up to three recent ones;</li>
+      <li>during an interruption: <strong>DISCARD</strong> -- a task is never chosen during
+      one;</li>
+      <li>with nothing running: your previous task and the recent ones. With
+      none, turning does nothing.</li>
       </ul>
-      <p>Pause picks the entry: a task starts (stopping the one running), and
-      <strong>OPEN APP</strong> brings SprintTicker in front of what you are doing. <strong>DONE</strong>
+      <p>Pause picks the entry: a task starts, stopping the one running. <strong>DONE</strong>
       and <strong>DISCARD</strong> ask first -- <strong>DONE?</strong> or <strong>DISCARD?</strong> in red, <strong>AGAIN=YES</strong>
       -- and a second Pause does it, with Undo in the app; a click or a turn
       says no. A task no longer yours asks <strong>NOT YOURS / DONE ANYWAY?</strong>. A click
@@ -3186,8 +3186,9 @@
       the old <code>hardware_bindings</code> setting is no longer read. <strong>The menu</strong> (P14c) is <code>barMenuEntries</code> (<code>hardware/bar-menu.ts</code>), a pure
       list built from the session, <code>engine.getPreviousTask()</code> and the deck&#39;s
       recent tasks (<code>setMenuDeps</code>): DONE, DISCARD, the previous task, up to three
-      recent ones and OPEN APP while a session is open; DISCARD and OPEN APP
-      during an interruption; the tasks and OPEN APP with nothing running. The
+      recent ones while a session is open; DISCARD alone during an
+      interruption; the tasks with nothing running, and no menu at all when there
+      is none to offer. The
       decoder holds the open menu -- its entries, the index, the DONE or DISCARD
       asked about -- and draws it with <code>DisplayRenderer.renderBarMenu</code> under
       <code>BAR_MENU_EVENT</code>, never queued, registered as a background screen. Pause

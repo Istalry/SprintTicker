@@ -260,7 +260,7 @@ Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
 Each control has one meaning: **Pause** says yes (pause, resume, back from an
 interruption, dismiss) and **Pause again** stops; a **wheel click** starts an
 interruption, or says no to a question; **turning** it opens a short menu --
-DONE, DISCARD, the previous and recent tasks, OPEN APP -- one entry at a
+DONE, DISCARD, the previous and recent tasks -- one entry at a
 time. Back is not used. Any other task is chosen in the picker on the
 computer, which Pause opens when nothing runs.
 

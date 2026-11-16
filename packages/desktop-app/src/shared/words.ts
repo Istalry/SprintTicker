@@ -252,8 +252,7 @@ export const BarWord = {
   AGAIN_STOP: 'AGAIN=STOP',
   AGAIN_YES: 'AGAIN=YES',
   // The wheel's menu (P14c).
-  RECENT: 'RECENT',
-  OPEN_APP: 'OPEN APP'
+  RECENT: 'RECENT'
 } as const;
 
 /** Union of the bar's word strings. */

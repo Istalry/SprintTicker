@@ -1327,13 +1327,13 @@ The same list is in the app: **Settings, Desk devices, Bar controls**.
   left on its last -- and shows one entry at a time, with its place in the
   list (**2/5**):
   - while a task runs or is paused: **DONE**, **DISCARD**, your previous
-    task, up to three recent ones, **OPEN APP**;
-  - during an interruption: **DISCARD** and **OPEN APP** -- a task is never
-    chosen during one;
-  - with nothing running: your previous task, the recent ones, **OPEN APP**.
+    task, up to three recent ones;
+  - during an interruption: **DISCARD** -- a task is never chosen during
+    one;
+  - with nothing running: your previous task and the recent ones. With
+    none, turning does nothing.
 
-  Pause picks the entry: a task starts (stopping the one running), and
-  **OPEN APP** brings SprintTicker in front of what you are doing. **DONE**
+  Pause picks the entry: a task starts, stopping the one running. **DONE**
   and **DISCARD** ask first -- **DONE?** or **DISCARD?** in red, **AGAIN=YES**
   -- and a second Pause does it, with Undo in the app; a click or a turn
   says no. A task no longer yours asks **NOT YOURS / DONE ANYWAY?**. A click

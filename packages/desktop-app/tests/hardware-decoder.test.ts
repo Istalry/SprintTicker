@@ -791,7 +791,6 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     describe('the menu', () => {
       let released: string[];
       let ending: { complete: ReturnType<typeof vi.fn>; discard: ReturnType<typeof vi.fn> };
-      let openApp: ReturnType<typeof vi.fn>;
       let recent: TaskDTO[];
       const drawn = () => vi.mocked(renderer.renderBarMenu).mock.calls.map(([screen]) => screen);
       const last = () => drawn()[drawn().length - 1];
@@ -800,41 +799,46 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         released = [];
         recent = [];
         ending = { complete: vi.fn(() => ({ success: true, loggedSeconds: 60 })), discard: vi.fn(() => ({ success: true, discardedSeconds: 60 })) };
-        openApp = vi.fn();
         decoder.setPriorityEngine({
           getActiveLockEventName: () => null,
           releaseActiveLock: (lock: string) => released.push(lock),
           hasActiveNotification: () => notificationUp,
           dismissNotification: () => false
         } as never);
-        decoder.setMenuDeps({ sessionEnding: ending, recentTasks: () => recent, openApp });
+        decoder.setMenuDeps({ sessionEnding: ending, recentTasks: () => recent });
         vi.spyOn(renderer, 'renderBarMenu');
         for (const n of [2, 3]) {
           taskRepo.saveTask({ id: `T-${n}`, projectId: 'P-1', key: `SCRUM-${n}`, title: `Tache ${n}`, status: 'todo' });
         }
       });
 
-      it('Turn_Timing_OpensOnDone_ThenDiscard_ThenOpenApp', () => {
+      it('Turn_Timing_OpensOnDone_ThenDiscard_NoOpenApp', () => {
+        // OPEN APP went (2026-11-16): it too often only flashed the taskbar.
         engine.startTask('T-1');
 
         expect(press('rotate_right')).toBe('OPEN_MENU');
-        expect(last()).toMatchObject({ label: 'SCRUM-1', detail: BarWord.DONE, position: { index: 0, count: 3 } });
+        expect(last()).toMatchObject({ label: 'SCRUM-1', detail: BarWord.DONE, position: { index: 0, count: 2 } });
         press('rotate_right');
         expect(last()).toMatchObject({ detail: BarWord.DISCARD, position: { index: 1 } });
-        press('rotate_right');
-        expect(last()).toMatchObject({ label: BarWord.OPEN_APP, position: { index: 2 } });
+        expect(press('rotate_right')).toBe('NONE');
       });
 
       it('Turn_Left_OpensOnTheLastEntry_AndStopsAtEitherEnd', () => {
         engine.startTask('T-1');
 
         press('rotate_left');
-        expect(last()).toMatchObject({ label: BarWord.OPEN_APP });
+        expect(last()).toMatchObject({ detail: BarWord.DISCARD });
         expect(press('rotate_right')).toBe('NONE');
-        press('rotate_left');
         press('rotate_left');
         expect(press('rotate_left')).toBe('NONE');
         expect(last()).toMatchObject({ detail: BarWord.DONE });
+      });
+
+      it('Turn_NothingRunningAndNoTaskToOffer_OpensNoMenu', () => {
+        expect(press('rotate_right')).toBe('NONE');
+
+        expect(decoder.isMenuOpen()).toBe(false);
+        expect(renderer.renderBarMenu).not.toHaveBeenCalled();
       });
 
       it('Done_AsksASecondPause_ThenFinishesThroughTheSessionEnding', () => {
@@ -897,7 +901,7 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         expect(ending.discard).toHaveBeenCalledTimes(1);
       });
 
-      it('Interruption_OffersDiscardAndOpenApp_NoTask', () => {
+      it('Interruption_OffersDiscardAlone_NoTask', () => {
         // No task is chosen during an interruption (2026-11-12).
         engine.startTask('T-2');
         engine.stopSession();
@@ -907,19 +911,17 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
 
         press('rotate_right');
 
-        expect(last()).toMatchObject({ detail: BarWord.DISCARD, position: { count: 2 } });
-        press('rotate_right');
-        expect(last()).toMatchObject({ label: BarWord.OPEN_APP });
+        expect(last()).toMatchObject({ detail: BarWord.DISCARD, position: { count: 1 } });
       });
 
-      it('NothingRunning_OffersThePrevious_TheRecent_AndOpenApp_EachOnce', () => {
+      it('NothingRunning_OffersThePrevious_AndTheRecent_EachOnce', () => {
         engine.startTask('T-2');
         engine.stopSession();
         recent = ['T-2', 'T-3', 'T-1'].map(id => taskRepo.getTaskById(id)!);
 
         press('rotate_right');
 
-        expect(last()).toMatchObject({ label: 'SCRUM-2', detail: BarWord.PREVIOUS, position: { index: 0, count: 4 } });
+        expect(last()).toMatchObject({ label: 'SCRUM-2', detail: BarWord.PREVIOUS, position: { index: 0, count: 3 } });
         press('rotate_right');
         expect(last()).toMatchObject({ label: 'SCRUM-3', detail: BarWord.RECENT });
         press('rotate_right');
@@ -942,18 +944,9 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
         engine.startTask('T-1');
         recent = [taskRepo.getTaskById('T-3')!];
         press('rotate_left');
-        press('rotate_left');
 
         expect(press('start')).toBe('START_RECENT');
         expect(engine.getCurrentSession()?.taskId).toBe('T-3');
-      });
-
-      it('OpenApp_Picked_RaisesTheApp_AndCloses', () => {
-        press('rotate_left');
-
-        expect(press('start')).toBe('OPEN_APP');
-        expect(openApp).toHaveBeenCalledTimes(1);
-        expect(decoder.isMenuOpen()).toBe(false);
       });
 
       it('Click_ClosesTheMenu_LettingGoOfTheDisplay', () => {

@@ -780,8 +780,9 @@ one. The bar's own task picker and the paused menu went with this layout;
 the old `hardware_bindings` setting is no longer read. **The menu** (P14c) is `barMenuEntries` (`hardware/bar-menu.ts`), a pure
 list built from the session, `engine.getPreviousTask()` and the deck's
 recent tasks (`setMenuDeps`): DONE, DISCARD, the previous task, up to three
-recent ones and OPEN APP while a session is open; DISCARD and OPEN APP
-during an interruption; the tasks and OPEN APP with nothing running. The
+recent ones while a session is open; DISCARD alone during an
+interruption; the tasks with nothing running, and no menu at all when there
+is none to offer. The
 decoder holds the open menu -- its entries, the index, the DONE or DISCARD
 asked about -- and draws it with `DisplayRenderer.renderBarMenu` under
 `BAR_MENU_EVENT`, never queued, registered as a background screen. Pause

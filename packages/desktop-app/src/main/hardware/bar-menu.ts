@@ -3,7 +3,7 @@ import { DECK_MAX_RECENT } from '../../shared/deck-protocol';
 import { BarWord } from '../../shared/words';
 
 /** What an entry of the bar's menu does when Pause picks it. */
-export type BarMenuAction = 'DONE' | 'DISCARD' | 'PREVIOUS' | 'RECENT' | 'OPEN_APP';
+export type BarMenuAction = 'DONE' | 'DISCARD' | 'PREVIOUS' | 'RECENT';
 
 /**
  * One entry of the wheel's menu (redesign P14c): one per screen, the icon
@@ -32,19 +32,22 @@ export interface BarMenuState {
  * The menu's entries, in the order the wheel meets them (§19.1):
  *
  * - timing or paused: DONE, DISCARD, the previous task, up to three recent
- *   ones, OPEN APP;
- * - an interruption: DISCARD and OPEN APP -- no task is chosen during one
- *   (the deck trial's rule, 2026-11-12);
- * - nothing running: the previous task, the recent ones, OPEN APP.
+ *   ones;
+ * - an interruption: DISCARD -- no task is chosen during one (the deck
+ *   trial's rule, 2026-11-12);
+ * - nothing running: the previous task and the recent ones, or nothing.
+ *
+ * OPEN APP went on 2026-11-16, the user's choice: Windows keeps a window
+ * from coming forward for a press it did not see, and the helper that
+ * forces it takes seconds, so the entry too often only flashed the taskbar.
  *
  * STOP is not here: it is Pause twice. The recent tasks are the deck's three,
  * with the open task and the previous one left out, so no task shows twice.
  */
 export function barMenuEntries({ session, previous, recent }: BarMenuState): BarMenuEntry[] {
   const open = session && session.status !== 'COMPLETED' ? session : null;
-  const openApp: BarMenuEntry = { action: 'OPEN_APP', icon: 'windows', label: BarWord.OPEN_APP, detail: '' };
   if (open?.interruption) {
-    return [{ action: 'DISCARD', icon: 'interruption', label: keyOf(open), detail: BarWord.DISCARD }, openApp];
+    return [{ action: 'DISCARD', icon: 'interruption', label: keyOf(open), detail: BarWord.DISCARD }];
   }
   const entries: BarMenuEntry[] = [];
   if (open) {
@@ -61,7 +64,6 @@ export function barMenuEntries({ session, previous, recent }: BarMenuState): Bar
   for (const task of recent.filter(t => !shown.has(t.id)).slice(0, DECK_MAX_RECENT)) {
     entries.push({ action: 'RECENT', icon: 'task', label: task.key || task.title, detail: BarWord.RECENT, task });
   }
-  entries.push(openApp);
   return entries;
 }
 

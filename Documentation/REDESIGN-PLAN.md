@@ -2767,6 +2767,14 @@ user's to try; before it, what REVIEW §8 left for P15d:
   **And that one waits** (rc3 showed it, the user's choice, 2026-11-16): the
   first banner of an app not looked up yet is held until the lookup answers,
   `FIRST_ICON_WAIT_MS` (1.5 s) at most, then shown with whatever was found.
+- **OPEN APP left the bar's menu** (the user's choice, 2026-11-16). It
+  left the window behind two other apps, its taskbar button flashing: the
+  `ForegroundRaiser` script took ~3 s that day against ~0.8 s in October,
+  and its 5 s timeout killed a slow start. The timeout is 15 s now
+  (`ea037cd`), for the picker and the deck, which still raise; but a menu
+  entry whose effect comes seconds later, when it comes, was not worth
+  keeping. With nothing running and no task to offer, turning opens no
+  menu.
 - **The bar's controls in the app** (asked 2026-11-16): the mapping lived
   in the user guide alone, and the user, bar in hand, could not find how to
   mark a task done. *Bar controls* in Desk devices (`BarControls`), shown
@@ -2823,7 +2831,7 @@ refresh the counts with the next full run.
    join it.
 3. **The menu (P14c):** turning opens it; each state's entries; DONE and
    DISCARD with their second Pause and Undo; the click and the 6 s close;
-   OPEN APP; the menu turned to under a notification.
+   the menu turned to under a notification. (OPEN APP went on 2026-11-16.)
 4. **The ⚡ icon (P14d):** its shape and colour at 16 px, and whether its
    light reads as running or as flicker.
 5. **The words (P14e):** NO TASK's scene (the empty chair, new in rc2),

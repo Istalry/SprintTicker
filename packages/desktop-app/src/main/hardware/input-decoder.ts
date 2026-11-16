@@ -50,8 +50,6 @@ export interface BarMenuDeps {
   sessionEnding?: SessionEnding;
   /** The picker's recent tasks, newest first, as the deck's Recent keys read them. */
   recentTasks?: (limit: number) => TaskDTO[];
-  /** The dashboard, raised past the foreground lock. */
-  openApp?: () => void;
 }
 
 /** An interruption's return, held to see whether a second Pause comes. */
@@ -458,6 +456,8 @@ export class InputDecoder {
       previous: session?.interruption ? null : this._engine.getPreviousTask(),
       recent: this._menuDeps.recentTasks?.(DECK_RECENT_READ) ?? []
     });
+    // Nothing running and no task to offer: there is no menu to open.
+    if (entries.length === 0) return 'NONE';
     this._menu = {
       entries,
       index: direction === 1 ? 0 : entries.length - 1,
@@ -540,10 +540,6 @@ export class InputDecoder {
         if (this._menu) this.closeMenu();
         return this.report(entry.action === 'PREVIOUS' ? 'START_PREVIOUS' : 'START_RECENT', key);
       }
-      case 'OPEN_APP':
-        this.closeMenu();
-        this._menuDeps.openApp?.();
-        return this.report('OPEN_APP', key);
     }
   }
 

@@ -58,7 +58,6 @@ const OUTCOME_WORDS: Record<string, string> = {
   BACK_FROM_INTERRUPTION: Verb.BACK,
   OPEN_MENU: 'Menu opened',
   CLOSE_MENU: 'Menu closed',
-  OPEN_APP: 'App opened',
   DISMISS_NOTIFICATION_ALERT: 'Notification put away',
   CONFIRM_STANDUP_PROMPT: 'Joined the stand-up',
   DISMISS_STANDUP_PROMPT: 'Skipped the stand-up',

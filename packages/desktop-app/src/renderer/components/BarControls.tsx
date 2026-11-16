@@ -39,9 +39,8 @@ export const BarControls: React.FC = () => (
 
       <dt className="font-semibold text-text-primary">Wheel turn</dt>
       <dd className="text-text-secondary">
-        The menu: <Word>{BarWord.DONE}</Word>, <Word>{BarWord.DISCARD}</Word>, your previous and recent tasks,{' '}
-        <Word>{BarWord.OPEN_APP}</Word>. Pause picks the entry shown; a click, or {seconds(BAR_MENU_IDLE_MS)} untouched,
-        closes it.
+        The menu: <Word>{BarWord.DONE}</Word>, <Word>{BarWord.DISCARD}</Word>, your previous and recent tasks.
+        Pause picks the entry shown; a click, or {seconds(BAR_MENU_IDLE_MS)} untouched, closes it.
       </dd>
 
       <dt className="font-semibold text-text-primary">Back</dt>

@@ -607,12 +607,10 @@ async function startApplication(): Promise<void> {
   miniOnInterruption.start();
   const sessionEnding = undoableSessionEnding({ db: dbConnection.getDb(), undo, engine }, renderer);
   // The wheel's menu (P14c): its DONE and DISCARD end a session as the
-  // window's do, with Undo; its recent tasks are the deck's; OPEN APP raises
-  // the dashboard past the foreground lock, since the press reached the bar.
+  // window's do, with Undo; its recent tasks are the deck's.
   inputDecoder?.setMenuDeps({
     sessionEnding,
-    recentTasks: limit => taskRepo.getRecent(limit),
-    openApp: () => { revealMainWindow(mainWindow, foregroundRaiser); }
+    recentTasks: limit => taskRepo.getRecent(limit)
   });
   // A session started makes a held stop final: undoing it would reopen a
   // second session beside the new one.
