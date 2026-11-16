@@ -992,6 +992,12 @@ them are traps:
   to 44.9.3 its target was gone, and the installed app's taskbar button
   showed a blank page (2026-11-04). Nothing in the repository writes such
   a shortcut, and the installer's already ties the ID to a real exe.
+  **It came back**: another `Electron.lnk` with the ID, pointing at
+  44.9.3's electron.exe, made on 2026-11-12 at 14:30 during the Stream
+  Deck trial, gave the installed app Electron's taskbar icon until it was
+  deleted (2026-11-16). Whatever makes it, check the Start menu
+  (`Get-StartApps` lists which shortcut owns the ID) after any session
+  that ran the app from `node_modules`.
 - **"Sending time stopped" is told once per stop, and told late.** The
   worker parks a row on refused credentials (`auth`) silently -- only the
   queue panel showed it -- so `onSendingStopped` fires on the first such row
