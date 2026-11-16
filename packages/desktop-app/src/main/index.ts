@@ -33,7 +33,8 @@ import { DeckServer } from './api/deck-server';
 import { DeckActionService } from './services/deck-action-service';
 import { DeckIconMotions } from './services/deck-icon-motion';
 import { defaultAnimationsDir, loadAnimationSequence } from './hardware/animation-sequence';
-import { DECK_PATH, LOCAL_API_PORT } from '../shared/deck-protocol';
+import { DECK_PATH } from '../shared/deck-protocol';
+import { localApiPortFrom } from './api/local-api-port';
 import { UndoService } from './services/undo-service';
 import { undoableSessionEnding } from './services/undoable-commands';
 import { openTaskPickerInMainWindow, openWindowOn, revealMainWindow } from './windows/main-window-actions';
@@ -344,9 +345,11 @@ async function startApplication(): Promise<void> {
   inputDecoder = new InputDecoder(driver, engine);
 
   // 4. Initialize the local webhook server
-  webhookServer = new WebhookServer(LOCAL_API_PORT);
+  // Another port only for a check run beside the user's own app (local-api-port.ts).
+  const localApiPort = localApiPortFrom(process.argv);
+  webhookServer = new WebhookServer(localApiPort);
   await webhookServer.start();
-  console.log(`[Main] Webhook server listening on http://127.0.0.1:${LOCAL_API_PORT}`);
+  console.log(`[Main] Webhook server listening on http://127.0.0.1:${localApiPort}`);
 
   webhookServer.onInputEvent(key => {
     if (driver) {

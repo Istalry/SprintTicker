@@ -505,7 +505,7 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 3898 tests across 194 files for the app -- the main and shared
+`pnpm test` runs 3963 tests across 199 files for the app -- the main and shared
 process code, plus the renderer's views mounted in jsdom (the renderer is not
 counted in coverage) -- then the animation studio's 117 across 6 files, then
 the Stream Deck plugin's 320 across 8;
@@ -685,13 +685,13 @@ builds it and runs Elgato's own validator on it, as CI does.
   bar clip in `docs/images/`. It runs the app on a throwaway profile with
   invented projects, under `--mock-hardware`, records what the app sends its
   emulator, and renders that as the LED panel; the scenes and icons come
-  straight from `Animations/`. Close SprintTicker first: the capture's own
-  instance needs the app's local port, and the running app drives a real bar.
+  straight from `Animations/`. It runs beside your SprintTicker: the
+  capture's instance takes a local port of its own (`--local-api-port`).
   Needs Python with Pillow, as compiling an animation does.
 - **The dry run at scale** -- `pnpm dryrun:scale` runs the app the same way
   against a fake OpenProject of 20 projects of 50 tasks, with 60 working
   days of history and a day played through it, and times every screen from
-  the action to the paint. Close SprintTicker first, for the same reason.
+  the action to the paint, beside your SprintTicker in the same way.
 
 Windows batch shortcuts for the common commands sit in the repository root:
 `install.bat`, `run_editor.bat`, `package-win.bat`, `test-coverage.bat`.

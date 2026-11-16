@@ -2891,10 +2891,12 @@ and what it finds is fixed as it comes.
 - The studio's *Export* failed to compile the new scene
   (`seq2anim failed`, empty stderr), though both compilers ran cleanly by
   hand: compiled by hand, cause not found.
-- `verify:packed` force-closes every running SprintTicker
-  (`taskkill /IM`), the user's too, and needs port 39123 free.
-- The tray's **Switch task…** shows with nothing running; `renderTaskStarted`
-  (GO!) is dead code (REVIEW §8).
+- ~~`verify:packed` force-closes every running SprintTicker
+  (`taskkill /IM`), the user's too, and needs port 39123 free.~~ Fixed
+  2026-11-16: a free port through `--local-api-port`, and the kill by PID.
+- ~~The tray's **Switch task…** shows with nothing running; `renderTaskStarted`
+  (GO!) is dead code (REVIEW §8).~~ Fixed 2026-11-16: **Start a task…**
+  with nothing running; GO!'s code removed.
 - Then **P15e**, the motion video.
 
 **As landed: P15a1, the review (2026-11-13).**

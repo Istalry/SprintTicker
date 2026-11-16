@@ -53,7 +53,11 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const APP_DIR = path.join(ROOT, 'packages', 'desktop-app');
 const IMAGES = path.join(ROOT, 'docs', 'images');
 const CDP_PORT = 9334;
-const WEBHOOK = 'http://127.0.0.1:39123';
+// The capture's instance runs its local API here, not on 39123: the user's
+// SprintTicker may hold that one, with a real bar and Stream Deck behind it,
+// and whatever posts to it would land in the pictures. Nothing posts here.
+const LOCAL_API_PORT = 39187;
+const WEBHOOK = `http://127.0.0.1:${LOCAL_API_PORT}`;
 // `--screens <dir>`: every screen into <dir>, nothing into docs/images.
 const SCREENS = (() => {
   const at = process.argv.indexOf('--screens');
@@ -95,6 +99,7 @@ function launch(profile) {
       `--user-data-dir=${profile}`,
       '--mock-hardware',
       `--remote-debugging-port=${CDP_PORT}`,
+      `--local-api-port=${LOCAL_API_PORT}`,
       // The same pixel size on every machine, whatever its display scaling.
       '--force-device-scale-factor=1',
       '--lang=en-US'
@@ -809,8 +814,8 @@ async function main() {
   }
   if (await portAnswers(WEBHOOK)) {
     throw new Error(
-      `something already answers on ${WEBHOOK} -- close SprintTicker first: the capture's own ` +
-        'instance needs the port, and the running one drives a real bar'
+      `something already answers on ${WEBHOOK} -- another capture is running: ` +
+        "the capture's own instance needs the port"
     );
   }
 

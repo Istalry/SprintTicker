@@ -214,6 +214,11 @@ WebSocket (below). It also served the Unity Editor plugin's four
 `/api/v1/unity/*` routes until 2026-11-09; they answer `404` now, like any
 other path.
 
+`--local-api-port=<n>` (above 1023) moves it, for a check started beside
+the user's own app -- `verify:packed`, the documentation's capture and the
+dry run -- which holds 39123 with the bar and the Stream Deck behind it.
+Nothing the user runs passes it, and the plugin knows only 39123.
+
 ### Routes
 
 | Route | Method | Body |

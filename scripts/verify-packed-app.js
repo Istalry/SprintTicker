@@ -8,8 +8,15 @@ const os = require('os');
  * Automated verification of the packed Windows binary.
  *
  * Launches the unpacked Electron application, watches for main-process uncaught
- * exceptions, waits for the embedded HTTP server on port 39123, and then
- * asserts three things the app actually does -- see `runBehaviourChecks`.
+ * exceptions, waits for the embedded HTTP server, and then asserts three
+ * things the app actually does -- see `runBehaviourChecks`.
+ *
+ * **It runs beside the user's own SprintTicker, and never touches it.** A
+ * throwaway profile gets its own single-instance lock (the lock is per
+ * profile), and `--local-api-port` moves the local API to a free port, since
+ * the user's app holds 39123 with their bar and Stream Deck behind it. It
+ * used to `taskkill /IM SprintTicker.exe` before and after, which closed the
+ * user's app -- the installed one has the same name -- at every build.
  *
  * The behaviour checks are the point. Booting and opening a port is necessary
  * but proves very little: packaging, ABI and LFS failures in this repository
@@ -36,11 +43,7 @@ async function verifyPackedApp() {
   console.log(` [VERIFY] Launching packed binary: ${exePath}`);
   console.log(`========================================================`);
 
-  // Kill any existing running instance first
-  try {
-    execSync('taskkill /F /IM "SprintTicker.exe" >nul 2>&1');
-  } catch (_) {}
-
+  const port = await freePort();
   let hasUncaughtError = false;
   let errorMessage = '';
 
@@ -59,7 +62,7 @@ async function verifyPackedApp() {
     }
   });
 
-  const appProcess = spawn(exePath, ['--mock-hardware', `--user-data-dir=${profile}`], {
+  const appProcess = spawn(exePath, ['--mock-hardware', `--user-data-dir=${profile}`, `--local-api-port=${port}`], {
     cwd: path.dirname(exePath),
     env: { ...process.env, ELECTRON_ENABLE_LOGGING: '1', MOCK_HARDWARE: 'true' },
     detached: false
@@ -89,7 +92,7 @@ async function verifyPackedApp() {
     }
   });
 
-  // Poll the local HTTP server at 127.0.0.1:39123
+  // Poll the local HTTP server at 127.0.0.1:<port>
   const startTime = Date.now();
   const maxWaitMs = 12000;
   let verified = false;
@@ -102,7 +105,7 @@ async function verifyPackedApp() {
     }
 
     try {
-      const isUp = await checkHttpServer();
+      const isUp = await checkHttpServer(port);
       if (isUp) {
         verified = true;
         break;
@@ -114,7 +117,7 @@ async function verifyPackedApp() {
 
   if (!verified) {
     killApp(appProcess);
-    console.error(`\n[VERIFY FAILED] Server did not respond on port 39123 within ${maxWaitMs}ms.`);
+    console.error(`\n[VERIFY FAILED] Server did not respond on port ${port} within ${maxWaitMs}ms.`);
     process.exit(1);
   }
 
@@ -122,7 +125,7 @@ async function verifyPackedApp() {
   console.log(`\n[VERIFY] Server is up. Asserting what it actually does:`);
   let failures;
   try {
-    failures = await runBehaviourChecks();
+    failures = await runBehaviourChecks(port);
   } catch (err) {
     killApp(appProcess);
     console.error(`\n[VERIFY FAILED] Behaviour checks could not complete: ${err.message}`);
@@ -141,24 +144,24 @@ async function verifyPackedApp() {
 
   console.log(`\n========================================================`);
   console.log(` [SUCCESS] Packed application verified cleanly!`);
-  console.log(` Webhook server on http://127.0.0.1:39123 routes a JSON`);
+  console.log(` Webhook server on http://127.0.0.1:${port} routes a JSON`);
   console.log(` request and refuses both browser-shaped request forms.`);
   console.log(` Zero uncaught exceptions or missing module errors detected.`);
   console.log(`========================================================\n`);
   process.exit(0);
 }
 
-// Probes 39123 and nothing else. This used to try 8080 first and fall back to
-// 39123, from a build that ran a second server there. That server is gone, so
+// Probes the port the app was given and nothing else. This used to try 8080
+// first and fall back to 39123, from a build that ran a second server there. That server is gone, so
 // any unrelated process holding 8080 -- a dev server, a proxy -- made this
 // report SUCCESS without ever contacting the packaged app.
 //
 // Any response counts as *up*, including the 405 the server returns for GET.
 // That is only the readiness signal; what the app actually does is asserted
 // separately, by `runBehaviourChecks` below.
-function checkHttpServer() {
+function checkHttpServer(port) {
   return new Promise((resolve) => {
-    const req = http.get('http://127.0.0.1:39123/', () => resolve(true));
+    const req = http.get(`http://127.0.0.1:${port}/`, () => resolve(true));
     req.on('error', () => resolve(false));
     req.setTimeout(1000, () => {
       req.destroy();
@@ -168,13 +171,13 @@ function checkHttpServer() {
 }
 
 /** One request to the packaged app's local API. */
-function request({ method = 'POST', path: urlPath = '/', headers = {}, body }) {
+function request({ port, method = 'POST', path: urlPath = '/', headers = {}, body }) {
   return new Promise((resolve, reject) => {
     const payload = body === undefined ? undefined : JSON.stringify(body);
     const req = http.request(
       {
         host: '127.0.0.1',
-        port: 39123,
+        port,
         method,
         path: urlPath,
         headers: {
@@ -225,7 +228,7 @@ function request({ method = 'POST', path: urlPath = '/', headers = {}, body }) {
 /** A path no route answers: reaching the router has no side effect. */
 const VERIFY_PATH = '/api/v1/verify-packed-app';
 
-async function runBehaviourChecks() {
+async function runBehaviourChecks(port) {
   const failures = [];
 
   const check = (name, condition, detail) => {
@@ -238,6 +241,7 @@ async function runBehaviourChecks() {
   };
 
   const routed = await request({
+    port,
     path: VERIFY_PATH,
     headers: { 'Content-Type': 'application/json' },
     body: { probe: 'verify-packed-app' }
@@ -251,6 +255,7 @@ async function runBehaviourChecks() {
   // Sent as text/plain: a "simple" request is precisely the one a browser may
   // issue cross-origin with no preflight, so this is the shape that must fail.
   const wrongType = await request({
+    port,
     path: VERIFY_PATH,
     headers: { 'Content-Type': 'text/plain' },
     body: { probe: 'verify-packed-app' }
@@ -263,6 +268,7 @@ async function runBehaviourChecks() {
 
   // Browsers set Origin; native clients do not.
   const browserish = await request({
+    port,
     path: VERIFY_PATH,
     headers: { 'Content-Type': 'application/json', Origin: 'https://evil.example' },
     body: { probe: 'verify-packed-app' }
@@ -276,13 +282,34 @@ async function runBehaviourChecks() {
   return failures;
 }
 
+/**
+ * Ends the app this run started, and only it: its process tree by PID --
+ * Electron's renderer and GPU processes are its children. Never by image
+ * name, which would take the user's own SprintTicker with it.
+ */
 function killApp(proc) {
   try {
-    execSync('taskkill /F /IM "SprintTicker.exe" >nul 2>&1');
-  } catch (_) {}
+    if (proc.pid) execSync(`taskkill /F /T /PID ${proc.pid} >nul 2>&1`);
+  } catch (_) {
+    // Already gone: the kill below is the fallback, and an exited process is the goal.
+  }
   try {
     proc.kill();
-  } catch (_) {}
+  } catch (_) {
+    // Already exited.
+  }
+}
+
+/** A port nothing listens on now, chosen by the system. */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address();
+      server.close(() => resolve(port));
+    });
+  });
 }
 
 verifyPackedApp();

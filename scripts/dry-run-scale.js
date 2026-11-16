@@ -27,8 +27,8 @@
  * The report goes to `<out>/dry-run.json` and the console.
  *
  * Never the real database, never the real bar, never the installed app's
- * port: see capture-app.js's header, which all applies here. Close
- * SprintTicker first.
+ * port: it runs on capture-app.js's own local API port, beside the user's
+ * SprintTicker.
  */
 const fs = require('fs');
 const os = require('os');
@@ -487,7 +487,7 @@ async function heap(page, profile) {
 
 async function main() {
   if (!fs.existsSync(path.join(APP_DIR, 'dist', 'main', 'index.js'))) throw new Error('the app is not built: run `pnpm build` first');
-  if (await portAnswers(WEBHOOK)) throw new Error(`something already answers on ${WEBHOOK} -- close SprintTicker first`);
+  if (await portAnswers(WEBHOOK)) throw new Error(`something already answers on ${WEBHOOK} -- another capture or dry run is running`);
   fs.mkdirSync(OUT, { recursive: true });
   const fake = await startFake();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'sprintticker-dryrun-profile-'));

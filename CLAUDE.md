@@ -1346,8 +1346,11 @@ So is *launching* the app on its default profile. `pnpm verify:packed` used
 to: from an agent's shell it opened the redirected copy, which read as
 `database disk image is malformed` with secrets that would not decrypt, and
 failed a sound build (2026-11-13). It now runs on a throwaway
-`--user-data-dir`, as `capture-app.js` and the dry run do; anything new
-that starts the app does the same.
+`--user-data-dir`, as `capture-app.js` and the dry run do, with
+`--local-api-port` on a free port, and ends only the process it started
+(`taskkill /T /PID`): it used to `taskkill /IM SprintTicker.exe`, closing
+the user's own app at every build. Anything new that starts the app does
+the same, and never kills by image name.
 
 **Never `DELETE FROM tasks`.** `worklogs.task_id` is a foreign key (migration
 5), so deleting a task with logged time fails -- by design, because the paths
@@ -1666,12 +1669,14 @@ duplicated-constant hazard again, in binary. Four things about them:
   `make-images.py` renders those, and every scene and icon in `Animations/`,
   as the LED panel. Never capture the real profile: development shares the
   real database (§7), so its pictures would publish the user's own task names.
-- **Close SprintTicker before running it.** The capture's instance serves
-  port 39123 too, and if the installed app owns that port, the real bar and
-  any Stream Deck are behind it; the script refuses to start while anything
-  answers there. Whatever else posts to that port lands in the pictures: the
-  first run published a real Unity project's console error,
-  `Plugins: Failed...`, on the emulator.
+- **It runs beside the user's SprintTicker, on a port of its own**
+  (`--local-api-port`, 39187; `local-api-port.ts`). It used to serve 39123
+  and refuse to start while the installed app held it, the real bar and any
+  Stream Deck behind it; and whatever posted to that port landed in the
+  pictures -- the first run published a real Unity project's console error,
+  `Plugins: Failed...`, on the emulator. Nothing posts to 39187. The
+  single-instance lock is per profile, so the throwaway one starts beside
+  the user's.
 - **Not LFS, and on a budget.** `.gitattributes` keeps LFS to `Animations/`
   on purpose. Animated clips are WebP rather than GIF -- the LED bloom made the
   Away scene a megabyte as a GIF, 110 KB as WebP -- and screenshots are
