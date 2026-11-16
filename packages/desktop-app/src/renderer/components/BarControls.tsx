@@ -45,7 +45,12 @@ export const BarControls: React.FC = () => (
       </dd>
 
       <dt className="font-semibold text-text-primary">Back</dt>
-      <dd className="text-text-secondary">Nothing.</dd>
+      {/* With nothing running the firmware takes Back, banner or not, and
+          leaves its own clock (real bar, 2026-11-16). */}
+      <dd className="text-text-secondary">
+        Nothing in SprintTicker. Best left alone: with nothing running, the bar uses it to leave its own clock, and a
+        notification on it goes too.
+      </dd>
     </dl>
 
     <p className="text-text-secondary">

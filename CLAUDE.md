@@ -710,7 +710,12 @@ it:
 - **On the bar's own screen the firmware takes Back**: with nothing of ours
   drawn (its clock, nothing running) Back leaves the user's clock app.
   With our screen up, Back reaches us alone. Nothing may need Back when
-  SprintTicker is not on the panel.
+  SprintTicker is not on the panel. **A banner over the clock is not "our
+  screen up"** (firmware 1.3.1, 2026-11-16): with nothing running, Back
+  during a notification left the clock app *and* took the banner with it,
+  and banners sent while the bar sat outside its clock app never showed.
+  So Back is unused everywhere, the user's rule, and the Bar controls
+  text tells the user to leave it alone.
 An answer -- Pause or the click on a question or a notification -- settles
 for `BAR_ANSWER_SETTLE_MS` after the panel changes (`msSinceScreenChange`):
 a Pause meant to pause must not join a stand-up that came up under it.

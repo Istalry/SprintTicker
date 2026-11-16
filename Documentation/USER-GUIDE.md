@@ -1315,7 +1315,7 @@ the computer, in front of what you are doing.
 | ⏯️⏯️ **Pause again** | **Stop.** Within 4 s of pausing -- the bar says **AGAIN=STOP** meanwhile -- stops the task: its time logged, the task left open, **LOGGED** on the bar and Undo in the app. An interruption stops the same way, and you are back on your task. After the 4 s, Pause resumes |
 | 🖱️ **Wheel** click | **Interrupt**; during an interruption, **Another**. On a question or a notification, **no** |
 | 🔄 **Wheel** turn | **The menu**: one entry per screen, Pause picks it, a click closes it |
-| ↩️ **Back** | Nothing |
+| ↩️ **Back** | Nothing in SprintTicker. Best left alone: with nothing running, the bar's own software uses it to leave its clock, and a notification showing over the clock goes with it |
 
 The same list is in the app: **Settings, Desk devices, Bar controls**.
 
