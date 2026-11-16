@@ -495,6 +495,12 @@ export function getBitmapById(iconId: BitmapIconId | string, _frameIndex: number
       return COFFEE_16X16_BITMAP;
     case 'moon':
       return MOON_16X16_BITMAP;
+    case 'discard':
+      return DISCARD_16X16_BITMAP;
+    case 'previous':
+      return PREVIOUS_16X16_BITMAP;
+    case 'recent':
+      return RECENT_16X16_BITMAP;
     // An id nothing here knows draws the generic icon, as a notification
     // without an app logo does.
     default:
@@ -645,5 +651,69 @@ export const MOON_16X16_BITMAP: (string | null)[][] = [
   [null, null, null, null, null, '#FEF3C7', '#FEF3C7', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', '#FCD34D', null, '#A5B4FC', null, null],
   [null, null, null, null, null, null, null, '#FEF3C7', '#FCD34D', '#FCD34D', null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+/**
+ * The wheel menu's own verbs (2026-11-16), drawn from scratch: DISCARD a bin,
+ * PREV a back arrow, RECENT a dial with a backward arrow. They used to borrow
+ * the PixelIt stop sign, a red play button and the plain task card, which
+ * said nothing of the entry. Flat colours, 2 px strokes, static: a menu entry
+ * does not move.
+ */
+export const DISCARD_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, '#FCA5A5', '#FCA5A5', '#FCA5A5', '#FCA5A5', null, null, null, null, null, null],
+  [null, null, null, null, null, '#FCA5A5', null, null, null, null, '#FCA5A5', null, null, null, null, null],
+  [null, null, '#FCA5A5', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', null, null],
+  [null, null, '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#B91C1C', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', '#EF4444', null, null, null],
+  [null, null, null, null, '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', '#B91C1C', null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const PREVIOUS_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, '#BFDBFE', null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, '#BFDBFE', '#60A5FA', null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, '#BFDBFE', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', null, null, null, null],
+  [null, '#BFDBFE', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', null, null],
+  [null, null, '#2563EB', '#60A5FA', '#60A5FA', '#2563EB', null, null, null, null, null, '#2563EB', '#60A5FA', '#60A5FA', '#2563EB', null],
+  [null, null, null, '#2563EB', '#2563EB', null, null, null, null, null, null, null, '#2563EB', '#60A5FA', '#60A5FA', null],
+  [null, null, null, null, '#2563EB', null, null, null, null, null, null, null, null, '#60A5FA', '#60A5FA', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, '#60A5FA', '#60A5FA', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, '#60A5FA', '#60A5FA', null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, '#2563EB', '#60A5FA', '#60A5FA', null],
+  [null, null, null, null, null, null, null, null, null, null, '#2563EB', '#60A5FA', '#60A5FA', '#2563EB', null, null],
+  [null, null, null, null, null, '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#60A5FA', '#2563EB', null, null],
+  [null, null, null, null, null, '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', '#2563EB', null, null, null, null],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+];
+
+export const RECENT_16X16_BITMAP: (string | null)[][] = [
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', null, null, null, null, null],
+  [null, null, null, '#22D3EE', '#22D3EE', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', null, null, null],
+  [null, null, '#22D3EE', '#22D3EE', null, null, null, null, null, null, null, null, '#CBD5E1', '#CBD5E1', null, null],
+  [null, '#22D3EE', '#22D3EE', null, null, null, null, '#F8FAFC', '#F8FAFC', null, null, null, null, '#CBD5E1', '#CBD5E1', null],
+  [null, '#22D3EE', '#22D3EE', null, null, null, null, '#F8FAFC', '#F8FAFC', null, null, null, null, '#CBD5E1', '#CBD5E1', null],
+  ['#22D3EE', '#22D3EE', '#22D3EE', '#22D3EE', null, null, null, '#F8FAFC', '#F8FAFC', null, null, null, null, null, '#CBD5E1', '#CBD5E1'],
+  [null, '#22D3EE', '#22D3EE', null, null, null, null, '#F8FAFC', '#F8FAFC', null, null, null, null, null, '#CBD5E1', '#CBD5E1'],
+  [null, null, null, null, null, null, null, '#F8FAFC', '#F8FAFC', '#F8FAFC', '#F8FAFC', null, null, null, '#CBD5E1', '#CBD5E1'],
+  [null, null, null, null, null, null, null, null, null, null, null, null, null, null, '#CBD5E1', '#CBD5E1'],
+  [null, '#CBD5E1', '#CBD5E1', null, null, null, null, null, null, null, null, null, null, '#CBD5E1', '#CBD5E1', null],
+  [null, '#CBD5E1', '#CBD5E1', null, null, null, null, null, null, null, null, null, null, '#CBD5E1', '#CBD5E1', null],
+  [null, null, '#CBD5E1', '#CBD5E1', null, null, null, null, null, null, null, null, '#CBD5E1', '#CBD5E1', null, null],
+  [null, null, null, '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', null, null, null],
+  [null, null, null, null, null, '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', '#CBD5E1', null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
 ];

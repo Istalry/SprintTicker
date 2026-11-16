@@ -47,22 +47,22 @@ export interface BarMenuState {
 export function barMenuEntries({ session, previous, recent }: BarMenuState): BarMenuEntry[] {
   const open = session && session.status !== 'COMPLETED' ? session : null;
   if (open?.interruption) {
-    return [{ action: 'DISCARD', icon: 'interruption', label: keyOf(open), detail: BarWord.DISCARD }];
+    return [{ action: 'DISCARD', icon: 'discard', label: keyOf(open), detail: BarWord.DISCARD }];
   }
   const entries: BarMenuEntry[] = [];
   if (open) {
     entries.push(
       { action: 'DONE', icon: 'task_done', label: keyOf(open), detail: BarWord.DONE },
-      { action: 'DISCARD', icon: 'stop', label: keyOf(open), detail: BarWord.DISCARD }
+      { action: 'DISCARD', icon: 'discard', label: keyOf(open), detail: BarWord.DISCARD }
     );
   }
   const shown = new Set<string>(open ? [open.taskId] : []);
   if (previous && !shown.has(previous.id)) {
-    entries.push({ action: 'PREVIOUS', icon: 'play', label: previous.key || previous.title, detail: BarWord.PREVIOUS, task: previous });
+    entries.push({ action: 'PREVIOUS', icon: 'previous', label: previous.key || previous.title, detail: BarWord.PREVIOUS, task: previous });
     shown.add(previous.id);
   }
   for (const task of recent.filter(t => !shown.has(t.id)).slice(0, DECK_MAX_RECENT)) {
-    entries.push({ action: 'RECENT', icon: 'task', label: task.key || task.title, detail: BarWord.RECENT, task });
+    entries.push({ action: 'RECENT', icon: 'recent', label: task.key || task.title, detail: BarWord.RECENT, task });
   }
   return entries;
 }

@@ -1079,7 +1079,8 @@ export class DisplayRenderer {
     const interruption = held;
     return this.requestRender(RESUME_PROMPT_EVENT, () => {
       this.paintIconAndTwoRows(
-        getBitmapById(interruption ? 'task_in_progress' : after === 'standup' ? 'clock' : 'burger'),
+        // After Away, the cup of Away's scene: it showed lunch's burger.
+        getBitmapById(interruption ? 'task_in_progress' : after === 'standup' ? 'clock' : after === 'away' ? 'coffee' : 'burger'),
         interruption ? taskKey || RESUME_AFTER_INTERRUPTION_TEXT.fallback : RESUME_PROMPT_TEXT.question,
         !interruption ? RESUME_PROMPT_TEXT.hint : after === 'interruption' ? RESUME_AFTER_INTERRUPTION_TEXT.hint : RESUME_AFTER_BREAK_HINT,
         CONFIRM_COLOR,

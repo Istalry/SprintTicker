@@ -354,7 +354,9 @@ months of history: every screen answers within about a tenth of a second.
   DISCARD, your previous task and up to three recent ones -- only DISCARD
   during an interruption. Pause picks; DONE and DISCARD
   ask for a second Pause and can be undone in the app; a click, or six
-  seconds untouched, closes it. A stand-up prompt that arrived while
+  seconds untouched, closes it. Each entry has its own icon: a bin for
+  DISCARD, a back arrow for your previous task, a dial turning back for
+  the recent ones. A stand-up prompt that arrived while
   Windows was locked no longer plays over lunch when the menu closes.
 - **Settings · General is a page of rows**: each setting a name, one
   sentence and its control at the right -- Start with Windows, When I close

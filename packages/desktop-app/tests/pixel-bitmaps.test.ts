@@ -59,4 +59,15 @@ describe('PixelBitmaps Unit Tests', () => {
   it('GetBitmapById_UnknownId_ReturnsTheGenericBell', () => {
     expect(getBitmapById('no-such-icon')).toBe(BELL_16X16_BITMAP);
   });
+
+  it.each(['discard', 'previous', 'recent'] as BitmapIconId[])('GetBitmapById_%s_IsItsOwnDrawing_NotTheBell', iconId => {
+    // The wheel menu's verbs (2026-11-16): an id getBitmapById does not know
+    // falls back to the bell, which would pass any shape check.
+    const bitmap = getBitmapById(iconId);
+
+    expect(bitmap).not.toBe(BELL_16X16_BITMAP);
+    expect(bitmap).toHaveLength(16);
+    bitmap.forEach(row => expect(row).toHaveLength(16));
+    expect(bitmap.flat().filter(Boolean).length).toBeGreaterThan(40);
+  });
 });
