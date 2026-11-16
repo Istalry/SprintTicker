@@ -34,8 +34,6 @@ export const FRONT_ANIMATIONS = {
   TASK_DONE: 'task_done_72x16',
   /** STOP without finishing. Played once: see TASK_LOGGED_DISPLAY_SECONDS. */
   TASK_LOGGED: 'task_logged_72x16',
-  /** A task started from the bar. Played once: see TASK_STARTED_DISPLAY_SECONDS. */
-  TASK_STARTED: 'task_started_72x16',
   /** The wrap-up done. Played once: see EOD_COMPLETE_DISPLAY_SECONDS. */
   EOD_COMPLETE: 'eod_moon_72x16',
 } as const;
@@ -57,14 +55,6 @@ export const TASK_DONE_DISPLAY_SECONDS = 4;
  * half second rests on that, for the same reason as TASK_DONE_DISPLAY_SECONDS.
  */
 export const TASK_LOGGED_DISPLAY_SECONDS = 3;
-
-/**
- * How long GO! holds the display before the tracking screen.
- *
- * The shortest of the three: the scene (1.5 s) ends on the tracking screen's
- * own icon, and what the user wants next is to see which task is running.
- */
-export const TASK_STARTED_DISPLAY_SECONDS = 2;
 
 /**
  * How long SEE YOU! holds the display once the end-of-day wrap-up is done.
@@ -124,7 +114,6 @@ export const SCENE_ICONS: Record<(typeof FRONT_ANIMATIONS)[keyof typeof FRONT_AN
   [FRONT_ANIMATIONS.NOTHING_TIMING]: { icon: 'stopwatch_idle', label: 'NO TASK' },
   [FRONT_ANIMATIONS.TASK_DONE]: { icon: 'checkmark', label: 'DONE!' },
   [FRONT_ANIMATIONS.TASK_LOGGED]: { icon: 'stopwatch', label: 'LOGGED' },
-  [FRONT_ANIMATIONS.TASK_STARTED]: { icon: 'stopwatch', label: 'GO!' },
   [FRONT_ANIMATIONS.EOD_COMPLETE]: { icon: 'moon', label: 'SEE YOU!' },
 };
 

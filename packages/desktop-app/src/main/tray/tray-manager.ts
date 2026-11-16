@@ -224,7 +224,8 @@ export class TrayManager {
       ...(interrupting
         ? []
         : [{
-            label: `${Verb.SWITCH} task…`,
+            // Switch with a task running; with nothing, there is nothing to switch from.
+            label: session ? `${Verb.SWITCH} task…` : `${Verb.START} a task…`,
             click: this.guarded('open the picker', () => {
               if (this.pickerWindow) this.pickerWindow.open('start');
               else openTaskPickerInMainWindow(this.mainWindow);

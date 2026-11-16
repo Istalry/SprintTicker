@@ -219,11 +219,11 @@ describe('TrayManager Unit Tests', () => {
       return manager;
     }
 
-    it('Menu_NothingTiming_SwitchInterruptModesAndQuit', () => {
+    it('Menu_NothingTiming_StartInterruptModesAndQuit', () => {
       const manager = trayWith({ interrupt: vi.fn(), commands: commands() });
 
       expect(labels()).toEqual([
-        'Open SprintTicker', 'Switch task…', 'Interrupt', 'Lunch', 'Away', 'End my day…', 'Quit'
+        'Open SprintTicker', 'Start a task…', 'Interrupt', 'Lunch', 'Away', 'End my day…', 'Quit'
       ]);
       manager.destroy();
     });
@@ -366,7 +366,7 @@ describe('TrayManager Unit Tests', () => {
       // the preload's, compared by value so a rename cannot drift past it.
       const manager = trayWith();
 
-      click('Switch task…');
+      click('Start a task…');
 
       expect(mockWindow.show).toHaveBeenCalled();
       expect(mockWindow.webContents.send).toHaveBeenCalledWith(IPCChannel.ON_HARDWARE_INPUT_EVENT, {
@@ -383,7 +383,7 @@ describe('TrayManager Unit Tests', () => {
       manager.initialize();
       manager.buildMenu();
 
-      click('Switch task…');
+      click('Start a task…');
 
       expect(pickerWindow.open).toHaveBeenCalledWith('start');
       expect(mockWindow.show).not.toHaveBeenCalled();

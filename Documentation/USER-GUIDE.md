@@ -1200,7 +1200,8 @@ click it within ten seconds and the window opens with **Undo** ready
 there.
 
 🧭 **The tray**: a click opens the window. Its menu, on a right-click, holds
-what you reach for without the window: **Switch task…**, **Previous task:
+what you reach for without the window: **Switch task…** (**Start a task…**
+when nothing runs), **Previous task:
 PF-31**, **Pause** or **Resume**, **Stop** (as Today's, with Undo),
 **Interrupt** -- **Another interruption** during one, when Stop reads **Stop, back to MG-12** -- **Lunch**
 and **Away** (ticked while on; click again to go back to work), **End my

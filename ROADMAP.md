@@ -1138,7 +1138,7 @@ cup and a moon taken from their scenes' sprites.
 
 ## 6. The 2026-11 redesign
 
-**Status (2026-11-13):** release candidate. P0-P14 and P16 are done: the
+**Status (2026-11-16):** release candidate. P0-P14 and P16 are done: the
 new face, the undo and the held sends, interruptions as fragments, the
 picker window, prompts without focus, History's week and Check my week, End
 my day, the first run, the tray and the mini timer, the Stream Deck plugin
@@ -1147,11 +1147,12 @@ on protocol 2 with its shipped profiles, the bar rethought with the user
 no, Back is unused, turning opens a short menu, the ⚡ icon, STAND-UP,
 3 TO PLACE, MG-12 > RIN, NO TASK), and Tasks and Settings as their
 screens. P15 -- the review, a dry run at 20 projects of 50 tasks, the
-documents -- is done up to the candidate: rc2 is installed, rc3 (one
-fix more, notification icons kept between starts) is Monday's first build,
-and the user's day of real work on the bar and Stream Deck Mobile is Monday
-2026-11-16 (the checklist is `Documentation/REDESIGN-PLAN.md`, P15d). Then
-the fixes it finds, the user's 2.0.0 tag, and P15e, the motion video.
+documents -- is done up to the candidate. The user's trial on the bar and
+Stream Deck Mobile closed on 2026-11-16 (P15d in
+`Documentation/REDESIGN-PLAN.md`), and its fixes are in; the user now uses
+the candidate for real work. Also in 2.0: a SprintTicker server as a
+provider (`PROVIDER-API.md`). Left: the user's 2.0.0 tag, and P15e, the
+motion video.
 
 A new face and new flows for every surface: the window, the mini timer,
 the tray, the bar and the Stream Deck. The target is drawn in
@@ -1354,8 +1355,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**94.00 statements / 88.05 branches / 95.21 functions / 96.28 lines across 3898
-tests in 194 files** (2026-11-13, after the redesign), and the floor is
+**93.56 statements / 87.32 branches / 94.86 functions / 95.95 lines across 3963
+tests in 199 files** (2026-11-16, with the SprintTicker server provider), and the floor is
 ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

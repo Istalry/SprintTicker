@@ -1426,15 +1426,16 @@ scene.json ──► renderFrame(scene, frame) ──► PNG sequence + meta.jso
   `shared/render-constants.ts`. A name with no folder behind it fails only as a
   log warning and an empty panel, so `animation-assets.test.ts` checks every
   entry against the repository. All seven are studio scenes. Task done, task
-  logged, task started and end of day are played once (`loop: false`): the
+  logged and end of day are played once (`loop: false`): the
   device holds a one-shot's last frame, and `DisplayRenderer` returns to the
   session after each one's `*_DISPLAY_SECONDS`, a little longer than the
   scene. A
   session update meanwhile is held behind it, which is why the STOP and
-  FINISH paths start the scene *before* stopping the session, and the picker
-  plays GO! before releasing its lock. Another task starting ends a scene at
-  once; the session GO! announces does not, or its per-second updates would
-  cut it off. A lock released during a scene restores the work screen
+  FINISH paths start the scene *before* stopping the session. A task
+  starting ends a scene at once. (Task started, GO!, played when the bar's
+  picker started a task; it lost its caller with that picker in P14b, and
+  its code went on 2026-11-16. The scene is still in the studio.) A lock
+  released during a scene restores the work screen
   without stopping it. While the
   device plays a scene, `AnimationPlayer`'s preview ticks at 15 fps and skips
   frames to keep time with it.
@@ -1450,7 +1451,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 3898 tests across 194 files, in two projects: `main` in Node for
+Vitest, 3963 tests across 199 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.
