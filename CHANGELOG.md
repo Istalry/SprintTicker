@@ -261,9 +261,6 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Changed
 
-- **Slack, Discord and Gmail notifications always show the icon drawn for
-  the bar.** From the second message on, the app's own logo, shrunk to 16
-  pixels, used to take its place. An image you set on the app still wins.
 - **Nothing timing has a scene on the bar**: NO TASK beside an empty
   office chair that swivels and settles, on amber, like Lunch and Away.
 - **Bar health is in Desk devices**, no longer behind the developer tools,

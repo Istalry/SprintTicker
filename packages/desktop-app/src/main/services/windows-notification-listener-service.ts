@@ -26,12 +26,6 @@ import {
 import { AppIconBitmapProcessor } from '../hardware/app-icon-bitmap-processor';
 
 /**
- * The apps whose icon is drawn here, pixel for pixel, for the bar: shown in
- * place of any icon read off the app, which at 16 px loses to the drawing.
- */
-const HAND_DRAWN_APP_ICONS: ReadonlySet<BitmapIconId> = new Set<BitmapIconId>(['discord', 'slack', 'gmail', 'antigravity', 'openproject', 'jira']);
-
-/**
  * Service that captures Windows Action Center / System notifications,
  * evaluates per-source priority rules (DONT_SHOW, DEFAULT, HIGH_PRIORITY),
  * and renders formatted notification banners on the BUSY Bar LED display.
@@ -208,10 +202,10 @@ export class WindowsNotificationListenerService {
     this._isListening = true;
 
     // The apps the user already knows, by their full id, looked up now so
-    // their first notification has its icon. An app we drew is skipped: ours
-    // is shown whatever is found.
+    // their first notification has its icon. The ids seen before are kept by
+    // the resolver itself.
     const known = settings.sourceRules
-      .filter(rule => rule.appId?.includes('!') && !HAND_DRAWN_APP_ICONS.has(rule.iconId))
+      .filter(rule => rule.appId?.includes('!'))
       .map(rule => rule.appId);
     void this._iconResolver.prewarm(known)
       .catch(err => console.warn('[NotificationListener] Icon lookup at start failed:', err));
@@ -472,17 +466,16 @@ export class WindowsNotificationListenerService {
 
     const timeoutMs = (settings.notificationTimeoutSeconds || 10) * 1000;
 
-    // An image the user chose for this app wins over everything. After it, an
-    // app we drew an icon for shows ours: its own logo, read off the exe or
-    // carried by the toast and shrunk to 16 px, came out as a smudge of the
-    // original -- and only from the second message on, since the lookup is
-    // cached after the first, so Discord changed icon between two messages
-    // (the 2.0 candidate, 2026-11-13). The automatic icon is for the apps we
-    // have no drawing of.
+    // An image the user chose for this app wins over everything. After it,
+    // the app's own logo, read off the toast or the app and converted for the
+    // bar, for every app -- Discord, Slack and Gmail included: the user's
+    // choice on 2026-11-16, reversing the 2.0 candidate's drawn-icons-first.
+    // The drawn icon (`iconId`) is what shows while no logo is found yet; the
+    // resolver keeps what it finds between starts, so that is an app's very
+    // first notification only.
     const iconOverride = matchedRule?.iconImagePath?.trim();
-    const drawnByUs = !iconOverride && HAND_DRAWN_APP_ICONS.has(iconId);
-    let rawIconData = drawnByUs ? undefined : event.rawIconData;
-    if (!rawIconData && !drawnByUs) {
+    let rawIconData = iconOverride ? undefined : event.rawIconData;
+    if (!rawIconData) {
       const customInput = iconOverride || event.iconPath || event.iconBase64 || this.resolveIconSource(event);
       if (customInput) {
         // `tryProcessAppImage`, not `processAppIcon`: the latter substitutes a

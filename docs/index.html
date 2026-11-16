@@ -1612,9 +1612,8 @@
       defaults those two rows are at levels 65 and 70, and a few common apps arrive pre-classified — Slack and the
       battery warning as High priority, Discord, Gmail and Windows as Default — but
       all of it is yours to change.</p>
-      <p>Slack, Discord, Gmail, Jira and OpenProject show an icon drawn for the bar,
-      pixel by pixel; their own logo, shrunk to 16 pixels, does not read. Every
-      other app&#39;s real icon is resolved from its MSIX manifest or Start Menu shortcut
+      <p>Every app shows its own icon, converted for the bar. It is resolved from its
+      MSIX manifest or Start Menu shortcut
       and downscaled to 15×15. Windows itself says which shortcut belongs to which
       app, so a shortcut named differently from its app — <code>PowerToys (Preview)</code>,
       <code>Visual Studio Code</code> — still finds the right icon. An app with no shortcut is
@@ -1622,7 +1621,9 @@
       of your own on that app (<em>Icon of my own</em>, a 16×16 PNG). An icon found is
       kept between starts, and the apps you have already met are looked up when the
       app starts, so a first notification after a start no longer rings the bell
-      while its icon is still being found. The ✈ beside an
+      while its icon is still being found. Until an app&#39;s icon is found, Slack,
+      Discord, Gmail, Jira and OpenProject show an icon drawn for the bar, and any
+      other app the bell. The ✈ beside an
       app sends it a test notification, and the bin forgets it until it notifies
       again. An app the list has not seen yet is added by its id under <strong>Settings,
       Developer</strong> (turn on <strong>Show developer tools</strong> in General first). The first notification from an app after SprintTicker

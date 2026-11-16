@@ -255,15 +255,24 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
       decode.mockRestore();
     });
 
-    it('HandleNotification_DiscordWithItsOwnIcon_ShowsOurs', () => {
-      // Discord's logo off its exe, shrunk to 16 px, from the second message
-      // on: the icon changed between two messages (2026-11-13).
+    it('HandleNotification_DiscordWithItsOwnIcon_ShowsItsOwn', () => {
+      // The user's choice (2026-11-16): the app's own logo, converted, over
+      // the icon drawn for it -- the candidate briefly had it the other way.
       withRules([{ appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' }]);
 
       service.handleNotification({ appId: 'com.squirrel.Discord.Discord', appName: 'Discord', title: 'Toukha', body: 'hi', iconPath: FILE });
 
+      expect(decode).toHaveBeenCalledWith(FILE, 'com.squirrel.Discord.Discord');
+      expect(bannerCalls[0]).toMatchObject({ iconId: 'discord', customIconData: GRID });
+    });
+
+    it('HandleNotification_DiscordWithNoIconFoundYet_ShowsTheDrawnOne', () => {
+      withRules([{ appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' }]);
+      decode.mockReturnValue(null);
+
+      service.handleNotification({ appId: 'com.squirrel.Discord.Discord', appName: 'Discord', title: 'Toukha', body: 'hi', iconPath: FILE });
+
       expect(bannerCalls[0]).toMatchObject({ iconId: 'discord', customIconData: undefined });
-      expect(decode).not.toHaveBeenCalled();
     });
 
     it('HandleNotification_DiscordWithAnImageTheUserChose_ShowsTheirs', () => {

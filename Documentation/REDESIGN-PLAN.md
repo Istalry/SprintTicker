@@ -2760,7 +2760,10 @@ user's to try; before it, what REVIEW §8 left for P15d:
   then its own logo shrunk to 16 px, once the icon lookup had been cached.
   An app we drew an icon for now shows ours always
   (`HAND_DRAWN_APP_ICONS`); an image the user set on the app still wins,
-  and an app we never drew keeps its own icon.
+  and an app we never drew keeps its own icon. **Reversed on 2026-11-16,
+  the user's choice:** every app shows its own logo, converted, whenever
+  one is found; the drawn icon is only what shows before. With the icons
+  kept between starts (rc3), that is an app's very first notification.
 - **NOTHING TIMING is a scene** (the user's request, word and icon chosen
   by them): NO TASK beside an empty office chair on amber
   (`nothing_chair_72x16`), its seat swinging away, back past where it was,
@@ -2819,8 +2822,9 @@ refresh the counts with the next full run.
 7. **The day:** the stand-up, lunch and *Back at your desk?*, an
    interruption placed on a task, End my day with Undo, the entries at
    OpenProject or Jira the next morning, split at lunch. Notifications:
-   Discord, Slack and Gmail with our drawn icon on every message; any
-   other app whose icon looks wrong, named, with a screenshot.
+   every app with its own logo, converted, from its first message after a
+   start (Discord, Slack, Gmail included); any app whose icon looks wrong,
+   named, with a screenshot.
 8. **Asked first, one at a time:** `pnpm probe:busybar` with the app
    closed, the plain run only: never `--compositing` or a soak flag.
    **Passed 2026-11-13** on firmware 1.3.1, every check, the bar 9.5 s
