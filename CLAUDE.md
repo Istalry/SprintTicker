@@ -247,7 +247,8 @@ things about it:
   the taskbar while `isFocused()` answers true, so the picker opened behind
   the app in front (Stream Deck Mobile, 2026-10-22). `setAlwaysOnTop` and
   `minimize()` + `restore()` fail the same way; `ForegroundRaiser`
-  (`AttachThreadInput` from PowerShell, ~0.8 s) works. Measuring it needs
+  (`AttachThreadInput` from PowerShell, ~0.8 s then, ~3 s by 2026-11-16) works --
+  given time: a 5 s timeout killed slow starts and left the window behind. Measuring it needs
   another app in front that the *user* chose: a process this shell starts
   while the agent's own window has the foreground inherits the right to it,
   and every method then passes. The picker window is raised the same way

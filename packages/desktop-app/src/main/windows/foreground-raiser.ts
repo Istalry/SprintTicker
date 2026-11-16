@@ -7,8 +7,14 @@ import { execFile } from 'child_process';
  */
 export type EncodedPowerShellRunner = (encodedCommand: string) => Promise<void>;
 
-/** Long enough for PowerShell to start and compile its helper (~0.8 s measured); a hang ends here. */
-export const FOREGROUND_RAISE_TIMEOUT_MS = 5000;
+/**
+ * Long enough for PowerShell to start and compile its helper; a hang ends
+ * here. It took ~0.8 s when measured on 2026-10-22, and 2.8-3.2 s warm on
+ * the same machine on 2026-11-16, when the bar's OPEN APP left the window
+ * behind now and then, its taskbar button flashing: at 5 s, a slow start
+ * was killed before it asked for the foreground.
+ */
+export const FOREGROUND_RAISE_TIMEOUT_MS = 15_000;
 
 /**
  * The script: attach this thread's input to the foreground window's thread,

@@ -473,6 +473,9 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Fixed
 
+- **OPEN APP on the bar sometimes left the window behind**, its taskbar
+  button flashing: the helper that brings it forward was stopped after 5 s,
+  and it can take longer to start. It now has 15 s.
 - **An app's first notification showed the bell, or our drawn icon,** while
   its icon was still being looked up, and its own logo only from the second
   message on: the icons found were forgotten at every start. They are kept
