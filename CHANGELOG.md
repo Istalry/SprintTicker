@@ -261,6 +261,9 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Changed
 
+- **End my day can shut the PC down every day**: *Shut down the PC when I
+  end my day*, in Settings › My workday, ticks *Then shut down the PC* for
+  you. Off by default; you can still untick it on the day.
 - **Nothing timing has a scene on the bar**: NO TASK beside an empty
   office chair that swivels and settles, on amber, like Lunch and Away.
 - **Bar health is in Desk devices**, no longer behind the developer tools,

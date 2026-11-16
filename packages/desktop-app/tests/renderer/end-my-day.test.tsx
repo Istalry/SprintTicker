@@ -58,12 +58,26 @@ describe('End my day', () => {
     expect(screen.getByRole('region', { name: 'Interruptions to place' })).toBeTruthy();
   });
 
-  it('Open_TheShutdownIsNeverTicked', async () => {
+  it('Open_TheShutdownIsNotTickedByDefault_Nor_By1_4sSetting', async () => {
     open({ getScheduleSettings: vi.fn().mockResolvedValue({ shutdownByDefault: true }) });
 
     await button();
 
     expect((screen.getByRole('checkbox', { name: /Then shut down the PC/ }) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('Open_ShutdownSettingOn_TheShutdownIsTicked', async () => {
+    const { bridge } = open({
+      getFlowSetting: vi.fn().mockImplementation(async (key: string) => key === 'shutdown_at_end_of_day')
+    });
+
+    await vi.waitFor(() =>
+      expect((screen.getByRole('checkbox', { name: /Then shut down the PC/ }) as HTMLInputElement).checked).toBe(true));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Then shut down the PC/ }));
+    fireEvent.click(await button());
+
+    // Unticked for that day: the setting only chose where the box starts.
+    expect(bridge.api.triggerEodWrapUp).toHaveBeenCalledWith({ shouldShutdown: false });
   });
 
   it('Click_EndsTheDayInOneClick_WithTheShutdownAsTicked', async () => {

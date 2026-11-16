@@ -10,6 +10,7 @@ import { formatHoursAndMinutes, formatHoursMinutes, formatLongDay, ipcErrorMessa
 import { InterruptionsToPlace, useInterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { syncBadgeLabel } from '../../components/SyncBadge';
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
+import { FlowSettingKey } from '../../../shared/flow-settings';
 
 /** Later (S17): the wrap-up asks again after this long. */
 export const END_DAY_LATER_MINUTES = 15;
@@ -63,8 +64,9 @@ export function endDayButtonLabel(figures: EndOfDayFigures): string {
  * still to place, one menu per row; the day's untracked gaps as a hint only;
  * and a button that says what it sends. Ending stops the session through
  * `stopForWrapUp` with ten seconds to undo. Shutting down is a separate,
- * explicit choice, never ticked for you, and main runs it only once Undo
- * has passed and the queue has answered.
+ * explicit choice, ticked only when the user asked for it in Settings
+ * (`shutdown_at_end_of_day`, off by default), and main runs it only once
+ * Undo has passed and the queue has answered.
  *
  * The bar and the deck keep their two-press confirm (START, then START);
  * the window's button is one click. Mounted only while open.
@@ -76,6 +78,8 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
   const [day, setDay] = useState<DayRead | null>(null);
   const [revision, setRevision] = useState(0);
   const [shutdown, setShutdown] = useState(false);
+  // The box as the user left it wins over the setting arriving late.
+  const shutdownTouched = useRef(false);
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +96,13 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
     );
     return () => { current = false; };
   }, [revision]);
+
+  useEffect(() => {
+    window.electronAPI?.getFlowSetting?.(FlowSettingKey.SHUTDOWN_AT_END_OF_DAY).then(
+      on => { if (!shutdownTouched.current) setShutdown(on); },
+      err => console.warn('[EndMyDay] Could not read the shutdown setting:', err)
+    );
+  }, []);
 
   // A placed interruption, or an entry changed elsewhere, changes the day.
   useEffect(() => window.electronAPI?.onInterruptionsUpdated?.(() => setRevision(r => r + 1)), []);
@@ -237,7 +248,12 @@ const EndMyDay: React.FC<EndMyDayDialogProps> = ({ onClose, onLater, onEnded, on
           </p>
 
           <label className="flex items-start gap-3 p-3 bg-dark-900/60 rounded-lg border border-border-dark cursor-pointer text-xs">
-            <input type="checkbox" checked={shutdown} onChange={e => setShutdown(e.target.checked)} className="mt-0.5 w-4 h-4" />
+            <input
+              type="checkbox"
+              checked={shutdown}
+              onChange={e => { shutdownTouched.current = true; setShutdown(e.target.checked); }}
+              className="mt-0.5 w-4 h-4"
+            />
             <span className="text-text-primary">
               <span className="font-semibold text-white">Then shut down the PC</span>, once the undo has passed and {provider} has
               answered (30 s to cancel).

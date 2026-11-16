@@ -36,7 +36,7 @@ describe('Settings · My workday', () => {
       .map(g => g.getAttribute('aria-labelledby') && document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent)
       .filter(Boolean);
     expect(titles).toEqual([
-      'Working days', 'Stand-up', 'Lunch', 'End my day', 'My week closes',
+      'Working days', 'Stand-up', 'Lunch', 'End my day', 'Shut down the PC when I end my day', 'My week closes',
       'Nothing timing in working hours', 'A pause that runs long', 'A stand-up still running', 'An interruption still running',
       'A timer left running overnight', 'A long pause starts a new entry'
     ]);
@@ -227,5 +227,19 @@ describe('Settings · My workday', () => {
     for (const entry of SETTINGS_ENTRIES.filter(e => e.group === 'workday')) {
       expect(screen.getByRole('group', { name: entry.label }), entry.label).toBeTruthy();
     }
+  });
+
+  it('ShutdownAtEndOfDay_OffByDefault_TurnedOn_Saves', async () => {
+    const bridge = installElectronApi();
+    render(<WorkdaySettings />);
+    const toggle = await within(await screen.findByRole('group', { name: 'Shut down the PC when I end my day' }))
+      .findByRole('switch', { name: 'Shut down the PC when I end my day' }) as HTMLInputElement;
+    await waitFor(() => expect(toggle.disabled).toBe(false));
+    expect(toggle.checked).toBe(false);
+
+    fireEvent.click(toggle);
+
+    expect(bridge.api.saveFlowSetting).toHaveBeenCalledWith(FlowSettingKey.SHUTDOWN_AT_END_OF_DAY, true);
+    await waitFor(() => expect(toggle.checked).toBe(true));
   });
 });

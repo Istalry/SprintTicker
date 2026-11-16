@@ -4,7 +4,9 @@ import {
   DEFAULT_SHORTCUTS,
   DEFAULT_START_SIDE_EFFECTS,
   doneStateFor,
+  FlowSettingKey,
   readCloseToTray,
+  readFlowSetting,
   readDoneStateByProject,
   readPromptDelays,
   readProviderDisplayName,
@@ -63,6 +65,12 @@ describe('flow settings', () => {
     expect(readStandupTask({ taskId: 'T-4', taskKey: 'OPS-4', title: 'Team ceremonies' }))
       .toEqual({ taskId: 'T-4', taskKey: 'OPS-4', title: 'Team ceremonies' });
     expect(readCloseToTray(false)).toBe(false);
+  });
+
+  it('ShutdownAtEndOfDay_OnlyAStoredTrue_TurnsItOn', () => {
+    expect(readFlowSetting(FlowSettingKey.SHUTDOWN_AT_END_OF_DAY, undefined)).toBe(false);
+    expect(readFlowSetting(FlowSettingKey.SHUTDOWN_AT_END_OF_DAY, 'true')).toBe(false);
+    expect(readFlowSetting(FlowSettingKey.SHUTDOWN_AT_END_OF_DAY, true)).toBe(true);
   });
 
   it('ReadStarredProjects_Junk_KeepsTheIdsOnceAndCapsThem', () => {

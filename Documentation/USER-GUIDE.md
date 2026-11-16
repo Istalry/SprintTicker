@@ -886,7 +886,9 @@ brings the task back as it was. Anything Jira refuses stays here, and the
 next day says so. **Remind me in 15 min** asks again then. On the bar it is
 two presses of Pause, and the wheel's click closes it.
 
-**Then shut down the PC** is a separate choice, never ticked for you. The
+**Then shut down the PC** is a separate choice, unticked unless you turn on
+**Shut down the PC when I end my day** in **Settings, My workday**; even
+then you can untick it for that day. The
 shutdown waits until the ten seconds of Undo have passed and Jira has
 answered -- up to 30 seconds, after which it goes ahead with what is not
 sent kept for tomorrow -- and Windows then gives you its own 30 seconds to

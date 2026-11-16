@@ -1398,7 +1398,10 @@ used to run right after the stop, so the day's sends, held ten seconds for
 Undo, went down with the machine, and Undo could not stop it. Now the undo's
 commit starts `EndDayShutdown`, which drains the queue for at most 30 s and
 then shuts down anyway, entries kept. Never start a shutdown from the stop
-itself, and never ticked by default (the user's choice, 2026-11-12).
+itself, and never ticked by default (the user's choice, 2026-11-12): only
+the flow setting `shutdown_at_end_of_day`, off unless the user turns it on
+(2026-11-16), ticks it -- never 1.4's `shutdownByDefault`, which stays
+ignored so an update cannot switch a shutdown on.
 
 **Every user send waits `UNDO_WINDOW_MS`, and only `UndoService` undoes.**
 A row the queue takes is written due ten seconds ahead, and the worker is

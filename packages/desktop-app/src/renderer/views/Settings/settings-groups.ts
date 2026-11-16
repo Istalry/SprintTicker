@@ -51,6 +51,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Stand-up', group: 'workday', keywords: ['standup', 'daily', 'meeting', 'ceremonies'] },
   { label: 'Lunch', group: 'workday', keywords: ['break', 'quiet hours'] },
   { label: 'End my day', group: 'workday', keywords: ['eod', 'end of day', 'wrap-up', 'shutdown'] },
+  { label: 'Shut down the PC when I end my day', group: 'workday', keywords: ['shutdown', 'turn off', 'power off', 'eod'] },
   { label: 'My week closes', group: 'workday', keywords: ['closed week', 'timesheet', 'friday'] },
   { label: 'Nothing timing in working hours', group: 'workday', keywords: ['reminder', 'idle', 'not timing'] },
   { label: 'A pause that runs long', group: 'workday', keywords: ['reminder', 'paused', 'still paused'] },

@@ -10,6 +10,7 @@ import { DEFAULT_PROMPT_DELAYS, FlowSettingKey, PromptDelaysSetting } from '../.
 import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
 import { ProviderId } from '../../../shared/provider-names';
 import { StandupSetting } from '../../components/StandupSetting';
+import { ShutdownAtEndOfDaySetting } from '../../components/ShutdownAtEndOfDaySetting';
 import { useAnnounce } from '../../components/LiveAnnouncer';
 import {
   SETTING_SELECT_CLASS, SettingButton, SettingProblem, SettingRow, SettingSwitch, SettingsList
@@ -202,6 +203,8 @@ export const WorkdaySettings: React.FC = () => {
             </>
           }
         />
+
+        <ShutdownAtEndOfDaySetting />
 
         <SettingRow
           title="My week closes"

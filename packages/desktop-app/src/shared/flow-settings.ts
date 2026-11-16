@@ -32,7 +32,13 @@ export const FlowSettingKey = {
   /** Whether the mini timer's one-line tour of its buttons was put away (S25): it shows once. */
   MINI_TOUR_SEEN: 'mini_tour_seen',
   /** The projects starred in Tasks (S13), by id, in the order they were starred. */
-  STARRED_PROJECTS: 'starred_projects'
+  STARRED_PROJECTS: 'starred_projects',
+  /**
+   * Whether End my day starts with its shutdown ticked (2026-11-16). A key of
+   * its own: 1.4's `shutdownByDefault` in the schedule stays ignored, so an
+   * update never turns this on.
+   */
+  SHUTDOWN_AT_END_OF_DAY: 'shutdown_at_end_of_day'
 } as const;
 
 export interface StartSideEffectsSetting {
@@ -95,6 +101,9 @@ export const DEFAULT_SHORTCUTS: ShortcutsSetting = {
 };
 
 export const DEFAULT_CLOSE_TO_TRAY = true;
+
+/** Off, as the box was: shutting the PC down is never chosen for the user. */
+export const DEFAULT_SHUTDOWN_AT_END_OF_DAY = false;
 
 /** The longest delay a prompt may be given, in minutes: a working day. */
 const MAX_PROMPT_DELAY_MINUTES = 8 * 60;
@@ -206,6 +215,7 @@ export interface FlowSettingValues {
   first_interruption_seen: boolean;
   mini_tour_seen: boolean;
   starred_projects: string[];
+  shutdown_at_end_of_day: boolean;
 }
 
 export type FlowSettingKeyValue = keyof FlowSettingValues;
@@ -220,7 +230,9 @@ const FLOW_READERS: { [K in FlowSettingKeyValue]: (stored: unknown) => FlowSetti
   standup_task: readStandupTask,
   first_interruption_seen: stored => stored === true,
   mini_tour_seen: stored => stored === true,
-  starred_projects: readStarredProjects
+  starred_projects: readStarredProjects,
+  // Only a stored true turns it on: anything else is the default, off.
+  shutdown_at_end_of_day: stored => stored === true || DEFAULT_SHUTDOWN_AT_END_OF_DAY
 };
 
 export function isFlowSettingKey(key: unknown): key is FlowSettingKeyValue {
