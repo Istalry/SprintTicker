@@ -859,10 +859,14 @@ changing it:
   does not raise the window either; the ones that still do are the wrap-up's
   confirm and a wheel click while timing, which ask for the app. Anything
   new that asks goes through the outlet -- never `show()` or `focus()`.
-  The Place window at an interruption's Stop (2026-11-12) was the one
-  exception; since a Stop takes the held task up again (2026-11-16), the
-  stopped interruption waits on Today like any other, and nothing opens.
-  The `place-ended` mode of the picker window is unused since.
+  **One exception, the user's (2026-11-12, kept 2026-11-16): the Place
+  window at a Stop.** The user's Stop on an interruption (`stop-back`)
+  takes the held task up again and opens the picker window in
+  `place-ended` mode, raised, with the run's fragments still waiting
+  (`getRunToPlace`), each named and placed on its own row; Later or Escape
+  leaves them on Today. Never on Back, nor on `stopInterruption` (lunch,
+  the wrap-up). It answers a press the user just made, which a stand-up
+  does not.
 - **During an interruption, choosing a task does nothing** (the user's
   choice, 2026-11-12). Main refuses `session:start-task` and
   `interruption:switch` with `END_THE_INTERRUPTION_FIRST`, the picker
@@ -933,7 +937,7 @@ changing it:
   ad-hoc session (`interruption` set), and the engine routes every command
   to it: pause and resume pause it (migration 17: `paused_at_utc`,
   `paused_seconds`, and its time is the span less them), Stop and Done end
-  it and resume the held task -- `backFromInterruption`, reported `back` --
+  it and resume the held task -- Back, reported `stop-back` --
   a start is a switch. `stopInterruption` leaves the task paused and asks
   "Back to MG-12?": the engine's own end, for lunch, the wrap-up and a
   night away. **An undone Stop puts the held task back to waiting**: the

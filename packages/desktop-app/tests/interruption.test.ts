@@ -242,6 +242,22 @@ describe('Interruptions in a row', () => {
       expect(engine.getToPlaceSummary().count).toBe(1);
     });
 
+    it('Stop_ToldAsStopBack_BackAndTheEnginesOwnEndAreNot', () => {
+      // Main opens the Place window on the user's Stop alone (2026-11-16):
+      // never on Back, nor on the end lunch or the wrap-up make.
+      const told: string[] = [];
+      engine.onInterruptionEnded(ended => told.push(ended.how));
+
+      interruptA();
+      engine.stopSession();
+      interruptA();
+      engine.backFromInterruption();
+      interruptA();
+      engine.stopInterruption();
+
+      expect(told).toEqual(['stop-back', 'back', 'stop']);
+    });
+
     it('StopInterruption_ItselfLeavesTheTaskPaused_AndBackIsAsked', async () => {
       // The engine's own end, which lunch, the wrap-up and a night away use:
       // nothing is resumed behind them.

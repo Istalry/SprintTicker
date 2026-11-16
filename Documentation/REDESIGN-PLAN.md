@@ -2802,8 +2802,9 @@ user's to try; before it, what REVIEW §8 left for P15d:
   time left out of its own), Stop -- Pause twice on the bar -- ends it and
   takes the held task up again, Undo puts both back, and a paused one is
   asked about as a pause. Back has no button left: Stop is Back. The
-  Place window a Stop opened in front is gone with it; the fragment waits
-  on Today. The wheel menu stays DISCARD alone during one. Plugin 0.6.5:
+  Place window still opens in front at the user's Stop (`stop-back`): rc6
+  dropped it, and the user asked for it back the same day, at a Stop
+  only. The wheel menu stays DISCARD alone during one. Plugin 0.6.5:
   the Session key pauses an interruption. `BAR_INTERRUPTION_AGAIN_MS` and
   the decoder's held return are gone.
 

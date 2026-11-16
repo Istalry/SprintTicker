@@ -93,7 +93,7 @@ the **picker window** load the same `index.html`; the mini timer loads it at
 `#mini`, and `main.tsx` mounts `MiniBar` instead of `App` for that hash. The
 picker window (redesign P7b) loads it at `#picker` -- `#picker?mode=assign`
 to assign the ad-hoc session, `place-ended&ids=…` for the Place window a
-Stop opened until 2026-11-16, unused since (`shared/picker-window.ts`) -- and mounts
+Stop opens (`shared/picker-window.ts`) -- and mounts
 `PickerWindow`: the window's `TaskPicker`, its pick done by the same
 `utils/pick-task.ts` as the dashboard's. `PickerWindowManager` owns it: one at
 a time, centred on the display under the pointer, frameless and on top,
@@ -766,7 +766,7 @@ nothing rebindable:
 | Input | Means |
 | :--- | :--- |
 | Pause (`start`) | yes: pause, resume, a question's yes; a notification dismissed; with nothing running, `setOpenPickerCallback` -- main opens the picker window, raised. **Again** within `BAR_STOP_AGAIN_MS` (4 s) of the bar's own pause, the session stops with **LOGGED** (`stopSession`); `DisplayRenderer.showAgainHint` draws AGAIN=STOP on row 1 meanwhile |
-| Pause during an interruption | as on a task (2026-11-16): `pauseSession` pauses the fragment, and again within `BAR_STOP_AGAIN_MS` stops it, which resumes the task it held. It used to wait 2 s to tell going back from stopping |
+| Pause during an interruption | as on a task (2026-11-16): `pauseSession` pauses the fragment, and again within `BAR_STOP_AGAIN_MS` stops it, which resumes the task it held and opens the Place window. It used to wait 2 s to tell going back from stopping |
 | Wheel click | no on a question or a notification; elsewhere `START_INTERRUPTION`, handed to `ContextScheduleService.answerFromBar`, which interrupts -- Another during one |
 | Back | nothing |
 | Wheel turn | the menu (P14c), below |
@@ -893,12 +893,15 @@ earlier by the gap, after a `stopInterruption` -- unless the session was
 paused before. An interruption is a task nobody planned (2026-11-16):
 **Pause** and **Resume** pause the fragment (migration 17,
 `paused_at_utc` and `paused_seconds`; `interruptionSeconds` is its span
-less them), and **Stop** -- `stopSession` -- is Back. Undone, the held
+less them), and **Stop** -- `stopSession` -- is Back, told as
+`stop-back`, on which main opens the **Place window** in front
+(`getRunToPlace`): the run's fragments still waiting, each named and
+placed on its own row, the one exception to "a prompt never takes the
+focus" -- the user's, on 2026-11-12. Undone, the held
 session's rows come back with the fragment's, paused again
 (`heldScopes`, `UndoableAction.resumes`). `stopInterruption` closes it
 alone and leaves the task paused: the engine's own end, for lunch, the
-wrap-up and a night away. The Place window a Stop used to open in front
-(2026-11-12) opens no more: the fragment waits on Today. **Discard**
+wrap-up and a night away, and opens no window. **Discard**
 marks it discarded, and resumes the held task as Stop does. `switchFromInterruption` is
 still in the engine, but nothing reaches it: a task cannot be chosen while
 a fragment runs.

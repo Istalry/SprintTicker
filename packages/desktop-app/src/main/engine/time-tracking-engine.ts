@@ -32,7 +32,12 @@ export type SessionStateCallback = (session: ActiveSessionDTO | null) => void;
 /** How an interruption ended: told to `onInterruptionEnded` listeners. */
 export interface InterruptionEnded {
   fragment: InterruptionRecord;
-  how: 'stop' | 'discard' | 'back' | 'switch' | 'another';
+  /**
+   * `stop-back` is the user's Stop, which takes the held task up again
+   * (2026-11-16); `stop` is `stopInterruption`, the engine's own end, which
+   * leaves it paused.
+   */
+  how: 'stop' | 'stop-back' | 'discard' | 'back' | 'switch' | 'another';
   /** The session it held, still open and paused for it; null when there is none, or it was resumed. */
   held: ActiveSessionDTO | null;
 }
@@ -550,6 +555,11 @@ export class TimeTrackingEngine extends EventEmitter {
    * @throws ArgumentException with no interruption running and nothing held.
    */
   public backFromInterruption(addGapMinutes = 0): ActiveSessionDTO | null {
+    return this.endAndGoBack(addGapMinutes, 'back');
+  }
+
+  /** Back, told to the listeners as `how`: Back itself, or the user's Stop. */
+  private endAndGoBack(addGapMinutes: number, how: 'back' | 'stop-back'): ActiveSessionDTO | null {
     if (!Number.isFinite(addGapMinutes) || addGapMinutes < 0) {
       throw new ArgumentException('The time to add back cannot be negative.', 'addGapMinutes');
     }
@@ -566,7 +576,7 @@ export class TimeTrackingEngine extends EventEmitter {
       fragment = this._interruptions.getLatestFor(open.sessionId);
     }
     if (fragment) this.resumeHeldBy(fragment, nowMs - addGapMinutes * 60_000);
-    if (running) this.tellInterruptionEnded(running.id, 'back');
+    if (running) this.tellInterruptionEnded(running.id, how);
     this.notifyListeners();
     return this.getCurrentSession();
   }
@@ -1676,7 +1686,7 @@ export class TimeTrackingEngine extends EventEmitter {
     // interruption ends, as a task's does (2026-11-16); it used to stay
     // paused, and "Back to MG-12?" was asked.
     if (this._interruptions.getRunning()) {
-      this.backFromInterruption();
+      this.endAndGoBack(0, 'stop-back');
       return { success: true, loggedSeconds: 0 };
     }
     const active = this.sessionView();

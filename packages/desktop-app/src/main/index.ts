@@ -530,6 +530,24 @@ async function startApplication(): Promise<void> {
   // use, raised past the foreground lock, since the press reached the bar.
   inputDecoder?.setOpenPickerCallback(() => { pickers.open('start', { raise: true }); });
 
+  // The user's Stop on an interruption takes the task up again, and the
+  // run's parts still to place come up at once, each to name and place on
+  // its own, in front of the app in use -- the user's choice (2026-11-12,
+  // kept on 2026-11-16), and the one prompt that takes the focus. Only that
+  // Stop (`stop-back`): not Back, nor the engine's own end at lunch or the
+  // wrap-up. After the engine's listeners: a window opened from inside one
+  // is a second notification's work (CLAUDE.md §5).
+  if (engine) {
+    const ending = engine;
+    ending.onInterruptionEnded(({ fragment, how }) => {
+      if (how !== 'stop-back') return;
+      setImmediate(() => {
+        const ids = ending.getRunToPlace(fragment.id);
+        if (ids.length > 0) pickers.open('place-ended', { raise: true, ids });
+      });
+    });
+  }
+
   // The global shortcuts (P12e): Interrupt, Switch, Previous and Back from
   // any app, on by default; a chord another app holds reads "taken".
   const schedule = contextScheduleService;

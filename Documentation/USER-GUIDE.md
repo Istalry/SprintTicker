@@ -356,9 +356,13 @@ While it runs, the session card says which task waits, and offers:
 - ⏸️ **Pause** and ▶ **Resume**, as on a task: a paused interruption's
   timer stops, and the time it spent paused is not counted.
 - ⏹️ **Stop** ends the interruption and goes back to the task, as it was:
-  a task already paused when you pressed Interrupt stays paused. The
-  interruption waits on Today to be placed; Undo, for 10 s, puts both back
-  as they were.
+  a task already paused when you pressed Interrupt stays paused. A small
+  **Place** window opens in front at once, wherever you are: the
+  interruptions of that run -- Marc, then Ana -- each on its own row, with
+  its name to type and its own **Choose a task ▾**. Place the ones you
+  chose; **Later** or Escape leaves them to place on Today, with the names
+  you typed. Undo, for 10 s, puts the interruption and the task back as
+  they were.
 - ⚡ **Another**: someone else arrives before you got back. The interruption
   ends and the next starts, waiting on the same task. Marc, then Ana, then
   Marc again is three interruptions in a row and one **Stop**.
@@ -1317,8 +1321,8 @@ The same list is in the app: **Settings, Desk devices, Bar controls**.
 
 - **During an interruption** the bar shows a bolt (⚡) where the stopwatch
   was, a light running down it. It is paused and stopped as a task is:
-  Pause, then Pause again within 4 s, ends it and takes your task up again;
-  it waits on Today to be placed.
+  Pause, then Pause again within 4 s, ends it and takes your task up again,
+  and the Place window opens on the computer.
 - **A press right as a question or a notification appears only settles.**
   Within 0.7 s of it coming up, the press was meant for what was there
   before, so it neither answers nor dismisses.

@@ -896,9 +896,13 @@
       <li>⏸️ <strong>Pause</strong> and ▶ <strong>Resume</strong>, as on a task: a paused interruption&#39;s
       timer stops, and the time it spent paused is not counted.</li>
       <li>⏹️ <strong>Stop</strong> ends the interruption and goes back to the task, as it was:
-      a task already paused when you pressed Interrupt stays paused. The
-      interruption waits on Today to be placed; Undo, for 10 s, puts both back
-      as they were.</li>
+      a task already paused when you pressed Interrupt stays paused. A small
+      <strong>Place</strong> window opens in front at once, wherever you are: the
+      interruptions of that run -- Marc, then Ana -- each on its own row, with
+      its name to type and its own <strong>Choose a task ▾</strong>. Place the ones you
+      chose; <strong>Later</strong> or Escape leaves them to place on Today, with the names
+      you typed. Undo, for 10 s, puts the interruption and the task back as
+      they were.</li>
       <li>⚡ <strong>Another</strong>: someone else arrives before you got back. The interruption
       ends and the next starts, waiting on the same task. Marc, then Ana, then
       Marc again is three interruptions in a row and one <strong>Stop</strong>.</li>
@@ -1960,8 +1964,8 @@
       <ul>
       <li><p><strong>During an interruption</strong> the bar shows a bolt (⚡) where the stopwatch
       was, a light running down it. It is paused and stopped as a task is:
-      Pause, then Pause again within 4 s, ends it and takes your task up again;
-      it waits on Today to be placed.</p>
+      Pause, then Pause again within 4 s, ends it and takes your task up again,
+      and the Place window opens on the computer.</p>
       </li>
       <li><p><strong>A press right as a question or a notification appears only settles.</strong>
       Within 0.7 s of it coming up, the press was meant for what was there
@@ -2421,7 +2425,7 @@
       <code>#mini</code>, and <code>main.tsx</code> mounts <code>MiniBar</code> instead of <code>App</code> for that hash. The
       picker window (redesign P7b) loads it at <code>#picker</code> -- <code>#picker?mode=assign</code>
       to assign the ad-hoc session, <code>place-ended&amp;ids=…</code> for the Place window a
-      Stop opened until 2026-11-16, unused since (<code>shared/picker-window.ts</code>) -- and mounts
+      Stop opens (<code>shared/picker-window.ts</code>) -- and mounts
       <code>PickerWindow</code>: the window&#39;s <code>TaskPicker</code>, its pick done by the same
       <code>utils/pick-task.ts</code> as the dashboard&#39;s. <code>PickerWindowManager</code> owns it: one at
       a time, centred on the display under the pointer, frameless and on top,
@@ -3160,7 +3164,7 @@
       </tr>
       <tr>
       <td align="left">Pause during an interruption</td>
-      <td align="left">as on a task (2026-11-16): <code>pauseSession</code> pauses the fragment, and again within <code>BAR_STOP_AGAIN_MS</code> stops it, which resumes the task it held. It used to wait 2 s to tell going back from stopping</td>
+      <td align="left">as on a task (2026-11-16): <code>pauseSession</code> pauses the fragment, and again within <code>BAR_STOP_AGAIN_MS</code> stops it, which resumes the task it held and opens the Place window. It used to wait 2 s to tell going back from stopping</td>
       </tr>
       <tr>
       <td align="left">Wheel click</td>
@@ -3287,12 +3291,15 @@
       paused before. An interruption is a task nobody planned (2026-11-16):
       <strong>Pause</strong> and <strong>Resume</strong> pause the fragment (migration 17,
       <code>paused_at_utc</code> and <code>paused_seconds</code>; <code>interruptionSeconds</code> is its span
-      less them), and <strong>Stop</strong> -- <code>stopSession</code> -- is Back. Undone, the held
+      less them), and <strong>Stop</strong> -- <code>stopSession</code> -- is Back, told as
+      <code>stop-back</code>, on which main opens the <strong>Place window</strong> in front
+      (<code>getRunToPlace</code>): the run&#39;s fragments still waiting, each named and
+      placed on its own row, the one exception to &quot;a prompt never takes the
+      focus&quot; -- the user&#39;s, on 2026-11-12. Undone, the held
       session&#39;s rows come back with the fragment&#39;s, paused again
       (<code>heldScopes</code>, <code>UndoableAction.resumes</code>). <code>stopInterruption</code> closes it
       alone and leaves the task paused: the engine&#39;s own end, for lunch, the
-      wrap-up and a night away. The Place window a Stop used to open in front
-      (2026-11-12) opens no more: the fragment waits on Today. <strong>Discard</strong>
+      wrap-up and a night away, and opens no window. <strong>Discard</strong>
       marks it discarded, and resumes the held task as Stop does. <code>switchFromInterruption</code> is
       still in the engine, but nothing reaches it: a task cannot be chosen while
       a fragment runs.</p>
@@ -3891,7 +3898,7 @@
       </tr>
       <tr>
       <td align="left"><em>(no channel)</em></td>
-      <td align="left"><strong>The Place window after a Stop</strong> (2026-11-12, opened by nothing since 2026-11-16, when a Stop began to resume the held task): main opened the picker window at <code>#picker?mode=place-ended&amp;ids=…</code>, raised, listing the interruptions of the run just stopped that still wait (<code>getRunToPlace</code>), each named and placed on its own row through the <code>interruption:*</code> channels. It closes itself once none of them waits</td>
+      <td align="left"><strong>The Place window after a Stop</strong> (2026-11-12): on the user&#39;s Stop, which since 2026-11-16 also resumes the held task, main opens the picker window at <code>#picker?mode=place-ended&amp;ids=…</code>, raised, listing the interruptions of the run just stopped that still wait (<code>getRunToPlace</code>), each named and placed on its own row through the <code>interruption:*</code> channels. It closes itself once none of them waits</td>
       </tr>
       <tr>
       <td align="left"><code>mini:open-place-picker</code></td>

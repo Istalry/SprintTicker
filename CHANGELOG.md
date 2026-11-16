@@ -165,10 +165,11 @@ months of history: every screen answers within about a tenth of a second.
   mini timer, in the tray menu, on the deck or on the bar -- with nothing to
   fill in. The task you were on waits, paused, with nothing logged or sent.
   The interruption is timed like a task you had not planned: **Pause**
-  pauses it, and **Stop** ends it and resumes your task where it was.
+  pauses it, and **Stop** ends it and resumes your task where it was, and
+  opens a small **Place** window in front -- that run's interruptions,
+  each named and placed on its own; **Later** leaves them on Today.
   **Another** starts the next interruption when someone else arrives
-  first, so Marc, Ana and Marc again are three interruptions and one Stop.
-  Each waits on Today to be named and placed. When SprintTicker ends one
+  first, so Marc, Ana and Marc again are three interruptions and one Stop. When SprintTicker ends one
   itself -- lunch, the end of your day -- it asks whether to go back, in
   the window and on the bar, with the choice to count the time since as
   work. While one runs, no task can be chosen: end it first. **Keep as its
