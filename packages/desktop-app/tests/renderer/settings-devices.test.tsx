@@ -156,6 +156,19 @@ describe('Settings · Desk devices', () => {
       { timeout: AUTO_SAVE_DELAY_MS * 3 });
   });
 
+  it('BarControls_Shown_SaysHowToMarkATaskDone', async () => {
+    installElectronApi();
+    render(<DeviceSettings />);
+
+    const controls = await screen.findByRole('group', { name: 'Bar controls' });
+    fireEvent.click(within(controls).getByRole('button', { name: 'Show…' }));
+
+    expect(within(controls).getByText('Pause twice')).toBeTruthy();
+    expect(within(controls).getByText('Wheel turn')).toBeTruthy();
+    expect(controls.textContent).toContain('To stop a task and mark it done: turn the wheel to DONE, press Pause, then Pause again at DONE?');
+    expect(controls.textContent).toContain('within 4 s of pausing (the bar shows AGAIN=STOP)');
+  });
+
   it('WhatTheBarShowsFirst_Open_ShowsTheRules', async () => {
     installElectronApi();
     render(<DeviceSettings />);
@@ -253,6 +266,7 @@ describe('Settings · Desk devices', () => {
       'Windows notifications on the bar': /Windows notifications on the bar/,
       'What the bar shows first': /What the bar shows first/,
       'Bar health': /Bar health/,
+      'Bar controls': /Bar controls/,
       'Stream Deck': /Stream Deck/
     };
     for (const entry of SETTINGS_ENTRIES.filter(e => e.group === 'devices')) {

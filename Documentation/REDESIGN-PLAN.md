@@ -2767,6 +2767,11 @@ user's to try; before it, what REVIEW §8 left for P15d:
   **And that one waits** (rc3 showed it, the user's choice, 2026-11-16): the
   first banner of an app not looked up yet is held until the lookup answers,
   `FIRST_ICON_WAIT_MS` (1.5 s) at most, then shown with whatever was found.
+- **The bar's controls in the app** (asked 2026-11-16): the mapping lived
+  in the user guide alone, and the user, bar in hand, could not find how to
+  mark a task done. *Bar controls* in Desk devices (`BarControls`), shown
+  once a bar is set up, lists each control and "turn, Pause, Pause" for
+  Done, its words and waits read from `BarWord` and `render-constants`.
 - **End my day's shutdown can be the user's default** (asked 2026-11-16):
   *Shut down the PC when I end my day* in My workday, the flow setting
   `shutdown_at_end_of_day`, off by default, ticks the dialog's box; the

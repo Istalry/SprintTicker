@@ -8,6 +8,7 @@ import { COLOR_THEMES, DEFAULT_COLOR_THEME } from '../../../shared/color-theme';
 import { DEFAULT_DEVICE_CONFIG, DEFAULT_USB_IP, isValidDeviceHost } from '../../../shared/device-constants';
 import { NotificationAppRules } from '../../components/NotificationAppRules';
 import { BarHealth } from '../../components/BarHealth';
+import { BarControls } from '../../components/BarControls';
 import { PriorityRulesView } from '../Priority/PriorityRulesView';
 import { ipcErrorMessage } from '../../utils/formatters';
 import { useAnnounce } from '../../components/LiveAnnouncer';
@@ -117,6 +118,7 @@ const BarBlock: React.FC<{
   const [showRules, setShowRules] = useState(false);
   const [showConnection, setShowConnection] = useState(false);
   const [showHealth, setShowHealth] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const notifications = useNotificationSettings();
   const listener = useNotificationListenerStatus();
 
@@ -222,6 +224,14 @@ const BarBlock: React.FC<{
         control={<SettingButton aria-expanded={showRules} onClick={() => setShowRules(v => !v)}>{showRules ? 'Close' : 'Open…'}</SettingButton>}
       >
         {showRules && <PriorityRulesView embedded />}
+      </SettingRow>
+
+      <SettingRow
+        title="Bar controls"
+        description="What Pause, the wheel and Back do, and how to mark a task done from the bar."
+        control={<SettingButton aria-expanded={showControls} onClick={() => setShowControls(v => !v)}>{showControls ? 'Close' : 'Show…'}</SettingButton>}
+      >
+        {showControls && <BarControls />}
       </SettingRow>
 
       <SettingRow
