@@ -22,6 +22,12 @@ export interface WorklogPayload {
   startedAtUtc: string;
   comment: string;
   isAdHoc: boolean;
+  /**
+   * The queue row's id, which a SprintTicker server keeps the send
+   * idempotent on (PROVIDER-API 6.4): a resend after a lost answer is the
+   * same worklog. Jira and OpenProject have no such key and ignore it.
+   */
+  clientRef?: string;
 }
 
 /**
@@ -96,8 +102,11 @@ export interface ITaskProvider {
    * The three worklog methods are optional because a provider without a
    * remote has nothing to correct; the queue reports such a provider as
    * unable rather than calling it.
+   *
+   * `clientRef` is the id of the queue row that sent the entry: a
+   * SprintTicker server finds it by that alone, and the others ignore it.
    */
-  findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise<string | null>;
+  findWorklog?(taskId: string, startedAtUtc: string, marker: string, clientRef?: string): Promise<string | null>;
   /**
    * Replaces the entry's duration, start and comment. Throws; an entry
    * deleted at the provider is a permanent `ProviderRequestError` (404).
@@ -156,10 +165,11 @@ export interface ITaskProvider {
   getTaskStanding?(taskId: string): Promise<TaskStanding>;
 
   /**
-   * What happened to the user's tasks after `sinceUtc` (exclusive): assigned,
-   * mentioned, commented, status changed, date alert. Optional -- a provider
-   * without a remote has nothing to report -- and listed in
-   * `PROVIDERS_WITH_EVENTS` when present.
+   * What happened to the user's tasks since `sinceUtc`: assigned, mentioned,
+   * commented, status changed, date alert. An event at `sinceUtc` itself may
+   * come back: the poller drops ids it has shown. Optional -- a provider
+   * without a remote has nothing to report -- and the window offers the
+   * notification settings where it is present (`hasEvents`).
    *
    * **Throws on failure**, like getProjects. An empty array means "nothing
    * happened", and a poll that read a failure that way would move its cursor

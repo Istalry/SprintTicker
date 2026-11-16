@@ -27,7 +27,9 @@ describe('providerCapabilities', () => {
       canTransition: true,
       canFindWorklog: false,
       canFetchByKey: false,
-      hasHolidays: false
+      hasHolidays: false,
+      hasEvents: false,
+      providerName: 'Bare'
     });
   });
 
@@ -70,7 +72,9 @@ describe('providerCapabilities', () => {
         canTransition: true,
         canFindWorklog: true,
         canFetchByKey: true,
-        hasHolidays: false
+        hasHolidays: false,
+        hasEvents: true,
+        providerName: 'Jira'
       });
     });
 
@@ -81,7 +85,9 @@ describe('providerCapabilities', () => {
         canTransition: true,
         canFindWorklog: true,
         canFetchByKey: true,
-        hasHolidays: true
+        hasHolidays: true,
+        hasEvents: true,
+        providerName: 'OpenProject'
       });
     });
 
@@ -93,7 +99,9 @@ describe('providerCapabilities', () => {
         canTransition: false,
         canFindWorklog: false,
         canFetchByKey: false,
-        hasHolidays: false
+        hasHolidays: false,
+        hasEvents: false,
+        providerName: 'This computer'
       });
     });
   });

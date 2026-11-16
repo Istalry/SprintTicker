@@ -1,10 +1,11 @@
 # SprintTicker Provider API — contract v1
 
 > [!NOTE]
-> **Status: draft, 2026-10-23. Not implemented in SprintTicker yet.** This is
-> the contract a task-tracking server implements so that SprintTicker can use
-> it as a provider, beside Jira and OpenProject. Section 15 is the plan for
-> SprintTicker's side.
+> **Status: v1, implemented in SprintTicker 2.0 (2026-11-16).** This is the
+> contract a task-tracking server implements so that SprintTicker can use it
+> as a provider, beside Jira and OpenProject. Section 15 says what
+> SprintTicker's side does; `inbox`, `week_close` and `labels` are not used
+> by the client yet.
 
 **Who this is for.** Whoever builds the server, including an AI coding agent
 working from this file alone. It assumes no knowledge of SprintTicker: section
@@ -1118,7 +1119,7 @@ What it checks:
 | 3 | `/me` answers a User | 6.1 |
 | 4 | `/projects` answers a well-formed collection; `?limit=1` pages through to the same set | 3.7, 6.2 |
 | 5 | Every task has the required fields, a known `status`, a valid key, `assignee` present | 4.3 |
-| 6 | No task outside the default scope, no closed task | 6.3 |
+| 6 | No closed task in a list; a teammate's task that is not in progress is noted, not failed, since a server may return more than the scope (6.3) | 6.3 |
 | 7 | Every `url` is under `siteUrl` | 5 |
 | 8 | `POST /worklogs` answers `201`; the same body again answers `200` with the same id; another duration under the same `clientRef` answers `200` and is stored; two at once make one worklog | 6.4 |
 | 9 | `GET /worklogs?clientRef=` finds it; an unknown reference answers `200` and no item | 6.5 |
@@ -1133,7 +1134,8 @@ What it checks:
 The check cannot see everything -- that a closed task never reopens, that
 events leave out the user's own actions -- so section 12 still applies in full.
 
-*Built with the provider; see 15.*
+Run it against the fake server with `pnpm provider:check --fake`, as CI
+does.
 
 ---
 
@@ -1157,15 +1159,31 @@ events leave out the user's own actions -- so section 12 still applies in full.
 | `GET /worklogs/summary` | `today_total` | 7.5 |
 | *(the task named by `inboxTaskId`)* | `inbox` | 7.6 |
 | `POST /weeks/{weekStart}/close` | `week_close` | 7.7 |
+| `GET /tasks?key=` | `task_by_key` | 7.9 |
 | *(the `labels` field of a task)* | `labels` | 7.8 |
 
 ---
 
 ## 15. Implementing it in SprintTicker
 
-The client's side, in the order it lands. Each step follows `CLAUDE.md` and
-ships with its tests and documents. Paths are relative to
+The client's side, as it landed in 2.0 (2026-11-16). Paths are relative to
 `packages/desktop-app/` unless they start with `scripts/`.
+
+What the client chose where this document left it room:
+
+- **The optional parts are read, not configured.** Each optional method of
+  `ITaskProvider` is attached from `/capabilities`, and detached when a later
+  read no longer lists it, so the window hides what the server lacks. Until
+  the first read none is attached, and the shortest worklog is 60 seconds.
+- **A worklog's `clientRef` is the queue row's id** (`sync_<ms>_<uuid>`, at
+  most 55 characters); a correction finds its worklog by the `clientRef` of
+  the send it corrects.
+- **`updateTaskStatus` sends `finish` for every end as done.** A project's
+  own done state (`done_state_by_project`) has nothing to name here: the
+  server chooses. A `409` answers false, as a transition Jira lacks does.
+- **Settings ask for an address and a token, and nothing else**: no task
+  scope, no states. The address must be `https://` (or `http://` on this
+  machine) and end with `/v1`, checked before the token travels.
 
 1. **A fake server**, `scripts/fake-provider-api.js`, beside `fake-jira.js`
    and `fake-openproject.js`: the whole contract in memory, with switches for

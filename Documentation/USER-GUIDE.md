@@ -815,6 +815,24 @@ check, and works out what changed. That has edges worth knowing:
   mention in a description rather than a comment.
 - 📅 **Jira has no date alerts**, so that box is not offered.
 
+🧩 **A SprintTicker server** is a server your team runs on SprintTicker's
+own contract ([`PROVIDER-API.md`](PROVIDER-API.md)), when your tasks live in
+neither Jira nor OpenProject. Choose **A SprintTicker server** under
+**Change account**, then:
+
+- **Server address**: the one your team gives you. It starts with
+  `https://` and ends with `/v1`, such as
+  `https://tracker.example.com/sprintticker/v1`.
+- **Personal token**: made in your server, under your account.
+- **Test connection** says the server's name and yours: *Connected to Team
+  Tracker as Ada Lovelace*. From then on the app calls the server by its own
+  name.
+
+There is no task scope and no state to choose: the server decides which
+tasks you see and where a finished one goes. What it offers -- assigning a
+task nobody has, notifications, its days off, fetching a task by its key --
+appears in the app once it says so, and stays hidden otherwise.
+
 In **Advanced**, under **Entries waiting to send**, is every entry that has
 not reached the provider, with the server's own message, the attempt count against the
 ceiling, and when the next attempt is due. When the provider refuses your saved

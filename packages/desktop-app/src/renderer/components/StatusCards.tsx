@@ -215,7 +215,7 @@ export const StatusCards: React.FC<{
             <button type="button" className={primary} onClick={() => onOpenSettings('account')}>Connect one</button>
           </>
         }>
-        Connect Jira or OpenProject in Settings › Account. Your own tasks and their time stay as they are; nothing already
+        Connect Jira, OpenProject or a SprintTicker server in Settings › Account. Your own tasks and their time stay as they are; nothing already
         logged is sent.
       </StatusCard>
     );

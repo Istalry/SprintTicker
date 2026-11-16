@@ -324,6 +324,8 @@ stays local.
 ITaskProvider  ← the contract (task-provider-interface.ts)
     ├── OpenProjectProvider   REST API v3, HAL pagination
     ├── JiraProvider          REST API v3, two pagination schemes
+    ├── CustomServerProvider  the SprintTicker Provider API (PROVIDER-API.md),
+    │                         its optional parts attached from /capabilities
     └── AdHocProvider         local only, no network
 
 ProviderManager   resolves the active provider, holds credentials,
@@ -338,8 +340,10 @@ Three rules hold this together, each one a bug that already happened:
   array is indistinguishable from "this user has no tasks", and the sync worker
   prunes the local cache against what it receives (audit F-01).
 - **Only GET/HEAD/OPTIONS are retried.** A worklog POST has no idempotency key
-  in either API, so repeating it after a response that was sent but never
-  received bills the session twice.
+  in Jira or OpenProject, so repeating it after a response that was sent but
+  never received bills the session twice. A SprintTicker server takes one --
+  the queue row's id, sent as `clientRef` -- so there the queue's own resend
+  is safe, but the HTTP layer still does not repeat it.
 - **`isPermanent` decides whether a queued row retries.** Any 4xx except 408 and
   429 is permanent — those two describe a moment, the rest describe the request.
 
@@ -1110,7 +1114,11 @@ on the bar when there is one. It keeps a cursor per provider under
 clock**. The first poll for a provider records "now" and shows nothing, so a
 first launch does not replay the unread history; a failed poll leaves the
 cursor where it was, so the next one picks up what it missed. Turning the
-feature off forgets the cursors. More than three events in one poll become a
+feature off forgets the cursors. An event at the cursor's own instant is
+kept when its id is new -- a SprintTicker server answers `since` inclusively
+-- and the ids already shown there are stored beside the cursor
+(`provider_event_cursor_ids`), so a restart does not show the last one
+again. More than three events in one poll become a
 single summary toast pointing at the provider's inbox, and the bar gets one
 banner per poll whatever the count.
 

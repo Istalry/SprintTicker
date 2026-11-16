@@ -658,6 +658,16 @@ builds it and runs Elgato's own validator on it, as CI does.
   `tests/jira-integration.test.ts`. Note the app itself cannot be pointed at it:
   `JiraProvider` forces `https://`, deliberately, so the test injects a fetch
   function instead. Use `curl` for manual pokes.
+- **Fake SprintTicker server** — `pnpm mock:provider` serves the Provider API
+  ([`PROVIDER-API.md`](Documentation/PROVIDER-API.md)) on
+  `http://127.0.0.1:8097/sprintticker/v1`, token `fake-provider-token`, with
+  switches for the failures a client must survive (an expired token, a lost
+  answer, a task taken during an assignment). Point **Settings → Account → A
+  SprintTicker server** at it. It backs `tests/custom-server-provider.test.ts`.
+- **Provider API conformance check** — `pnpm provider:check --url <base URL>
+  --token <token> --task <task id>` runs the contract's sixteen checks
+  against a server and names the rule each failure breaks; it writes only
+  on the task given. `--fake` runs it against the fake server, as CI does.
 - **Animation debugger** — in-app under **Settings → Developer**, shown by
   **Show developer tools** in General:
   marquee speeds, particle effects, LED colours and icon rasterisation, live.
@@ -733,7 +743,8 @@ never `docs/index.html`, and CI fails the build if the two have drifted.
 
 - [**Provider API**](Documentation/PROVIDER-API.md) — the contract a
   task-tracking server implements to become a SprintTicker provider, beside
-  Jira and OpenProject. A draft: the provider that reads it is not built yet.
+  Jira and OpenProject. `pnpm provider:check` tells a server's builders what
+  it gets wrong.
 - [BUSY Bar API & Display Technical Developer Guide](Documentation/BUSY%20Bar%20API%20%26%20Display%20Technical%20Developer%20Guide.md)
   — the display contract, written for this project.
 - [Hardware samples](Documentation/hardware-samples/) — captured device payloads.

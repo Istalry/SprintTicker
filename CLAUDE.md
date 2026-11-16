@@ -42,6 +42,8 @@ pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/
 pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
 pnpm fonts:preview "text"   # print text in every font, in the terminal
 pnpm db:check-migration [db]  # migrate a COPY of the real database, report losses
+pnpm provider:check --fake    # the Provider API's 16 checks against its fake -- in CI
+pnpm mock:provider    # a fake SprintTicker server on :8097, token fake-provider-token
 ```
 
 **better-sqlite3 needs no rebuild, for either runtime.** Version 13 is an
@@ -1561,6 +1563,16 @@ fallback would ask Jira about a local id and read its 404 as `gone`.
 for the active one, Jira was asked to log time on an issue called
 `adhoc_...`, answered 404, and the row ended in the failed queue. It stays
 in local history.
+
+**A SprintTicker server's optional parts are properties, attached from
+`/capabilities`** (`CustomServerProvider.applyCapabilities`). The window
+reads what a provider can do off its optional methods (`providerCapabilities`),
+so a method declared on the class would offer every server's user a control
+their server lacks -- and the contract forbids calling an endpoint whose
+capability is not listed. Anything new and optional for that provider is
+attached there, never written as a method. Its worklog sends are idempotent
+on `clientRef`, the queue row's id; the queue still never lets the HTTP layer
+repeat a POST.
 
 **OpenProject 17.9 has no `work_package` filter on time entries.** Time can
 be logged on a meeting, so an entry belongs to an entity: filter by

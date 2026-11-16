@@ -27,6 +27,8 @@
     "dev:mock": "pnpm --filter @sprintticker/desktop-app dev:mock",
     "mock:openproject": "node scripts/fake-openproject.js",
     "mock:jira": "node scripts/fake-jira.js",
+    "mock:provider": "node scripts/fake-provider-api.js",
+    "provider:check": "node scripts/provider-api-check.js",
     "probe:jira-worklog": "node scripts/jira-worklog-probe.js",
     "probe:busybar": "node scripts/busybar-probe.js",
     "docs:build": "node scripts/build-docs.js",

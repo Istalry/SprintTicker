@@ -47,6 +47,7 @@ describe('providerDisplayName', () => {
     expect(selectableProviders()).toEqual([
       { id: 'openproject', name: 'OpenProject' },
       { id: 'jira', name: 'Jira' },
+      { id: 'custom-server', name: 'Your server' },
       { id: 'adhoc', name: 'This computer' }
     ]);
   });

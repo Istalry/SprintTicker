@@ -27,5 +27,5 @@ export const useProviderCapabilities = (): { capabilities: ProviderCapabilitiesD
     };
   }, []);
 
-  return { capabilities, providerName: providerDisplayName(capabilities?.providerId) };
+  return { capabilities, providerName: capabilities?.providerName || providerDisplayName(capabilities?.providerId) };
 };

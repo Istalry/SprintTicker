@@ -15,6 +15,12 @@ import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from './local-pr
 export const ProviderId = {
   JIRA: 'jira',
   OPENPROJECT: 'openproject',
+  /**
+   * A server of the user's own on the SprintTicker Provider API
+   * (`Documentation/PROVIDER-API.md`). Not `sprintticker`, which names the
+   * projects made in the app.
+   */
+  CUSTOM: 'custom-server',
   /** The local fallback: nothing leaves the machine. */
   ADHOC: 'adhoc'
 } as const;
@@ -35,6 +41,9 @@ const KNOWN_NAMES: Readonly<Record<string, string>> = {
 /** Said when the provider is not known, so a sentence still reads. */
 export const UNNAMED_PROVIDER = 'your provider';
 
+/** A SprintTicker server before it has said its name. */
+export const UNNAMED_CUSTOM_SERVER = 'Your server';
+
 /**
  * The name the app writes for a provider: "Jira", "OpenProject", or, for a
  * server on the SprintTicker Provider API, the name the user gave it -- or
@@ -51,6 +60,7 @@ export function providerDisplayName(providerId: string | null | undefined, serve
   if (known) return known;
   const custom = (serverName ?? '').trim();
   if (custom) return custom;
+  if (id === ProviderId.CUSTOM) return UNNAMED_CUSTOM_SERVER;
   if (!id || id === UNKNOWN_PROJECT_PROVIDER_ID) return UNNAMED_PROVIDER;
   return id;
 }
@@ -69,7 +79,7 @@ export function sendDestinationName(sessionProviderId: string | null | undefined
 }
 
 /** The providers the user can choose, in the order the choice lists them. */
-export const SELECTABLE_PROVIDERS: readonly ProviderIdValue[] = [ProviderId.OPENPROJECT, ProviderId.JIRA, ProviderId.ADHOC];
+export const SELECTABLE_PROVIDERS: readonly ProviderIdValue[] = [ProviderId.OPENPROJECT, ProviderId.JIRA, ProviderId.CUSTOM, ProviderId.ADHOC];
 
 /** {@link SELECTABLE_PROVIDERS} with their names, for a provider choice. */
 export function selectableProviders(): { id: ProviderIdValue; name: string }[] {

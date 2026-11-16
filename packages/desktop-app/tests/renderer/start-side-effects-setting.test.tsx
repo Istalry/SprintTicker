@@ -5,7 +5,7 @@ import { installElectronApi } from './electron-api-mock';
 
 const CAN_DO_NOTHING = {
   providerId: 'sprintticker', canAssign: false, canTransition: false,
-  canFindWorklog: false, canFetchByKey: false, hasHolidays: false
+  canFindWorklog: false, canFetchByKey: false, hasHolidays: false, hasEvents: false, providerName: 'This computer'
 };
 const menu = () => screen.getByRole('combobox', { name: 'When I start a task' }) as HTMLSelectElement;
 

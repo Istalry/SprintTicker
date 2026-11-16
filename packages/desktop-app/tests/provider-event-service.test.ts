@@ -166,12 +166,45 @@ describe('ProviderEventService', () => {
     expect(toasts).toHaveLength(1);
   });
 
-  it('Poll_EventAtOrBeforeTheCursor_IsIgnored', async () => {
+  it('Poll_EventBeforeTheCursor_IsIgnored', async () => {
     await baseline();
-    getEventsSince.mockResolvedValue([event(1, LOCAL_NOW.toISOString()), event(2, '2026-10-01T11:00:00Z'), event(3, 'garbage')]);
+    getEventsSince.mockResolvedValue([event(2, '2026-10-01T11:00:00Z'), event(3, 'garbage')]);
 
     expect(await service.poll()).toBe('nothing_new');
     expect(settings.cursor()).toBe(LOCAL_NOW.toISOString());
+  });
+
+  it('Poll_NewEventAtTheCursorsOwnSecond_IsShown', async () => {
+    // Two events in one second: the first read in the last poll, the second
+    // recorded just after it. A SprintTicker server answers since inclusively
+    // (PROVIDER-API 7.4); dropping every event at the cursor lost the second.
+    await baseline();
+    getEventsSince.mockResolvedValue([event(1, '2026-10-01T12:00:30Z')]);
+    await service.poll();
+    getEventsSince.mockResolvedValue([event(1, '2026-10-01T12:00:30Z'), event(2, '2026-10-01T12:00:30Z')]);
+
+    expect(await service.poll()).toBe('delivered');
+
+    expect(toasts.map(t => t.title)).toEqual(['Alice mentioned you on OP-1', 'Alice mentioned you on OP-2']);
+    expect(settings.cursor()).toBe('2026-10-01T12:00:30.000Z');
+  });
+
+  it('Poll_AfterARestart_TheEventAtTheCursorIsNotShownAgain', async () => {
+    // The ids already shown at the cursor are stored with it: a restart
+    // empties the poller's memory, and the inclusive since returns them.
+    await baseline();
+    getEventsSince.mockResolvedValue([event(1, '2026-10-01T12:00:30Z')]);
+    await service.poll();
+    service.stop();
+    const restarted = new ProviderEventService({
+      getActiveProvider: () => provider,
+      settings,
+      toasts: { show: toast => { toasts.push(toast); return true; } },
+      now: () => LOCAL_NOW
+    });
+
+    expect(await restarted.poll()).toBe('nothing_new');
+    expect(toasts).toHaveLength(1);
   });
 
   it('Poll_KindTurnedOff_IsSkippedButStillMovesTheCursor', async () => {

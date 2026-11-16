@@ -9,12 +9,12 @@ export const FIRST_RUN_DONE_KEY = 'first_run_done';
 
 /** The credentials S1 tests, before anything is saved. */
 export interface ConnectionTestRequestDTO {
-  providerId: 'jira' | 'openproject';
-  /** Jira's site, or the OpenProject server's address. */
+  providerId: 'jira' | 'openproject' | 'custom-server';
+  /** Jira's site, the OpenProject server's address, or a SprintTicker server's base URL. */
   site: string;
   /** Jira's account email; OpenProject has none. */
   email?: string;
-  /** Jira's API token, or OpenProject's API key. */
+  /** Jira's API token, OpenProject's API key, or the server's personal token. */
   token: string;
 }
 
@@ -22,7 +22,7 @@ export interface ConnectionTestRequestDTO {
 export type ConnectionFailure = 'incomplete' | 'not-found' | 'refused' | 'network' | 'failed';
 
 export type ConnectionTestDTO =
-  | { ok: true; userName: string; projectCount: number }
+  | { ok: true; userName: string; projectCount: number; /** A SprintTicker server's own name. */ serverName?: string }
   | { ok: false; reason: ConnectionFailure; host: string | null; detail: string };
 
 /** What S2 found on the desk; only a device found starts ticked. */

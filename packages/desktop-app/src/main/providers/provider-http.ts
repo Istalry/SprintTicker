@@ -138,8 +138,16 @@ function retryDelayFor(res: Response, attempt: number): number {
  */
 async function readErrorDetail(res: Response): Promise<string | undefined> {
   try {
-    const body = (await res.json()) as { message?: string; errorMessages?: string[]; errors?: Record<string, unknown> };
+    const body = (await res.json()) as {
+      message?: string;
+      errorMessages?: string[];
+      errors?: Record<string, unknown>;
+      error?: { message?: unknown };
+    };
     if (typeof body?.message === 'string' && body.message.length > 0) return body.message;
+    // A SprintTicker server's error body (PROVIDER-API 10.1): the message
+    // is written for the user, and says what to do.
+    if (typeof body?.error?.message === 'string' && body.error.message.length > 0) return body.error.message;
     if (Array.isArray(body?.errorMessages) && body.errorMessages.length > 0) {
       return body.errorMessages.join('; ');
     }

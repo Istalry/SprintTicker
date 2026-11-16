@@ -2,11 +2,14 @@ import { ITaskProvider, WorklogPayload } from './task-provider-interface';
 import { AdHocProvider } from './adhoc-provider';
 import { OpenProjectProvider } from './openproject-provider';
 import { JiraProvider } from './jira-provider';
+import { CustomServerProvider } from './custom-server-provider';
+import { ProviderId } from '../../shared/provider-names';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { SecretStore } from '../db/secret-store';
 import { ProjectDTO, ProviderCapabilitiesDTO, TaskDTO } from '../../shared/dtos';
 import type { TaskClaim } from '../../shared/task-claim';
 import { doneStateFor, FlowSettingKey, readDoneStateByProject } from '../../shared/flow-settings';
+import { isCustomServerConfigured } from '../../shared/custom-server';
 import {
   isJiraConfigured,
   isOpenProjectConfigured,
@@ -26,7 +29,9 @@ export function providerCapabilities(provider: ITaskProvider): ProviderCapabilit
     canTransition: provider.movesTaskStatus !== false,
     canFindWorklog: typeof provider.findWorklog === 'function',
     canFetchByKey: typeof provider.getTaskByKey === 'function',
-    hasHolidays: typeof provider.getNonWorkingDays === 'function'
+    hasHolidays: typeof provider.getNonWorkingDays === 'function',
+    hasEvents: typeof provider.getEventsSince === 'function',
+    providerName: provider.providerName
   };
 }
 
@@ -48,16 +53,22 @@ export class ProviderManager {
    * the sync queue. OfflineSyncWorker is its sole owner, and having a second
    * dispatcher here is what let the same row be POSTed twice.
    */
-  constructor(settingsRepo?: SettingsRepository) {
+  constructor(settingsRepo?: SettingsRepository, options: { appVersion?: string } = {}) {
     this._settingsRepo = settingsRepo || new SettingsRepository();
     this._secrets = new SecretStore(this._settingsRepo);
 
     const openProjectProvider = new OpenProjectProvider();
     const jiraProvider = new JiraProvider();
+    const customServerProvider = new CustomServerProvider({
+      appVersion: options.appVersion,
+      // Kept, so Settings and the window name the server before this run reads it.
+      onServerName: name => this._settingsRepo.setSetting(ProviderSettingKey.CUSTOM_SERVER_NAME, name)
+    });
     const adHocProvider = new AdHocProvider();
 
     this.registerProvider(openProjectProvider);
     this.registerProvider(jiraProvider);
+    this.registerProvider(customServerProvider);
     this.registerProvider(adHocProvider);
 
     this.reinitializeProviders();
@@ -84,11 +95,12 @@ export class ProviderManager {
   }
 
   /**
-   * Jira or OpenProject has credentials: an install set up before the first
-   * run existed, which it never opens on its own for.
+   * Jira, OpenProject or a SprintTicker server has credentials: an install
+   * set up before the first run existed, which it never opens on its own for.
    */
   public isRemoteConfigured(): boolean {
     return (
+      isCustomServerConfigured(this.readSetting(ProviderSettingKey.CUSTOM_SERVER_URL), this._secrets.getSecret(ProviderSettingKey.CUSTOM_SERVER_TOKEN)) ||
       isOpenProjectConfigured(this.readSetting(ProviderSettingKey.OP_DOMAIN), this._secrets.getSecret(ProviderSettingKey.OP_API_KEY)) ||
       isJiraConfigured(
         this.readSetting(ProviderSettingKey.JIRA_SITE),
@@ -138,6 +150,16 @@ export class ProviderManager {
         .catch(err => console.error('[ProviderManager] jiraProvider.initialize failed:', err));
     }
 
+    const customServerProvider = this._providers.get(ProviderId.CUSTOM);
+    if (customServerProvider) {
+      void customServerProvider.initialize({
+        baseUrl: this.readSetting(ProviderSettingKey.CUSTOM_SERVER_URL),
+        apiToken: this._secrets.getSecret(ProviderSettingKey.CUSTOM_SERVER_TOKEN),
+        serverName: this.readSetting(ProviderSettingKey.CUSTOM_SERVER_NAME)
+      })
+        .catch(err => console.error('[ProviderManager] customServerProvider.initialize failed:', err));
+    }
+
     const adHocProvider = this._providers.get('adhoc');
     if (adHocProvider) {
       void adHocProvider.initialize({
@@ -148,14 +170,15 @@ export class ProviderManager {
   }
 
   /**
-   * The days off known to a provider that can say, between two date keys:
-   * OpenProject's holidays. Null when none can -- Jira keeps no calendar.
+   * The active provider's days off between two date keys: OpenProject's
+   * holidays, a SprintTicker server's `calendar`. Null when it keeps none --
+   * Jira. It used to ask the first provider that could, which was
+   * OpenProject's whoever was active: a Jira user's calendar read an
+   * OpenProject instance they may never have set up.
    */
   public async getNonWorkingDays(fromKey: string, toKey: string): Promise<string[] | null> {
-    for (const provider of this._providers.values()) {
-      if (provider.getNonWorkingDays) return provider.getNonWorkingDays(fromKey, toKey);
-    }
-    return null;
+    const provider = this.getActiveProvider();
+    return provider.getNonWorkingDays ? provider.getNonWorkingDays(fromKey, toKey) : null;
   }
 
   /// <summary>

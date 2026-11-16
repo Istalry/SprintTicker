@@ -58,6 +58,13 @@ jobs:
       - name: Generated fonts are up to date
         run: pnpm fonts:check
 
+      # The Provider API's conformance check against its fake server, both in
+      # scripts/ and both plain Node: the fake has to pass every check, and the
+      # check has to be one a broken server fails. Either drifting from
+      # PROVIDER-API.md shows here first (section 15, step 2).
+      - name: Provider API conformance check against the fake
+        run: pnpm provider:check --fake
+
       # The animation studio's tests are pure TypeScript -- no native module,
       # no Python, no bar -- so they run here rather than on the slower
       # Windows runner, which they do not need.

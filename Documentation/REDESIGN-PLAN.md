@@ -1600,8 +1600,8 @@ waits for the undo and the drain).
 - **First run** (S1–S3) replaces `OnboardingWizardModal`. It opens on its
   own at the first launch, and from Settings › General after that.
   - **S1, your tasks**:
-    - Jira, OpenProject, a SprintTicker server (shown only once
-      `PROVIDER-API.md` §15 ships), or no account;
+    - Jira, OpenProject, a SprintTicker server (offered since
+      `PROVIDER-API.md` §15 landed, 2026-11-16), or no account;
     - **Test connection**, with its failures written out: an address not
       found, a refused token with "make a new one ↗", and a network error;
     - then the start question ("should SprintTicker change it in Jira?"),
@@ -1664,8 +1664,8 @@ waits for the undo and the drain).
   `verify:packed` checks it.
 - S1's start question writes `start_side_effects.enabled`; S3 reuses
   `StandupTaskSetting` for "on: Choose a task".
-- **Not built:** the SprintTicker server choice (PROVIDER-API §15 has not
-  shipped), and a Stream Deck layout installed with the plugin -- asked for
+- **Not built then:** the SprintTicker server choice (added with
+  PROVIDER-API §15 on 2026-11-16), and a Stream Deck layout installed with the plugin -- asked for
   by the user (2026-11-12), deferred to P13: a `.streamDeckProfile` per
   model, Stream Deck Mobile and Mini, bundled through the manifest's
   `Profiles`; its format is Stream Deck's own, so it is exported from the
@@ -1689,7 +1689,8 @@ waits for the undo and the drain).
   release page. The first update to this version announces nothing: the
   version seen before it was never recorded. "No account yet" can be put
   away for good, or it would stay on a deliberate no-account user's Today.
-  "Your team's server" is left out of it until PROVIDER-API §15 ships.
+  It names a SprintTicker server too since PROVIDER-API §15 landed
+  (2026-11-16).
 
 **As landed: P11c, one entry refused (2026-11-12).**
 

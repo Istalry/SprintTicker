@@ -974,7 +974,9 @@ describe('IPC handlers', () => {
         canTransition: false,
         canFindWorklog: false,
         canFetchByKey: false,
-        hasHolidays: false
+        hasHolidays: false,
+        hasEvents: false,
+        providerName: 'Jira'
       });
     });
 

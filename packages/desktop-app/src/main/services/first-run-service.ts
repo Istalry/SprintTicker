@@ -1,3 +1,4 @@
+import { serverUrlProblem } from '../../shared/custom-server';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import type { ITaskProvider } from '../providers/task-provider-interface';
 import { isProviderRequestError } from '../providers/provider-errors';
@@ -68,10 +69,17 @@ export class FirstRunService {
    * the remote: that is the answer.
    */
   public async testConnection(request: ConnectionTestRequestDTO): Promise<ConnectionTestDTO> {
-    if (!request || (request.providerId !== 'jira' && request.providerId !== 'openproject')) {
+    if (!request || (request.providerId !== 'jira' && request.providerId !== 'openproject' && request.providerId !== 'custom-server')) {
       throw new ArgumentException(`Cannot test provider: ${String(request?.providerId)}.`, 'providerId');
     }
     const host = hostOf(request.site ?? '');
+    const isCustom = request.providerId === 'custom-server';
+    if (isCustom && request.site?.trim()) {
+      // Said before the token travels anywhere: an http address off this
+      // machine would send it in clear text.
+      const problem = serverUrlProblem(request.site);
+      if (problem) return { ok: false, reason: 'failed', host, detail: problem };
+    }
     const provider = this.deps.makeProvider(request.providerId);
     if (!provider?.getUserName) {
       return { ok: false, reason: 'failed', host, detail: 'This provider cannot be tested.' };
@@ -79,12 +87,16 @@ export class FirstRunService {
     const credentials: Record<string, string> =
       request.providerId === 'jira'
         ? { domain: request.site ?? '', jiraEmail: request.email ?? '', apiToken: request.token ?? '' }
-        : { domain: request.site ?? '', apiToken: request.token ?? '' };
+        : isCustom
+          ? { baseUrl: request.site ?? '', apiToken: request.token ?? '' }
+          : { domain: request.site ?? '', apiToken: request.token ?? '' };
     try {
       await provider.initialize(credentials);
-      const userName = await provider.getUserName();
+      // Projects first for a SprintTicker server: it reads /capabilities,
+      // whose contract version is the first thing that can be wrong there.
       const projects = await provider.getProjects();
-      return { ok: true, userName, projectCount: projects.length };
+      const userName = await provider.getUserName();
+      return { ok: true, userName, projectCount: projects.length, ...(isCustom ? { serverName: provider.providerName } : {}) };
     } catch (err) {
       return { ok: false, ...FirstRunService.classify(err), host };
     }

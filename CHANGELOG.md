@@ -49,6 +49,16 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Added
 
+- **A SprintTicker server as your provider.** Beside Jira and OpenProject,
+  Settings › Account and the first run offer **A SprintTicker server**: any
+  server built on SprintTicker's own contract,
+  [`PROVIDER-API.md`](Documentation/PROVIDER-API.md). An address and a
+  personal token are all it asks; the server picks your tasks and where a
+  finished one goes, and what it can do -- assigning, notifications, days
+  off, fetch by key -- shows once it says so. A send whose answer was lost
+  is never billed twice: the server knows each send by its reference. For
+  the server's builders, `pnpm provider:check` runs the contract against
+  their server, and `pnpm mock:provider` is a fake one to try the app on.
 - **Stream Deck plugin 0.6.5: one meaning per key.** A says yes -- DONE,
   BACK to your task during an interruption, JOIN, RESUME, END STAND-UP, END MY DAY --
   in green; B stops or waits -- STOP, SKIP, NOT NOW -- in blue-grey; C

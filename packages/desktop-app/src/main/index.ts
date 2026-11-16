@@ -52,6 +52,8 @@ import { NoticeService } from './services/notice-service';
 import { DECK_PLUGIN_PACK, DECK_PLUGIN_RESOURCE } from '../shared/first-run';
 import { JiraProvider } from './providers/jira-provider';
 import { OpenProjectProvider } from './providers/openproject-provider';
+import { CustomServerProvider } from './providers/custom-server-provider';
+import { ProviderId } from '../shared/provider-names';
 import { existsSync } from 'fs';
 import { TrayManager } from './tray/tray-manager';
 import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
@@ -296,7 +298,7 @@ async function startApplication(): Promise<void> {
   const sessionRepo = new SessionRepository(dbConnection);
   const projectRepo = new ProjectRepository(dbConnection);
 
-  const providerManager = new ProviderManager(settingsRepo);
+  const providerManager = new ProviderManager(settingsRepo, { appVersion: app.getVersion() });
 
   // 2. Initialize Time Tracking Engine.
   // Construction is side-effect free; initialize() starts the sync worker and
@@ -648,7 +650,14 @@ async function startApplication(): Promise<void> {
       settings: settingsRepo,
       isProviderConfigured: () => providerManager.isRemoteConfigured(),
       hasHistory: () => worklogRepo.hasAnyWorklog(),
-      makeProvider: id => (id === 'jira' ? new JiraProvider() : id === 'openproject' ? new OpenProjectProvider() : null),
+      makeProvider: id =>
+        id === 'jira'
+          ? new JiraProvider()
+          : id === 'openproject'
+            ? new OpenProjectProvider()
+            : id === ProviderId.CUSTOM
+              ? new CustomServerProvider({ appVersion: app.getVersion() })
+              : null,
       deviceStatus: () => driver?.getDeviceStatus() ?? null,
       deckInstalled: () => existsSync(path.join(app.getPath('appData'), 'Elgato', 'StreamDeck')),
       // The socket opens after the registry; until then no deck is connected.

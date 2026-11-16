@@ -281,7 +281,7 @@ describe('Correcting a worklog', () => {
       service.correct('w1', fix(HOUR));
       await worker.processPendingQueue();
 
-      expect(remote.provider.findWorklog).toHaveBeenCalledWith('T-1', START, syncMarker(send));
+      expect(remote.provider.findWorklog).toHaveBeenCalledWith('T-1', START, syncMarker(send), send);
       expect(onlyEntry().durationSeconds).toBe(HOUR);
       expect(worklogs.getSyncItem(send)?.remoteWorklogId).toBe('100');
     });

@@ -59,7 +59,8 @@ import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '
 import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibility } from '../../shared/task-visibility';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
 import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
-import { selectableProviders } from '../../shared/provider-names';
+import { providerDisplayName, selectableProviders } from '../../shared/provider-names';
+import { sanitizeServerUrl } from '../../shared/custom-server';
 import { plainSessionEnding, SessionEnding } from '../services/session-commands';
 import { UndoService } from '../services/undo-service';
 import { addUndoably, correctUndoably, deleteUndoably, endDayUndoably, moveUndoably,
@@ -1047,7 +1048,12 @@ export class IPCHandlerRegistry {
         canTransition: false,
         canFindWorklog: false,
         canFetchByKey: false,
-        hasHolidays: false
+        hasHolidays: false,
+        hasEvents: false,
+        providerName: providerDisplayName(this.settingsRepo.getSetting(
+          ProviderSettingKey.ACTIVE_PROVIDER_ID,
+          PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.ACTIVE_PROVIDER_ID]
+        ))
       };
     });
 
@@ -1078,6 +1084,10 @@ export class IPCHandlerRegistry {
       const jiraTransitionToTest = read(ProviderSettingKey.JIRA_TRANSITION_TO_TEST);
       const jiraTransitionToReview = read(ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW);
       const jiraCompletionAction = read(ProviderSettingKey.JIRA_COMPLETION_ACTION);
+      const customServerUrl = read(ProviderSettingKey.CUSTOM_SERVER_URL);
+      // Decrypted for the form, as the OpenProject key is.
+      const customServerToken = this.secrets.getSecret(ProviderSettingKey.CUSTOM_SERVER_TOKEN);
+      const customServerName = read(ProviderSettingKey.CUSTOM_SERVER_NAME);
 
       return {
         activeProviderId: activeId,
@@ -1099,6 +1109,9 @@ export class IPCHandlerRegistry {
         jiraTransitionToTest,
         jiraTransitionToReview,
         jiraCompletionAction,
+        customServerUrl,
+        customServerToken,
+        customServerName,
         providers: selectableProviders()
       };
     });
@@ -1123,6 +1136,8 @@ export class IPCHandlerRegistry {
       jiraTransitionToTest?: string;
       jiraTransitionToReview?: string;
       jiraCompletionAction?: string;
+      customServerUrl?: string;
+      customServerToken?: string;
     }) => {
       if (payload.providerId) this.settingsRepo.setSetting('active_provider_id', payload.providerId);
       if (payload.fallbackTicketKey) this.settingsRepo.setSetting('fallback_ticket_key', payload.fallbackTicketKey);
@@ -1152,6 +1167,16 @@ export class IPCHandlerRegistry {
       if (payload.jiraTransitionToTest !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TRANSITION_TO_TEST, payload.jiraTransitionToTest);
       if (payload.jiraTransitionToReview !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW, payload.jiraTransitionToReview);
       if (payload.jiraCompletionAction !== undefined) this.settingsRepo.setSetting(ProviderSettingKey.JIRA_COMPLETION_ACTION, payload.jiraCompletionAction);
+      if (payload.customServerUrl !== undefined) {
+        const url = sanitizeServerUrl(payload.customServerUrl);
+        // Another server's name would be wrong under the new address.
+        if (url !== this.settingsRepo.getSetting(ProviderSettingKey.CUSTOM_SERVER_URL, '')) {
+          this.settingsRepo.setSetting(ProviderSettingKey.CUSTOM_SERVER_NAME, '');
+        }
+        this.settingsRepo.setSetting(ProviderSettingKey.CUSTOM_SERVER_URL, url);
+      }
+      // Encrypted at rest, like the other tokens.
+      if (payload.customServerToken !== undefined) this.secrets.setSecret(ProviderSettingKey.CUSTOM_SERVER_TOKEN, payload.customServerToken);
 
       if (this.providerManager) {
         this.providerManager.reinitializeProviders();

@@ -39,6 +39,27 @@ describe('First run', () => {
       expect(continueButton().disabled).toBe(false);
     });
 
+    it('SprintTickerServer_TestNamesTheServer_ContinueSavesIt', async () => {
+      const { bridge } = open({
+        testProviderConnection: vi.fn().mockResolvedValue({ ok: true, userName: 'Ada Lovelace', projectCount: 2, serverName: 'Team Tracker' })
+      });
+      fireEvent.click(await screen.findByRole('radio', { name: /SprintTicker server/ }));
+      type(/Server address/, 'https://tracker.example.com/st/v1');
+      fireEvent.change(screen.getByLabelText(/^Personal token/), { target: { value: 'tok' } });
+      // Nothing here knows where the server makes its tokens.
+      expect(screen.queryByRole('button', { name: /make one/ })).toBeNull();
+
+      click('Test connection');
+
+      expect((await screen.findByRole('status')).textContent).toBe('Connected to Team Tracker as Ada Lovelace · 2 projects');
+      expect(screen.getByText('When you start a task, should SprintTicker change it in Team Tracker?')).toBeTruthy();
+      fireEvent.click(continueButton());
+      await screen.findByRole('dialog', { name: "What's on your desk?" });
+      expect(bridge.api.setActiveProvider).toHaveBeenCalledWith({
+        providerId: 'custom-server', customServerUrl: 'https://tracker.example.com/st/v1', customServerToken: 'tok'
+      });
+    });
+
     it('Continue_SavesTheAccount_AndTheStartAnswer', async () => {
       const { bridge } = open();
       await chooseJira();

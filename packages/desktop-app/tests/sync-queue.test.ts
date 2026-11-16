@@ -278,7 +278,7 @@ describe('Worklog sync queue ownership', () => {
       await worker.processPendingQueue();
 
       expect(posts).toHaveLength(1);
-      expect(findWorklog).toHaveBeenCalledWith('OP-1', '2026-01-01T09:00:00.000Z', marker('sync_00000001'));
+      expect(findWorklog).toHaveBeenCalledWith('OP-1', '2026-01-01T09:00:00.000Z', marker('sync_00000001'), 'sync_00000001');
       expect(row('sync_00000001')).toMatchObject({ status: 'SYNCED', remoteWorklogId: 'r-earlier', sendAttempts: 2 });
     });
 

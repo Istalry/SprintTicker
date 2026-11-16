@@ -195,7 +195,9 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
       canTransition: true,
       canFindWorklog: true,
       canFetchByKey: false,
-      hasHolidays: true
+      hasHolidays: true,
+      hasEvents: true,
+      providerName: 'OpenProject'
     }),
     setActiveProvider: vi.fn().mockResolvedValue(true),
     fetchOpenProjectStatuses: vi.fn().mockResolvedValue({ success: true, data: [] }),

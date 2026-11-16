@@ -7,17 +7,17 @@ import { ProviderId, providerDisplayName } from '../../../shared/provider-names'
 import { StepFrame, choiceCard, fieldClass, primaryButton, quietButton, secondaryButton } from './StepFrame';
 import { ipcErrorMessage } from '../../utils/formatters';
 
-type Choice = 'jira' | 'openproject' | 'none';
+type Choice = 'jira' | 'openproject' | 'custom-server' | 'none';
 type Test = { state: 'idle' } | { state: 'testing' } | { state: 'done'; result: ConnectionTestDTO };
 
 const warn = (what: string) => (err: unknown) => console.warn(`[FirstRun] ${what} failed:`, err);
 const MINUTE = 60;
 
 /**
- * S1, where are your tasks? Jira, OpenProject, or no account. Test connection
- * tries what was typed without saving it; Continue saves, and asks nothing
- * of an account it has not seen answer. The SprintTicker server choice is
- * left out until `PROVIDER-API.md` §15 ships -- left out, not greyed out.
+ * S1, where are your tasks? Jira, OpenProject, a SprintTicker server (a
+ * server of the team's own on `PROVIDER-API.md`), or no account. Test
+ * connection tries what was typed without saving it; Continue saves, and
+ * asks nothing of an account it has not seen answer.
  */
 export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }> = ({ onLater, onNext }) => {
   const [choice, setChoice] = useState<Choice | null>(null);
@@ -46,6 +46,10 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
           setChoice('openproject');
           setSite(saved.opDomain);
           setToken(saved.opApiKey);
+        } else if (saved.activeProviderId === ProviderId.CUSTOM && saved.customServerUrl) {
+          setChoice('custom-server');
+          setSite(saved.customServerUrl);
+          setToken(saved.customServerToken);
         }
       })
       .catch(warn('Reading the saved account'));
@@ -59,9 +63,10 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
     return () => { live = false; };
   }, []);
 
-  const account = choice === 'jira' || choice === 'openproject' ? choice : null;
-  const name = account ? providerDisplayName(account) : '';
+  const account = choice === 'jira' || choice === 'openproject' || choice === 'custom-server' ? choice : null;
   const passed = test.state === 'done' && test.result.ok ? test.result : null;
+  // A SprintTicker server is called by its own name once it has answered.
+  const name = account ? providerDisplayName(account, passed?.serverName) : '';
   const failed = test.state === 'done' && !test.result.ok ? test.result : null;
 
   /** A changed field is untested again. */
@@ -78,8 +83,10 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
       .catch(err => setTest({ state: 'done', result: { ok: false, reason: 'failed', host: null, detail: ipcErrorMessage(err) } }));
   };
 
+  // A SprintTicker server's token page is its own; nothing here knows where.
+  const tokenPageKnown = account === 'jira' || account === 'openproject';
   const openTokenPage = () => {
-    if (account) window.electronAPI.openTokenPage(account, site).catch(warn('Opening the token page'));
+    if (account === 'jira' || account === 'openproject') window.electronAPI.openTokenPage(account, site).catch(warn('Opening the token page'));
   };
 
   const save = async () => {
@@ -91,7 +98,9 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
           ? { providerId: ProviderId.JIRA, jiraSite: site.trim(), jiraEmail: email.trim(), jiraApiToken: token.trim() }
           : account === 'openproject'
             ? { providerId: ProviderId.OPENPROJECT, opDomain: site.trim(), opApiKey: token.trim() }
-            : { providerId: ProviderId.ADHOC };
+            : account === 'custom-server'
+              ? { providerId: ProviderId.CUSTOM, customServerUrl: site.trim(), customServerToken: token.trim() }
+              : { providerId: ProviderId.ADHOC };
       if (!(await window.electronAPI.setActiveProvider(payload))) throw new Error('the account was not saved');
       if (account) {
         await window.electronAPI.saveFlowSetting(FlowSettingKey.START_SIDE_EFFECTS, { enabled: startUpdates, afterSeconds });
@@ -131,6 +140,7 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
         {([
           ['jira', 'Jira', 'Your site, email and an API token.'],
           ['openproject', 'OpenProject', "Your server's address and an API key."],
+          ['custom-server', 'A SprintTicker server', "Your team's own server: its address and a personal token."],
           ['none', 'No account — my own tasks only', 'Time stays on this computer. You can add an account later in Settings › Account.']
         ] as const).map(([value, label, hint]) => (
           <div key={value} className={choiceCard(choice === value)}>
@@ -156,7 +166,13 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
                 <label className="block text-xs text-text-secondary">
                   {account === 'jira' ? 'Jira site' : 'Server address'}
                   <input className={`${fieldClass} mt-1`} value={site} onChange={edit(setSite)}
-                    placeholder={account === 'jira' ? 'https://your-team.atlassian.net' : 'https://openproject.example.com'} />
+                    placeholder={
+                      account === 'jira'
+                        ? 'https://your-team.atlassian.net'
+                        : account === 'custom-server'
+                          ? 'https://tracker.example.com/sprintticker/v1'
+                          : 'https://openproject.example.com'
+                    } />
                 </label>
                 {account === 'jira' && (
                   <label className="block text-xs text-text-secondary">
@@ -170,12 +186,18 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
                   <span id="first-run-token">
                     {account === 'jira'
                       ? 'API token: a password for apps, made in your Atlassian account in a minute'
-                      : 'API key: made on your account page in OpenProject'}
+                      : account === 'custom-server'
+                        ? 'Personal token: made in your server, under your account'
+                        : 'API key: made on your account page in OpenProject'}
                   </span>
-                  {' · '}
-                  <button type="button" className="text-text-primary underline hover:text-white" onClick={openTokenPage}>
-                    make one ↗
-                  </button>
+                  {tokenPageKnown && (
+                    <>
+                      {' · '}
+                      <button type="button" className="text-text-primary underline hover:text-white" onClick={openTokenPage}>
+                        make one ↗
+                      </button>
+                    </>
+                  )}
                   <input type="password" aria-labelledby="first-run-token" className={`${fieldClass} mt-1`} value={token} onChange={edit(setToken)} />
                 </div>
 
@@ -186,11 +208,11 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
                   {passed && (
                     <span role="status" className="flex items-center gap-1.5 text-xs text-accent-green">
                       <CircleCheck className="w-4 h-4" aria-hidden="true" />
-                      Connected as {passed.userName} · {passed.projectCount} {passed.projectCount === 1 ? 'project' : 'projects'}
+                      Connected{passed.serverName ? ` to ${passed.serverName}` : ''} as {passed.userName} · {passed.projectCount} {passed.projectCount === 1 ? 'project' : 'projects'}
                     </span>
                   )}
                 </div>
-                {failed && <TestFailure failure={failed} providerName={name} onMakeToken={openTokenPage} />}
+                {failed && <TestFailure failure={failed} providerName={name} onMakeToken={tokenPageKnown ? openTokenPage : undefined} />}
 
                 {passed && (
                   <div className="rounded-lg border border-border-dark p-3 space-y-2">
@@ -228,7 +250,8 @@ export const YourTasksStep: React.FC<{ onLater: () => void; onNext: () => void }
 const TestFailure: React.FC<{
   failure: Extract<ConnectionTestDTO, { ok: false }>;
   providerName: string;
-  onMakeToken: () => void;
+  /** Absent where nothing here knows the token page: a SprintTicker server's. */
+  onMakeToken?: () => void;
 }> = ({ failure, providerName, onMakeToken }) => {
   const text = connectionFailureText(failure, providerName);
   return (
@@ -238,7 +261,7 @@ const TestFailure: React.FC<{
         <span className="block font-semibold text-accent-red">{text.headline}</span>
         <span className="block text-text-secondary">
           {text.hint}
-          {failure.reason === 'refused' && (
+          {failure.reason === 'refused' && onMakeToken && (
             <>
               {' '}
               <button type="button" className="text-text-primary underline hover:text-white" onClick={onMakeToken}>

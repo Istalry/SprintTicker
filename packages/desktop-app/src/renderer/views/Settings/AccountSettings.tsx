@@ -11,7 +11,10 @@ import { StartSideEffectsSetting } from '../../components/StartSideEffectsSettin
 import {
   SETTING_SELECT_CLASS, SettingButton, SettingProblem, SettingRow, SettingsList
 } from '../../components/SettingRow';
-import { PROVIDERS_WITH_EVENTS, providerEventKindsFor } from '../../../shared/provider-events';
+import { providerEventKindsFor } from '../../../shared/provider-events';
+import { useProviderCapabilities } from '../../hooks/useProviderCapabilities';
+import { serverUrlProblem } from '../../../shared/custom-server';
+import { ConnectionTestDTO, connectionFailureText } from '../../../shared/first-run';
 import { ProviderId, selectableProviders, providerDisplayName } from '../../../shared/provider-names';
 import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../../shared/provider-settings';
 import { couldNot, formatHoursMinutes } from '../../utils/formatters';
@@ -82,6 +85,11 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
   const [jiraTransitionToTest, setJiraTransitionToTest] = useState<string>('');
   const [jiraTransitionToReview, setJiraTransitionToReview] = useState<string>('');
   const [jiraCompletionAction, setJiraCompletionAction] = useState<string>('to_review');
+  const [customServerUrl, setCustomServerUrl] = useState<string>('');
+  const [customServerToken, setCustomServerToken] = useState<string>('');
+  const [customServerName, setCustomServerName] = useState<string>('');
+  const [serverTest, setServerTest] = useState<{ state: 'idle' } | { state: 'testing' } | { state: 'done'; result: ConnectionTestDTO }>({ state: 'idle' });
+  const { capabilities } = useProviderCapabilities();
 
   const [availableStatuses, setAvailableStatuses] = useState<OpStatusDTO[]>([]);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState<boolean>(false);
@@ -124,6 +132,9 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
           if (res.jiraTransitionToTest !== undefined) setJiraTransitionToTest(res.jiraTransitionToTest);
           if (res.jiraTransitionToReview !== undefined) setJiraTransitionToReview(res.jiraTransitionToReview);
           if (res.jiraCompletionAction) setJiraCompletionAction(res.jiraCompletionAction);
+          if (res.customServerUrl) setCustomServerUrl(res.customServerUrl);
+          if (res.customServerToken) setCustomServerToken(res.customServerToken);
+          if (res.customServerName) setCustomServerName(res.customServerName);
         }
       }).catch(err => console.error('[AccountSettings] Error loading providers:', err)));
     }
@@ -162,7 +173,9 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
       jiraTransitionInProgress,
       jiraTransitionToTest,
       jiraTransitionToReview,
-      jiraCompletionAction
+      jiraCompletionAction,
+      customServerUrl,
+      customServerToken
     });
   };
 
@@ -172,7 +185,8 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
       providerId, fallbackTicketKey,
       opDomain, opApiKey, opStatusInProgress, opStatusToTest, opStatusToReview, opCompletionAction, opTaskScope, opTaskQuery,
       jiraSite, jiraEmail, jiraApiToken, jiraTaskScope, jiraTaskQuery,
-      jiraTransitionInProgress, jiraTransitionToTest, jiraTransitionToReview, jiraCompletionAction
+      jiraTransitionInProgress, jiraTransitionToTest, jiraTransitionToReview, jiraCompletionAction,
+      customServerUrl, customServerToken
     ],
     loaded
   );
@@ -212,9 +226,29 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
 
   const isJira = providerId === ProviderId.JIRA;
   const isOpenProject = providerId === ProviderId.OPENPROJECT;
-  const remote = isJira || isOpenProject;
-  const name = providerDisplayName(providerId);
-  const site = isJira ? jiraSite : opDomain;
+  const isCustom = providerId === ProviderId.CUSTOM;
+  const remote = isJira || isOpenProject || isCustom;
+  // The settings choose the provider before main has switched to it: the
+  // server's name is the one stored, or the one Test connection just read.
+  const testedName = serverTest.state === 'done' && serverTest.result.ok ? serverTest.result.serverName : undefined;
+  const name = isCustom ? providerDisplayName(providerId, testedName || customServerName) : providerDisplayName(providerId);
+  const site = isJira ? jiraSite : isCustom ? customServerUrl : opDomain;
+  // What the server does is its own choice: no scope, no states to map.
+  const configurable = isJira || isOpenProject;
+  const urlProblem = isCustom && customServerUrl.trim() ? serverUrlProblem(customServerUrl) : null;
+  // Jira and OpenProject always report events; a server says so in its
+  // capabilities, which main reads once the provider is active.
+  const hasEvents = configurable || (capabilities?.providerId === providerId && capabilities.hasEvents);
+
+  const testServer = (): void => {
+    setServerTest({ state: 'testing' });
+    window.electronAPI.testProviderConnection({ providerId: ProviderId.CUSTOM, site: customServerUrl, token: customServerToken })
+      .then(result => {
+        setServerTest({ state: 'done', result });
+        if (result.ok && result.serverName) setCustomServerName(result.serverName);
+      })
+      .catch(err => setServerTest({ state: 'done', result: { ok: false, reason: 'failed', host: null, detail: couldNot('test it', err) } }));
+  };
   const scope = isJira ? jiraTaskScope : opTaskScope;
   const setScope = isJira ? setJiraTaskScope : setOpTaskScope;
   const query = isJira ? jiraTaskQuery : opTaskQuery;
@@ -233,7 +267,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
     ? 'Tasks of your own, kept on this computer. Nothing is sent anywhere.'
     : site
       ? `${isJira && jiraEmail ? `${jiraEmail}. ` : ''}${own.length} ${own.length === 1 ? 'project' : 'projects'}, ${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}. ${refreshed}`
-      : `Enter your ${name} ${isJira ? 'site and API token' : 'address and API key'} to fetch your tasks.`;
+      : `Enter your ${name} ${isJira ? 'site and API token' : isCustom ? 'address and token' : 'address and API key'} to fetch your tasks.`;
 
   return (
     <div className="space-y-4">
@@ -242,9 +276,10 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
           providerName={name}
           waiting={waitingText(queue, true)}
           onSave={async token => {
-            await window.electronAPI.setActiveProvider(isJira ? { jiraApiToken: token } : { opApiKey: token });
+            await window.electronAPI.setActiveProvider(isJira ? { jiraApiToken: token } : isCustom ? { customServerToken: token } : { opApiKey: token });
             // Kept in the page too, so the next save of any field sends this token, not the refused one.
             if (isJira) setJiraApiToken(token);
+            else if (isCustom) setCustomServerToken(token);
             else setOpApiKey(token);
             await window.electronAPI.syncProviderNow();
           }}
@@ -299,12 +334,55 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
                   </Field>
                 </>
               )}
+              {isCustom && (
+                <>
+                  <Field label="Server address" hint="Your team's server on the SprintTicker Provider API. The address ends with /v1.">
+                    <input
+                      type="text"
+                      value={customServerUrl}
+                      onChange={e => { setCustomServerUrl(e.target.value); setServerTest({ state: 'idle' }); }}
+                      placeholder="https://tracker.example.com/sprintticker/v1"
+                      className={FIELD}
+                    />
+                  </Field>
+                  {urlProblem && <SettingProblem>{urlProblem}</SettingProblem>}
+                  <Field label="Personal token" hint="Made in your server, under your account. Kept encrypted on this computer.">
+                    <input
+                      type="password"
+                      value={customServerToken}
+                      onChange={e => { setCustomServerToken(e.target.value); setServerTest({ state: 'idle' }); }}
+                      className={FIELD}
+                    />
+                  </Field>
+                  <div className="flex items-center gap-3">
+                    <SettingButton
+                      disabled={serverTest.state === 'testing' || !customServerUrl.trim() || !customServerToken.trim() || urlProblem !== null}
+                      onClick={testServer}
+                    >
+                      {serverTest.state === 'testing' ? 'Testing…' : 'Test connection'}
+                    </SettingButton>
+                    {serverTest.state === 'done' && serverTest.result.ok && (
+                      <span role="status" className="text-xs text-accent-green">
+                        Connected to {serverTest.result.serverName ?? name} as {serverTest.result.userName}
+                      </span>
+                    )}
+                  </div>
+                  {serverTest.state === 'done' && !serverTest.result.ok && (
+                    <SettingProblem>
+                      {(() => {
+                        const text = connectionFailureText(serverTest.result, name);
+                        return `${text.headline}. ${text.hint}`;
+                      })()}
+                    </SettingProblem>
+                  )}
+                </>
+              )}
               <p className="text-xs text-text-muted">Saved as you type; the tasks are fetched again with it.</p>
             </div>
           )}
         </SettingRow>
 
-        {remote && (
+        {configurable && (
           <SettingRow
             title={`Tasks to fetch from ${name}`}
             description={SCOPE_SENTENCES[scope]}
@@ -334,7 +412,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
 
         <StartSideEffectsSetting />
 
-        {remote && (
+        {configurable && (
           <SettingRow
             title="When I mark a task done"
             description={`Where it goes in ${name}, per project: each workflow has its own states.`}
@@ -349,7 +427,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
           </SettingRow>
         )}
 
-        {PROVIDERS_WITH_EVENTS.includes(providerId) && (
+        {hasEvents && (
           <SettingRow
             title={`${name} notifications`}
             description="Assigned, mentioned, comments: as a Windows notification, on the bar, or both."
@@ -372,7 +450,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ hasBar = true 
 
         <details className="group py-3">
           <summary className="cursor-pointer select-none text-[13px] text-text-secondary hover:text-text-primary">
-            Advanced: {remote ? `the states in ${name} · ` : ''}the key for tasks of my own · every entry waiting to send
+            Advanced: {configurable ? `the states in ${name} · ` : ''}the key for tasks of my own · every entry waiting to send
           </summary>
           <div className="mt-3 space-y-5">
             {isJira && (

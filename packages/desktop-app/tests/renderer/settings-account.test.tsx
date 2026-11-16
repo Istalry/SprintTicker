@@ -15,6 +15,7 @@ const PROJECTS = [
   { id: 'p2', key: 'PF', name: 'Pixel Forge', providerId: 'jira', openTaskCount: 10, openUnassignedCount: 0, openOthersCount: 2 },
   { id: 'local', key: 'OWN', name: 'Mine', providerId: 'sprintticker', openTaskCount: 3 }
 ];
+const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const row = (name: string | RegExp) => screen.getByRole('group', { name });
 
 /** Settings · Account as rows (P16b, S20). */
@@ -121,6 +122,40 @@ describe('Settings · Account', () => {
     expect(screen.queryByRole('group', { name: /Tasks to fetch/ })).toBeNull();
     expect(screen.queryByRole('group', { name: 'When I mark a task done' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Refresh now' })).toBeNull();
+  });
+
+  it('SprintTickerServer_AddressTokenAndTest_NoStatesToMap', async () => {
+    // A SprintTicker server decides its own workflow and scope: the page
+    // asks for an address and a token, and names the server once it answered.
+    const bridge = installElectronApi({
+      getProviders: vi.fn().mockResolvedValue({
+        activeProviderId: 'custom-server', fallbackTicketKey: 'MISC-1',
+        customServerUrl: 'https://tracker.example.com/st/v1', customServerToken: 'tok', customServerName: 'Team Tracker'
+      }),
+      testProviderConnection: vi.fn().mockResolvedValue({ ok: true, userName: 'Ada Lovelace', projectCount: 2, serverName: 'Team Tracker' })
+    });
+    render(<AccountSettings />);
+
+    expect(await screen.findByRole('group', { name: 'Team Tracker · tracker.example.com' })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: /Tasks to fetch/ })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'When I mark a task done' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Change account' }));
+    click('Test connection');
+
+    expect((await screen.findByRole('status')).textContent).toBe('Connected to Team Tracker as Ada Lovelace');
+    expect(bridge.api.testProviderConnection).toHaveBeenCalledWith({ providerId: 'custom-server', site: 'https://tracker.example.com/st/v1', token: 'tok' });
+  });
+
+  it('SprintTickerServer_AnHttpAddress_IsRefusedBeforeTheTest', async () => {
+    installElectronApi({ getProviders: vi.fn().mockResolvedValue({ activeProviderId: 'custom-server', fallbackTicketKey: 'MISC-1', customServerToken: 'tok' }) });
+    render(<AccountSettings />);
+    await screen.findByRole('group', { name: /Your server/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Set up' }));
+
+    fireEvent.change(screen.getByLabelText('Server address'), { target: { value: 'http://tracker.example.com/st/v1' } });
+
+    expect(screen.getByText(/must start with https:\/\//)).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Test connection' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('EverySearchEntryOfTheGroup_IsOnThePage', async () => {

@@ -1321,6 +1321,23 @@
       mention in a description rather than a comment.</li>
       <li>📅 <strong>Jira has no date alerts</strong>, so that box is not offered.</li>
       </ul>
+      <p>🧩 <strong>A SprintTicker server</strong> is a server your team runs on SprintTicker&#39;s
+      own contract (<a href="PROVIDER-API.md"><code>PROVIDER-API.md</code></a>), when your tasks live in
+      neither Jira nor OpenProject. Choose <strong>A SprintTicker server</strong> under
+      <strong>Change account</strong>, then:</p>
+      <ul>
+      <li><strong>Server address</strong>: the one your team gives you. It starts with
+      <code>https://</code> and ends with <code>/v1</code>, such as
+      <code>https://tracker.example.com/sprintticker/v1</code>.</li>
+      <li><strong>Personal token</strong>: made in your server, under your account.</li>
+      <li><strong>Test connection</strong> says the server&#39;s name and yours: <em>Connected to Team
+      Tracker as Ada Lovelace</em>. From then on the app calls the server by its own
+      name.</li>
+      </ul>
+      <p>There is no task scope and no state to choose: the server decides which
+      tasks you see and where a finished one goes. What it offers -- assigning a
+      task nobody has, notifications, its days off, fetching a task by its key --
+      appears in the app once it says so, and stays hidden otherwise.</p>
       <p>In <strong>Advanced</strong>, under <strong>Entries waiting to send</strong>, is every entry that has
       not reached the provider, with the server&#39;s own message, the attempt count against the
       ceiling, and when the next attempt is due. When the provider refuses your saved
@@ -2648,6 +2665,8 @@
       <pre><code>ITaskProvider  ← the contract (task-provider-interface.ts)
           ├── OpenProjectProvider   REST API v3, HAL pagination
           ├── JiraProvider          REST API v3, two pagination schemes
+          ├── CustomServerProvider  the SprintTicker Provider API (PROVIDER-API.md),
+          │                         its optional parts attached from /capabilities
           └── AdHocProvider         local only, no network
       
       ProviderManager   resolves the active provider, holds credentials,
@@ -2661,8 +2680,10 @@
       array is indistinguishable from &quot;this user has no tasks&quot;, and the sync worker
       prunes the local cache against what it receives (audit F-01).</li>
       <li><strong>Only GET/HEAD/OPTIONS are retried.</strong> A worklog POST has no idempotency key
-      in either API, so repeating it after a response that was sent but never
-      received bills the session twice.</li>
+      in Jira or OpenProject, so repeating it after a response that was sent but
+      never received bills the session twice. A SprintTicker server takes one --
+      the queue row&#39;s id, sent as <code>clientRef</code> -- so there the queue&#39;s own resend
+      is safe, but the HTTP layer still does not repeat it.</li>
       <li><strong><code>isPermanent</code> decides whether a queued row retries.</strong> Any 4xx except 408 and
       429 is permanent — those two describe a moment, the rest describe the request.</li>
       </ul>
@@ -3488,7 +3509,11 @@
       clock</strong>. The first poll for a provider records &quot;now&quot; and shows nothing, so a
       first launch does not replay the unread history; a failed poll leaves the
       cursor where it was, so the next one picks up what it missed. Turning the
-      feature off forgets the cursors. More than three events in one poll become a
+      feature off forgets the cursors. An event at the cursor&#39;s own instant is
+      kept when its id is new -- a SprintTicker server answers <code>since</code> inclusively
+      -- and the ids already shown there are stored beside the cursor
+      (<code>provider_event_cursor_ids</code>), so a restart does not show the last one
+      again. More than three events in one poll become a
       single summary toast pointing at the provider&#39;s inbox, and the bar gets one
       banner per poll whatever the count.</p>
       <p>The bar is reached from here, once, through <code>renderNotificationBanner</code> --
@@ -4026,7 +4051,7 @@
       </tr>
       <tr>
       <td align="left"><code>first-run:test-connection</code></td>
-      <td align="left"><code>{ providerId: &#39;jira&#39; | &#39;openproject&#39;, site, email?, token }</code>, saving nothing: <code>{ ok: true, userName, projectCount }</code> or <code>{ ok: false, reason: &#39;incomplete&#39; | &#39;not-found&#39; | &#39;refused&#39; | &#39;network&#39; | &#39;failed&#39;, host, detail }</code> -- never throws for the remote&#39;s failure</td>
+      <td align="left"><code>{ providerId: &#39;jira&#39; | &#39;openproject&#39; | &#39;custom-server&#39;, site, email?, token }</code>, saving nothing: <code>{ ok: true, userName, projectCount, serverName? }</code> -- <code>serverName</code> for a SprintTicker server, whose address is checked (https, <code>/v1</code>) before the token is sent -- or <code>{ ok: false, reason: &#39;incomplete&#39; | &#39;not-found&#39; | &#39;refused&#39; | &#39;network&#39; | &#39;failed&#39;, host, detail }</code> -- never throws for the remote&#39;s failure</td>
       </tr>
       <tr>
       <td align="left"><code>first-run:detect-desk</code></td>
@@ -4103,11 +4128,11 @@
       </tr>
       <tr>
       <td align="left"><code>provider:get-capabilities</code></td>
-      <td align="left">What the active provider can do: <code>ProviderCapabilitiesDTO</code> (<code>canAssign</code>, <code>canTransition</code>, <code>canFindWorklog</code>, <code>canFetchByKey</code>, <code>hasHolidays</code>), read off the adapter&#39;s optional methods. A control for something it cannot do is hidden, never greyed. With no providers wired, every capability is false</td>
+      <td align="left">What the active provider can do: <code>ProviderCapabilitiesDTO</code> (<code>canAssign</code>, <code>canTransition</code>, <code>canFindWorklog</code>, <code>canFetchByKey</code>, <code>hasHolidays</code>, <code>hasEvents</code>) and its name (<code>providerName</code>: a SprintTicker server&#39;s own), read off the adapter&#39;s optional methods -- which a SprintTicker server&#39;s adapter attaches from its <code>/capabilities</code>. A control for something it cannot do is hidden, never greyed. With no providers wired, every capability is false</td>
       </tr>
       <tr>
       <td align="left"><code>provider:set-active</code></td>
-      <td align="left">Persist settings, reinitialise providers, start a sync. Takes a <strong>partial</strong> <code>ProviderSettingsUpdateDTO</code>, so unrelated providers&#39; credentials are left alone</td>
+      <td align="left">Persist settings, reinitialise providers, start a sync. Takes a <strong>partial</strong> <code>ProviderSettingsUpdateDTO</code>, so unrelated providers&#39; credentials are left alone. A SprintTicker server&#39;s are <code>customServerUrl</code> and <code>customServerToken</code> (encrypted at rest); a new address forgets the server&#39;s stored name</td>
       </tr>
       <tr>
       <td align="left"><code>provider:get-projects</code> / <code>provider:get-tasks</code></td>
@@ -4603,8 +4628,9 @@
       <hr>
       <h3 id="api-itaskprovider"><code>ITaskProvider</code></h3>
       <p><strong>Source:</strong> <code>src/main/providers/task-provider-interface.ts</code></p>
-      <p>What you implement to add a task provider. Three exist: <code>OpenProjectProvider</code>,
-      <code>JiraProvider</code>, <code>AdHocProvider</code>.</p>
+      <p>What you implement to add a task provider. Four exist: <code>OpenProjectProvider</code>,
+      <code>JiraProvider</code>, <code>CustomServerProvider</code> -- any server on the SprintTicker
+      Provider API, <a href="PROVIDER-API.md"><code>PROVIDER-API.md</code></a> -- and <code>AdHocProvider</code>.</p>
       <pre><code class="language-ts">interface ITaskProvider {
         readonly providerId: string;
         readonly providerName: string;
@@ -4621,7 +4647,9 @@
         updateTaskStatus(taskId: string, status: &#39;in_progress&#39; | &#39;to_test&#39; | &#39;to_review&#39; | &#39;done&#39;, doneState?: string): Promise&lt;boolean&gt;;
       
         // Optional: correcting an entry logTime made. A provider with no remote leaves them out.
-        findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise&lt;string | null&gt;;
+        // clientRef is the queue row that sent it: a SprintTicker server finds the
+        // entry by it alone (PROVIDER-API 6.5); the others search for the marker.
+        findWorklog?(taskId: string, startedAtUtc: string, marker: string, clientRef?: string): Promise&lt;string | null&gt;;
         updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise&lt;void&gt;;
         deleteWorklog?(taskId: string, remoteWorklogId: string): Promise&lt;void&gt;;
       
@@ -4676,6 +4704,15 @@
       <code>clampDescription</code>. Omit the field when there is nothing left; do not send an
       empty string. Jira asks for <code>description</code> in its <code>fields</code> list, the one heavy
       field it requests.</p>
+      <p><strong>A SprintTicker server</strong> (<code>custom-server-provider.ts</code>) speaks the contract
+      in <a href="PROVIDER-API.md"><code>PROVIDER-API.md</code></a>: Bearer token, <code>User-Agent: SprintTicker/&lt;version&gt;</code>, <code>/capabilities</code> read at start, on save and hourly.
+      <code>logTime</code> sends <code>clientRef</code> -- the queue row&#39;s id, <code>WorklogPayload.clientRef</code>
+      -- and the user&#39;s local <code>day</code>, and the server keeps the send idempotent on
+      it, so a lost answer resent is the same worklog. Transitions are intents
+      (<code>start</code>, <code>finish</code>); assignment, standing, days off, fetch by key, events
+      and today&#39;s total are each attached only when the server lists their
+      capability. <code>getTaskPageUrl</code> answers the task&#39;s own <code>url</code> while it is under
+      the server&#39;s <code>siteUrl</code>.</p>
       <h4>The contract, in rules</h4>
       <p><strong>Report failure by throwing a <code>ProviderRequestError</code>. Never return <code>[]</code>.</strong>
       An empty array is indistinguishable from &quot;this user has no tasks&quot;, and
@@ -4737,15 +4774,16 @@
       <code>0</code> a caller would render as a measured &quot;you logged nothing today&quot;.
       OpenProject returns a real total, and <code>null</code> when the fetch failed.</p>
       <p><strong><code>getEventsSince</code> throws too, and works on the provider&#39;s clock.</strong> It answers
-      what happened after <code>sinceUtc</code>, exclusive: <code>assigned</code>, <code>mentioned</code>,
+      what happened since <code>sinceUtc</code> -- an event at that very instant may come back,
+      and the poller drops an id it has shown, stored with the cursor so a restart
+      does not show it twice: <code>assigned</code>, <code>mentioned</code>,
       <code>commented</code>, <code>status_changed</code> or <code>date_alert</code> (<code>ProviderEventDTO</code> in
       <code>src/shared/provider-events.ts</code>). An empty array means nothing happened, so a
       failure must throw, or the poller would move its cursor past events it never
       saw. <code>occurredAtUtc</code> is the server&#39;s own timestamp: the cursor advances on it,
       never on this machine&#39;s clock. Drop what is not about the user&#39;s attention
-      rather than inventing a kind for it, and add the provider&#39;s id to
-      <code>PROVIDERS_WITH_EVENTS</code>, which a test holds to the adapters that implement the
-      method. OpenProject reads unread <code>/api/v3/notifications</code> -- the API has no
+      rather than inventing a kind for it. The settings offer notifications
+      wherever the method exists (<code>hasEvents</code>). OpenProject reads unread <code>/api/v3/notifications</code> -- the API has no
       time filter -- and maps <code>assigned</code>/<code>responsible</code>, <code>mentioned</code>, <code>commented</code>,
       <code>processed</code> and <code>dateAlert</code>.</p>
       <p>Jira Cloud has no notifications API, so its adapter approximates one:

@@ -656,7 +656,9 @@ export class OfflineSyncWorker {
           // Tagged so a re-POST after a crashed claim is identifiable, and so
           // a correction can find the entry when its id is not known.
           comment: withSyncMarker(item.comment, item.id),
-          isAdHoc: item.providerId === 'adhoc'
+          isAdHoc: item.providerId === 'adhoc',
+          // What a SprintTicker server keeps the send idempotent on.
+          clientRef: item.id
         });
       } catch (err) {
         // Only the send's own refusal: the search before it found nothing,
@@ -684,7 +686,7 @@ export class OfflineSyncWorker {
     const origin = this.worklogRepo.getSyncItem(originId);
     let remoteId = item.remoteWorklogId ?? origin?.remoteWorklogId ?? null;
     if (!remoteId) {
-      remoteId = await provider.findWorklog(item.taskId, origin?.startedAtUtc ?? item.startedAtUtc, syncMarker(originId));
+      remoteId = await provider.findWorklog(item.taskId, origin?.startedAtUtc ?? item.startedAtUtc, syncMarker(originId), originId);
       if (remoteId) this.worklogRepo.setRemoteWorklogId(originId, remoteId);
     }
 
@@ -733,7 +735,7 @@ export class OfflineSyncWorker {
     if (item.sendAttempts <= 1) return null;
     const provider = this.providerManager.getProvider(item.providerId);
     if (!provider?.findWorklog) return null;
-    const remoteId = await provider.findWorklog(item.taskId, item.startedAtUtc, syncMarker(item.id));
+    const remoteId = await provider.findWorklog(item.taskId, item.startedAtUtc, syncMarker(item.id), item.id);
     if (remoteId) {
       console.log(
         `[OfflineSyncWorker] Worklog ${item.id} was already recorded by ${provider.providerName} ` +

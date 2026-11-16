@@ -55,9 +55,6 @@ export interface ProviderEventSettingsDTO {
   kinds: Record<ProviderEventKind, boolean>;
 }
 
-/** Providers that can report events. A test holds it to the adapters. */
-export const PROVIDERS_WITH_EVENTS: readonly string[] = ['openproject', 'jira'];
-
 /**
  * The kinds a provider can produce, where that is not all of them. Jira has
  * no date alerts, and a checkbox for one would be a setting that does nothing.
@@ -74,6 +71,13 @@ export function providerEventKindsFor(providerId: string): readonly ProviderEven
 export const PROVIDER_EVENT_SETTINGS_KEY = 'provider_event_settings';
 /** Per provider: the newest event time seen, on the provider's clock. */
 export const PROVIDER_EVENT_CURSORS_KEY = 'provider_event_cursors';
+/**
+ * Per provider: the ids of the events at the cursor's own instant. A
+ * SprintTicker server answers `since` inclusively (PROVIDER-API 7.4), so
+ * the last event shown comes back at every poll -- and after a restart,
+ * when the poller's memory of ids is empty, it would be shown again.
+ */
+export const PROVIDER_EVENT_CURSOR_IDS_KEY = 'provider_event_cursor_ids';
 /** Where the OpenProject poller kept its switch and interval before this. */
 export const LEGACY_MESSAGING_SETTINGS_KEY = 'messaging_settings';
 

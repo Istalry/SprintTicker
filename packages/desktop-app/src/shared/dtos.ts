@@ -486,6 +486,10 @@ export interface ProviderSettingsDTO {
   jiraTransitionToTest: string;
   jiraTransitionToReview: string;
   jiraCompletionAction: string;
+  /** A SprintTicker server: its base URL, token and last known name. */
+  customServerUrl: string;
+  customServerToken: string;
+  customServerName: string;
   providers: Array<{ id: string; name: string }>;
 }
 
@@ -510,6 +514,8 @@ export interface ProviderSettingsUpdateDTO {
   jiraTransitionToTest?: string;
   jiraTransitionToReview?: string;
   jiraCompletionAction?: string;
+  customServerUrl?: string;
+  customServerToken?: string;
 }
 
 export interface WorklogDTO {
@@ -911,6 +917,10 @@ export interface ProviderCapabilitiesDTO {
   canFetchByKey: boolean;
   /** Reads non-working days for the working calendar (`getNonWorkingDays`). */
   hasHolidays: boolean;
+  /** Reports what happened on the user's tasks (`getEventsSince`): the window offers its notifications. */
+  hasEvents: boolean;
+  /** The provider's name: a SprintTicker server's own (`server.name`), the others' fixed. */
+  providerName: string;
 }
 
 export type UpdateStatusDTO =

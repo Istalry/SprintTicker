@@ -33,7 +33,13 @@ export const ProviderSettingKey = {
   JIRA_TRANSITION_IN_PROGRESS: 'jira_transition_in_progress',
   JIRA_TRANSITION_TO_TEST: 'jira_transition_to_test',
   JIRA_TRANSITION_TO_REVIEW: 'jira_transition_to_review',
-  JIRA_COMPLETION_ACTION: 'jira_completion_action'
+  JIRA_COMPLETION_ACTION: 'jira_completion_action',
+  /** A SprintTicker server's base URL, ending in `/v1` (PROVIDER-API 3.1). */
+  CUSTOM_SERVER_URL: 'custom_server_url',
+  /** Its personal API token, through the SecretStore. */
+  CUSTOM_SERVER_TOKEN: 'custom_server_token',
+  /** The server's own name from its last `/capabilities`, shown before this run reads it. */
+  CUSTOM_SERVER_NAME: 'custom_server_name'
 } as const;
 
 /** Union of the setting-key string literals above. */
@@ -81,7 +87,11 @@ export const PROVIDER_SETTING_DEFAULTS = {
   [ProviderSettingKey.JIRA_TRANSITION_IN_PROGRESS]: '',
   [ProviderSettingKey.JIRA_TRANSITION_TO_TEST]: '',
   [ProviderSettingKey.JIRA_TRANSITION_TO_REVIEW]: '',
-  [ProviderSettingKey.JIRA_COMPLETION_ACTION]: 'to_review'
+  [ProviderSettingKey.JIRA_COMPLETION_ACTION]: 'to_review',
+  // Empty like the others: no server until the user names one.
+  [ProviderSettingKey.CUSTOM_SERVER_URL]: '',
+  [ProviderSettingKey.CUSTOM_SERVER_TOKEN]: '',
+  [ProviderSettingKey.CUSTOM_SERVER_NAME]: ''
 } as const satisfies Record<string, string>;
 
 /** True when the OpenProject provider has enough configuration to issue a request. */

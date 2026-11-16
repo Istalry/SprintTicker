@@ -66,7 +66,7 @@ Everything else is a request/response `invoke`.
 | `worklogs:keep-off` | `(worklogId)`. Keeps a refused entry off its provider: its send is dropped and the worklog stays here as local time, undoable. Rejects for an entry whose send was not refused -- keeping that off would be a deletion |
 | `first-run:should-show` | True once, at the first launch of an install never set up; an install with credentials or a worklog is marked done instead |
 | `first-run:finish` | Start my first task, or Set up later: it does not open on its own again |
-| `first-run:test-connection` | `{ providerId: 'jira' \| 'openproject', site, email?, token }`, saving nothing: `{ ok: true, userName, projectCount }` or `{ ok: false, reason: 'incomplete' \| 'not-found' \| 'refused' \| 'network' \| 'failed', host, detail }` -- never throws for the remote's failure |
+| `first-run:test-connection` | `{ providerId: 'jira' \| 'openproject' \| 'custom-server', site, email?, token }`, saving nothing: `{ ok: true, userName, projectCount, serverName? }` -- `serverName` for a SprintTicker server, whose address is checked (https, `/v1`) before the token is sent -- or `{ ok: false, reason: 'incomplete' \| 'not-found' \| 'refused' \| 'network' \| 'failed', host, detail }` -- never throws for the remote's failure |
 | `first-run:detect-desk` | `{ bar: { found, address, connectionType }, deck: { installed, connected, count } }` -- also read by Settings › Desk devices every 3 s |
 | `first-run:install-deck-plugin` | Opens the `.streamDeckPlugin` the installer carries; false when this build has none |
 | `first-run:open-token-page` | `(providerId, site)`: opens Atlassian's token page, or `/my/access_tokens` on the OpenProject host typed; main builds the URL |
@@ -88,8 +88,8 @@ Everything else is a request/response `invoke`.
 | Channel | Purpose |
 | :--- | :--- |
 | `provider:get-all` | Current provider settings, and the providers to choose from, each under the name the app writes for it (`providerDisplayName`) |
-| `provider:get-capabilities` | What the active provider can do: `ProviderCapabilitiesDTO` (`canAssign`, `canTransition`, `canFindWorklog`, `canFetchByKey`, `hasHolidays`), read off the adapter's optional methods. A control for something it cannot do is hidden, never greyed. With no providers wired, every capability is false |
-| `provider:set-active` | Persist settings, reinitialise providers, start a sync. Takes a **partial** `ProviderSettingsUpdateDTO`, so unrelated providers' credentials are left alone |
+| `provider:get-capabilities` | What the active provider can do: `ProviderCapabilitiesDTO` (`canAssign`, `canTransition`, `canFindWorklog`, `canFetchByKey`, `hasHolidays`, `hasEvents`) and its name (`providerName`: a SprintTicker server's own), read off the adapter's optional methods -- which a SprintTicker server's adapter attaches from its `/capabilities`. A control for something it cannot do is hidden, never greyed. With no providers wired, every capability is false |
+| `provider:set-active` | Persist settings, reinitialise providers, start a sync. Takes a **partial** `ProviderSettingsUpdateDTO`, so unrelated providers' credentials are left alone. A SprintTicker server's are `customServerUrl` and `customServerToken` (encrypted at rest); a new address forgets the server's stored name |
 | `provider:get-projects` / `provider:get-tasks` | Read the local cache. Each project carries its tasks neither done nor archived, counted per owner: `openTaskCount` (the user's), `openUnassignedCount`, `openOthersCount`. `provider:get-tasks` answers every owner's tasks, each with its `ownership`; the views filter them by the task visibility |
 | `provider:create-adhoc` | A local task with no ticket. Its key is the configured ad-hoc key (`fallback_ticket_key`, `MISC-1` by default); its time is never queued for a provider |
 | `provider:fetch-op-statuses` | OpenProject status list, for the settings form |
@@ -311,8 +311,9 @@ what the bar would. `lunch` is reported while no bar prompt is.
 
 **Source:** `src/main/providers/task-provider-interface.ts`
 
-What you implement to add a task provider. Three exist: `OpenProjectProvider`,
-`JiraProvider`, `AdHocProvider`.
+What you implement to add a task provider. Four exist: `OpenProjectProvider`,
+`JiraProvider`, `CustomServerProvider` -- any server on the SprintTicker
+Provider API, [`PROVIDER-API.md`](PROVIDER-API.md) -- and `AdHocProvider`.
 
 ```ts
 interface ITaskProvider {
@@ -331,7 +332,9 @@ interface ITaskProvider {
   updateTaskStatus(taskId: string, status: 'in_progress' | 'to_test' | 'to_review' | 'done', doneState?: string): Promise<boolean>;
 
   // Optional: correcting an entry logTime made. A provider with no remote leaves them out.
-  findWorklog?(taskId: string, startedAtUtc: string, marker: string): Promise<string | null>;
+  // clientRef is the queue row that sent it: a SprintTicker server finds the
+  // entry by it alone (PROVIDER-API 6.5); the others search for the marker.
+  findWorklog?(taskId: string, startedAtUtc: string, marker: string, clientRef?: string): Promise<string | null>;
   updateWorklog?(taskId: string, remoteWorklogId: string, payload: WorklogPayload): Promise<void>;
   deleteWorklog?(taskId: string, remoteWorklogId: string): Promise<void>;
 
@@ -389,6 +392,17 @@ throws on failure; `not_configured` is the one the caller stays quiet about.
 `clampDescription`. Omit the field when there is nothing left; do not send an
 empty string. Jira asks for `description` in its `fields` list, the one heavy
 field it requests.
+
+**A SprintTicker server** (`custom-server-provider.ts`) speaks the contract
+in [`PROVIDER-API.md`](PROVIDER-API.md): Bearer token, `User-Agent:
+SprintTicker/<version>`, `/capabilities` read at start, on save and hourly.
+`logTime` sends `clientRef` -- the queue row's id, `WorklogPayload.clientRef`
+-- and the user's local `day`, and the server keeps the send idempotent on
+it, so a lost answer resent is the same worklog. Transitions are intents
+(`start`, `finish`); assignment, standing, days off, fetch by key, events
+and today's total are each attached only when the server lists their
+capability. `getTaskPageUrl` answers the task's own `url` while it is under
+the server's `siteUrl`.
 
 ### The contract, in rules
 
@@ -460,15 +474,16 @@ logged today", and AdHoc has no remote at all; both return `null` rather than a
 OpenProject returns a real total, and `null` when the fetch failed.
 
 **`getEventsSince` throws too, and works on the provider's clock.** It answers
-what happened after `sinceUtc`, exclusive: `assigned`, `mentioned`,
+what happened since `sinceUtc` -- an event at that very instant may come back,
+and the poller drops an id it has shown, stored with the cursor so a restart
+does not show it twice: `assigned`, `mentioned`,
 `commented`, `status_changed` or `date_alert` (`ProviderEventDTO` in
 `src/shared/provider-events.ts`). An empty array means nothing happened, so a
 failure must throw, or the poller would move its cursor past events it never
 saw. `occurredAtUtc` is the server's own timestamp: the cursor advances on it,
 never on this machine's clock. Drop what is not about the user's attention
-rather than inventing a kind for it, and add the provider's id to
-`PROVIDERS_WITH_EVENTS`, which a test holds to the adapters that implement the
-method. OpenProject reads unread `/api/v3/notifications` -- the API has no
+rather than inventing a kind for it. The settings offer notifications
+wherever the method exists (`hasEvents`). OpenProject reads unread `/api/v3/notifications` -- the API has no
 time filter -- and maps `assigned`/`responsible`, `mentioned`, `commented`,
 `processed` and `dateAlert`.
 

@@ -4,6 +4,7 @@ import {
   LegacyMessagingSettings,
   MAX_INDIVIDUAL_PROVIDER_TOASTS,
   PROVIDER_EVENT_CURSORS_KEY,
+  PROVIDER_EVENT_CURSOR_IDS_KEY,
   PROVIDER_EVENT_FIRST_POLL_DELAY_MS,
   PROVIDER_EVENT_SEEN_LIMIT,
   PROVIDER_EVENT_SETTINGS_KEY,
@@ -229,25 +230,40 @@ export class ProviderEventService {
   }
 
   /**
-   * The events newer than the cursor and not seen before, oldest first; and
-   * the cursor moved to the newest of them. Events of a kind the user
+   * The events at or after the cursor and not seen before, oldest first;
+   * and the cursor moved to the newest of them. Events of a kind the user
    * filtered out still move it: they were seen, just not wanted.
+   *
+   * At the cursor's own instant, an event counts when its id is new: two
+   * events can share a second, one read in the last poll and one recorded
+   * just after it (PROVIDER-API 7.4). Dropping every event at the cursor
+   * lost the second. The ids already there are stored with the cursor, so
+   * a restart, which empties `seen`, does not show the last one again.
    */
   private takeFresh(providerId: string, since: string, events: ProviderEventDTO[]): ProviderEventDTO[] {
     const sinceMs = Date.parse(since);
+    const atCursor = new Set(this.readCursorIds()[providerId] ?? []);
     let newest = sinceMs;
     const fresh: Array<{ event: ProviderEventDTO; at: number }> = [];
+    const valid: Array<{ id: string; at: number }> = [];
 
     for (const event of events) {
       const at = Date.parse(event.occurredAtUtc);
-      if (Number.isNaN(at) || at <= sinceMs) continue;
+      if (Number.isNaN(at) || at < sinceMs) continue;
+      if (at === sinceMs && atCursor.has(event.id)) continue;
+      valid.push({ id: event.id, at });
       newest = Math.max(newest, at);
       if (this.seen.has(event.id)) continue;
       this.remember(event.id);
       fresh.push({ event, at });
     }
 
-    if (newest > sinceMs) this.writeCursor(providerId, new Date(newest).toISOString());
+    const idsAtNewest = valid.filter(entry => entry.at === newest).map(entry => entry.id);
+    if (newest > sinceMs) {
+      this.writeCursor(providerId, new Date(newest).toISOString(), idsAtNewest);
+    } else if (idsAtNewest.length > 0) {
+      this.writeCursor(providerId, since, [...atCursor, ...idsAtNewest]);
+    }
     return fresh.sort((a, b) => a.at - b.at).map(entry => entry.event);
   }
 
@@ -297,8 +313,18 @@ export class ProviderEventService {
     return stored && typeof stored === 'object' ? stored : {};
   }
 
-  private writeCursor(providerId: string, value: string): void {
+  private readCursorIds(): Record<string, string[]> {
+    const stored = this.deps.settings.getSetting<Record<string, string[]> | null>(PROVIDER_EVENT_CURSOR_IDS_KEY, null);
+    return stored && typeof stored === 'object' ? stored : {};
+  }
+
+  /** The cursor, and the ids of the events at its instant (`takeFresh`). */
+  private writeCursor(providerId: string, value: string, idsAtCursor: string[] = []): void {
     this.deps.settings.setSetting(PROVIDER_EVENT_CURSORS_KEY, { ...this.readCursors(), [providerId]: value });
+    this.deps.settings.setSetting(PROVIDER_EVENT_CURSOR_IDS_KEY, {
+      ...this.readCursorIds(),
+      [providerId]: [...new Set(idsAtCursor)].slice(-PROVIDER_EVENT_SEEN_LIMIT)
+    });
   }
 }
 

@@ -2,9 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { OpenProjectProvider } from '../src/main/providers/openproject-provider';
 import { isProviderRequestError } from '../src/main/providers/provider-errors';
 import { ArgumentException } from '../src/shared/dtos';
-import { PROVIDERS_WITH_EVENTS } from '../src/shared/provider-events';
-import { AdHocProvider } from '../src/main/providers/adhoc-provider';
-import { JiraProvider } from '../src/main/providers/jira-provider';
 
 const BASE = 'https://op.test';
 const SINCE = '2026-10-01T10:00:00.000Z';
@@ -164,14 +161,5 @@ describe('OpenProject events', () => {
   it('GetEventsInboxUrl_PointsAtTheNotificationCenter', async () => {
     expect(provider.getEventsInboxUrl()).toBe(`${BASE}/notifications`);
     expect(new OpenProjectProvider().getEventsInboxUrl()).toBeNull();
-  });
-
-  it('ProvidersWithEvents_MatchTheAdaptersThatImplementThem', () => {
-    // The settings panel offers notifications for the listed providers; an
-    // entry without the method would offer settings that do nothing.
-    const adapters = [new OpenProjectProvider(), new JiraProvider(), new AdHocProvider()];
-    const implementing = adapters.filter(p => typeof p.getEventsSince === 'function').map(p => p.providerId);
-
-    expect([...PROVIDERS_WITH_EVENTS].sort()).toEqual(implementing.sort());
   });
 });
