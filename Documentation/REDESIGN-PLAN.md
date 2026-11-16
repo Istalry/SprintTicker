@@ -2852,6 +2852,11 @@ refresh the counts with the next full run.
    paused; STAND-UP after Join; RESUME? after lunch (new here).
    **Settings › Desk devices › Bar health** charts every press while you
    try 2 to 5: a hollow mark is a press that arrived and did nothing.
+   **Items 2 to 6 passed on rc7, 2026-11-16**, on the bar and the deck,
+   RESUME? after lunch aside (left to a real lunch). The in-app side ran
+   first on a throwaway profile, 20 checks passing. One finding: with
+   nothing running, Back during a banner leaves the firmware's clock app
+   and takes the banner along (`1f52ac4`, CLAUDE.md §4); Back stays unused.
 6. **The deck:** END MY DAY then CONFIRM at the wrap-up; one interruption
    paused on the Session key and stopped (rc6); the Session key held for
    the picker.
