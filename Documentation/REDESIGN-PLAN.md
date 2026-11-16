@@ -2764,6 +2764,9 @@ user's to try; before it, what REVIEW §8 left for P15d:
   the user's choice:** every app shows its own logo, converted, whenever
   one is found; the drawn icon is only what shows before. With the icons
   kept between starts (rc3), that is an app's very first notification.
+  **And that one waits** (rc3 showed it, the user's choice, 2026-11-16): the
+  first banner of an app not looked up yet is held until the lookup answers,
+  `FIRST_ICON_WAIT_MS` (1.5 s) at most, then shown with whatever was found.
 - **NOTHING TIMING is a scene** (the user's request, word and icon chosen
   by them): NO TASK beside an empty office chair on amber
   (`nothing_chair_72x16`), its seat swinging away, back past where it was,

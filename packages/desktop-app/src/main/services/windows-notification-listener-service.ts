@@ -49,6 +49,12 @@ export class WindowsNotificationListenerService {
    * Fixed rather than unique so repeated starts overwrite one file instead of
    * leaving one behind per launch.
    */
+  /**
+   * How long the first banner of an app not looked up yet waits for its logo
+   * (the user's choice, 2026-11-16). The lookup answers in well under a second
+   * when the app is in the Start menu; past this the drawn icon shows.
+   */
+  public static readonly FIRST_ICON_WAIT_MS = 1500;
   private static readonly SCRIPT_FILENAME = 'sprintticker-notification-listener.ps1';
 
   private readonly _settingsRepo: SettingsRepository;
@@ -74,13 +80,16 @@ export class WindowsNotificationListenerService {
   private _hasNotifDb = false;
   private _lastPollTimestamp?: string;
   private _errorMessage?: string;
+  /** 0 shows the drawn icon at once and looks the logo up behind it. */
+  private readonly _firstIconWaitMs: number;
 
   constructor(
     settingsRepo: SettingsRepository,
     priorityEngine: PriorityPreemptionEngine,
     renderer?: DisplayRenderer,
     iconResolver?: AppIconResolver,
-    scriptDirectory?: string
+    scriptDirectory?: string,
+    firstIconWaitMs: number = WindowsNotificationListenerService.FIRST_ICON_WAIT_MS
   ) {
     if (!settingsRepo) throw new ArgumentNullException('settingsRepo');
     if (!priorityEngine) throw new ArgumentNullException('priorityEngine');
@@ -95,6 +104,7 @@ export class WindowsNotificationListenerService {
     // Injectable so a test can point the generated script at its own directory
     // rather than writing into the developer's %TEMP%.
     this._scriptDirectory = scriptDirectory ?? os.tmpdir();
+    this._firstIconWaitMs = firstIconWaitMs;
   }
 
   /**
@@ -427,7 +437,9 @@ export class WindowsNotificationListenerService {
    * Processes incoming Windows notification events, applying per-source priority rules.
    *
    * @param event Notification details including app ID, title, and body
-   * @returns True if notification was displayed, false if suppressed
+   * @returns True if notification was displayed, false if suppressed. A
+   *   banner held for its app's first icon lookup answers true: it will be
+   *   offered to the display, and the engine decides then.
    */
   public handleNotification(event: WindowsNotificationEventDTO): boolean {
     if (!event || (!event.appId && !event.appName)) return false;
@@ -474,58 +486,102 @@ export class WindowsNotificationListenerService {
     // resolver keeps what it finds between starts, so that is an app's very
     // first notification only.
     const iconOverride = matchedRule?.iconImagePath?.trim();
-    let rawIconData = iconOverride ? undefined : event.rawIconData;
-    if (!rawIconData) {
-      const customInput = iconOverride || event.iconPath || event.iconBase64 || this.resolveIconSource(event);
-      if (customInput) {
-        // `tryProcessAppImage`, not `processAppIcon`: the latter substitutes a
-        // generic bell when an image fails to parse and then caches it under the
-        // app id, which is both worse than the app's own hand-drawn bitmap and
-        // permanent for the rest of the session.
-        rawIconData = AppIconBitmapProcessor.tryProcessAppImage(customInput, event.appId) ?? undefined;
-      }
+    const show = (rawIconData: (string | null)[][] | undefined): boolean => {
+      // App id and event name identify which rule matched; the title and body
+      // are private message content and never reach the log unless the process
+      // was started with --debug-notifications.
+      console.log(
+        `[NotificationListener] ${eventName} | appId=${event.appId || '(none)'} | ` +
+          `icon=${rawIconData ? 'resolved' : 'fallback:' + iconId} | ` +
+          redactNotificationSummary(event.title, event.body)
+      );
+
+      if (!this._renderer) return false;
+
+      this._renderer.renderNotificationBanner({
+        appName: appLabel,
+        title: event.title,
+        body: event.body,
+        // Absent rule means absent opt-in: a source nobody has configured
+        // shows its body, the same as it did before this existed.
+        hideBody: matchedRule?.hideMessageBody === true,
+        eventName,
+        iconId,
+        customIconData: rawIconData,
+        timeoutMs
+      });
+
+      // Whether the banner actually reached the display is the engine's
+      // decision, taken inside `requestRender`. It holds the lock only for a
+      // request it let through, so the lock is the honest answer -- and asking
+      // costs nothing, unlike the second `evaluateRequest` this replaced,
+      // which took a lock of its own to find out.
+      return this._priorityEngine.getActiveLockEventName() === eventName;
+    };
+
+    const carried = iconOverride ? undefined : event.rawIconData;
+    if (carried) return show(carried);
+
+    const given = iconOverride || event.iconPath || event.iconBase64;
+    if (given) return show(this.decodeIcon(given, event.appId));
+
+    // An app never looked up: its first banner waits for the lookup, briefly,
+    // rather than showing the drawn icon and the logo from the second message
+    // on (Discord on rc3, 2026-11-16). Every later one reads the cache, kept
+    // between starts.
+    const lookupId = event.appId || event.appName;
+    if (this._renderer && this._firstIconWaitMs > 0 && lookupId && !this._iconResolver.hasResolved(lookupId)) {
+      void this.lookUpThenShow(lookupId, event, show);
+      return true;
     }
 
-    // App id and event name identify which rule matched; the title and body are
-    // private message content and never reach the log unless the process was
-    // started with --debug-notifications.
-    console.log(
-      `[NotificationListener] ${eventName} | appId=${event.appId || '(none)'} | ` +
-        `icon=${rawIconData ? 'resolved' : 'fallback:' + iconId} | ` +
-        redactNotificationSummary(event.title, event.body)
-    );
+    const cached = this.resolveIconSource(event);
+    return show(cached ? this.decodeIcon(cached, event.appId) : undefined);
+  }
 
-    if (!this._renderer) return false;
+  /**
+   * `tryProcessAppImage`, not `processAppIcon`: the latter substitutes a
+   * generic bell when an image fails to parse and then caches it under the
+   * app id, which is both worse than the app's own hand-drawn bitmap and
+   * permanent for the rest of the session.
+   */
+  private decodeIcon(source: string, appId?: string): (string | null)[][] | undefined {
+    return AppIconBitmapProcessor.tryProcessAppImage(source, appId) ?? undefined;
+  }
 
-    this._renderer.renderNotificationBanner({
-      appName: appLabel,
-      title: event.title,
-      body: event.body,
-      // Absent rule means absent opt-in: a source nobody has configured shows
-      // its body, the same as it did before this existed.
-      hideBody: matchedRule?.hideMessageBody === true,
-      eventName,
-      iconId,
-      customIconData: rawIconData,
-      timeoutMs
+  /** Shows the banner once the app's icon is found, or the wait is over. */
+  private async lookUpThenShow(
+    lookupId: string,
+    event: WindowsNotificationEventDTO,
+    show: (rawIconData: (string | null)[][] | undefined) => boolean
+  ): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    const waited = new Promise<null>(resolve => {
+      timer = setTimeout(() => resolve(null), this._firstIconWaitMs);
     });
-
-    // Whether the banner actually reached the display is the engine's decision,
-    // taken inside `requestRender`. It holds the lock only for a request it let
-    // through, so the lock is the honest answer -- and asking costs nothing,
-    // unlike the second `evaluateRequest` this replaced, which took a lock of
-    // its own to find out.
-    return this._priorityEngine.getActiveLockEventName() === eventName;
+    const lookup = this._iconResolver.resolve(lookupId, event.appName).catch(err => {
+      console.warn('[NotificationListener] Icon resolution failed:', err);
+      return null;
+    });
+    try {
+      const found = await Promise.race([lookup, waited]);
+      show(found ? this.decodeIcon(found, event.appId) : undefined);
+    } catch (err) {
+      // A banner must not be lost to a failed decode: show it with the drawn icon.
+      console.warn('[NotificationListener] Showing a banner after the icon lookup failed:', err);
+      show(undefined);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /**
    * Best-effort real icon for an app whose notification carried no icon path.
    *
-   * Only ever reads the cache. Resolution is asynchronous and runs off this
-   * path, because extracting an icon from an executable takes far longer than
-   * the two-second poll interval and a notification must never wait on it. The
-   * first notification from an app therefore shows the hand-drawn fallback and
-   * subsequent ones show the real icon.
+   * Only ever reads the cache, and starts a lookup when the app has had none.
+   * The one wait is an app's first banner (`lookUpThenShow`), bounded by
+   * `FIRST_ICON_WAIT_MS`; a lookup slower than that shows the drawn icon this
+   * time and the logo from the next message on.
    */
   private resolveIconSource(event: WindowsNotificationEventDTO): string | undefined {
     const appId = event.appId || event.appName;

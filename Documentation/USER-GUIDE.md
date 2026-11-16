@@ -1052,10 +1052,10 @@ app, so a shortcut named differently from its app — `PowerToys (Preview)`,
 matched by name, which is not perfect: if it shows the wrong icon, set an icon
 of your own on that app (*Icon of my own*, a 16×16 PNG). An icon found is
 kept between starts, and the apps you have already met are looked up when the
-app starts, so a first notification after a start no longer rings the bell
-while its icon is still being found. Until an app's icon is found, Slack,
-Discord, Gmail, Jira and OpenProject show an icon drawn for the bar, and any
-other app the bell. The ✈ beside an
+app starts. The very first notification from an app SprintTicker has never
+seen waits up to 1.5 seconds for its icon to be found. If it is not found by
+then, Slack, Discord, Gmail, Jira and OpenProject show an icon drawn for the
+bar, and any other app the bell. The ✈ beside an
 app sends it a test notification, and the bin forgets it until it notifies
 again. An app the list has not seen yet is added by its id under **Settings,
 Developer** (turn on **Show developer tools** in General first). The first notification from an app after SprintTicker

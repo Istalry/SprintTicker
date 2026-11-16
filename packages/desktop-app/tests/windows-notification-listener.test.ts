@@ -68,7 +68,10 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
       settingsRepo,
       priorityEngine,
       mockRenderer,
-      iconResolver
+      iconResolver,
+      undefined,
+      // Shown at once: the hold for a first icon lookup has its own tests.
+      0
     );
   });
 
@@ -290,6 +293,65 @@ describe('WindowsNotificationListenerService Unit Tests', () => {
       service.handleNotification({ appId: 'Contoso.Notes', appName: 'Notes', title: 'Saved', body: 'ok', iconPath: FILE });
 
       expect(bannerCalls[0]).toMatchObject({ iconId: 'bell', customIconData: GRID });
+    });
+
+    describe('the first banner of an app not looked up yet', () => {
+      // Discord on rc3 (2026-11-16): the first message drew our icon, the
+      // second its own logo, because the lookup answered between the two.
+      const DISCORD = 'com.squirrel.Discord.Discord';
+
+      function holdingService(runPowerShell: () => Promise<string>): WindowsNotificationListenerService {
+        withRules([{ appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' }]);
+        // An unpackaged app: the shell names its exe, and the exe holds the icon.
+        const resolver = new AppIconResolver(runPowerShell, async () => FILE, undefined, () => true);
+        return new WindowsNotificationListenerService(settingsRepo, priorityEngine, mockRenderer, resolver);
+      }
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it('HandleNotification_LogoFoundWithinTheWait_ShowsTheLogoOnTheFirstBanner', async () => {
+        const holding = holdingService(async () => FILE);
+
+        const accepted = holding.handleNotification({ appId: DISCORD, appName: 'Discord', title: 'Toukha', body: 'hi' });
+
+        expect(accepted).toBe(true);
+        await vi.waitFor(() => expect(bannerCalls).toHaveLength(1));
+        expect(bannerCalls[0]).toMatchObject({ iconId: 'discord', customIconData: GRID });
+      });
+
+      it('HandleNotification_LookupSlowerThanTheWait_ShowsTheDrawnIconAfterIt', async () => {
+        vi.useFakeTimers();
+        const holding = holdingService(() => new Promise<string>(() => undefined));
+
+        holding.handleNotification({ appId: DISCORD, appName: 'Discord', title: 'Toukha', body: 'hi' });
+        await vi.advanceTimersByTimeAsync(WindowsNotificationListenerService.FIRST_ICON_WAIT_MS - 1);
+        expect(bannerCalls).toHaveLength(0);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(bannerCalls).toHaveLength(1);
+        expect(bannerCalls[0]).toMatchObject({ iconId: 'discord', customIconData: undefined });
+      });
+
+      it('HandleNotification_AppLookedUpBefore_ShowsAtOnce', async () => {
+        const holding = holdingService(async () => FILE);
+        holding.handleNotification({ appId: DISCORD, appName: 'Discord', title: 'Toukha', body: 'hi' });
+        await vi.waitFor(() => expect(bannerCalls).toHaveLength(1));
+
+        holding.handleNotification({ appId: DISCORD, appName: 'Discord', title: 'Toukha', body: 'again' });
+
+        expect(bannerCalls).toHaveLength(2);
+        expect(bannerCalls[1].customIconData).toBe(GRID);
+      });
+
+      it('HandleNotification_NoRendererWhileUnseen_IsNotShown', () => {
+        withRules([{ appId: 'discord', appName: 'Discord', iconId: 'discord', priorityMode: 'DEFAULT' }]);
+        const resolver = new AppIconResolver(async () => FILE, async () => null, undefined, () => true);
+        const headless = new WindowsNotificationListenerService(settingsRepo, priorityEngine, undefined, resolver);
+
+        expect(headless.handleNotification({ appId: DISCORD, appName: 'Discord', title: 'Toukha', body: 'hi' })).toBe(false);
+      });
     });
   });
 
