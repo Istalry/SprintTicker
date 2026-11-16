@@ -35,7 +35,7 @@ describe('mini timer', () => {
     await waitFor(() => expect(bridge.api.interrupt).toHaveBeenCalledWith({ source: 'mini' }));
   });
 
-  it('DuringAnInterruption_BackStopAndAnother_NoPause', async () => {
+  it('DuringAnInterruption_PauseStopAndAnother_NoBack', async () => {
     const during = {
       ...TRACKING_SESSION,
       sessionId: 'int_1',
@@ -53,13 +53,15 @@ describe('mini timer', () => {
     render(<MiniBar />);
     await screen.findByText('during SPR-142');
 
-    expect(screen.queryByLabelText('Pause')).toBeNull();
-    fireEvent.click(screen.getByLabelText('Back to SPR-142'));
+    // Paused and stopped as a task is (2026-11-16); Stop goes back.
+    expect(screen.queryByLabelText('Back to SPR-142')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Pause'));
     fireEvent.click(screen.getByLabelText('Stop'));
     fireEvent.click(screen.getByLabelText('Another'));
 
-    await waitFor(() => expect(bridge.api.backFromInterruption).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(bridge.api.pauseSession).toHaveBeenCalledTimes(1));
     expect(bridge.api.stopInterruption).toHaveBeenCalledTimes(1);
+    expect(bridge.api.backFromInterruption).not.toHaveBeenCalled();
     expect(bridge.api.interrupt).toHaveBeenCalledWith({ source: 'mini' });
     // Stop ends the interruption alone: no choice of done or discard.
     expect(screen.queryByRole('group', { name: 'End the session' })).toBeNull();
@@ -455,7 +457,7 @@ describe('mini timer: the states of S25', () => {
     render(<MiniBar />);
 
     expect(await screen.findByText(/from the deck/)).toBeTruthy();
-    expect(labels()).toEqual(['Back to SPR-142', 'Place it on a task', 'Another', 'Stop', 'Close the mini timer']);
+    expect(labels()).toEqual(['Pause', 'Place it on a task', 'Another', 'Stop', 'Close the mini timer']);
 
     fireEvent.change(screen.getByLabelText('When it started'), { target: { value: '5' } });
     expect(bridge.api.moveInterruptionStart).toHaveBeenCalledTimes(1);

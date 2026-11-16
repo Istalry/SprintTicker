@@ -14,9 +14,9 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Before you update: what changes in your habits
 
-- **The bar's buttons are reset.** **Pause** says yes -- pause, resume, back
-  from an interruption, join, dismiss. **Pause twice** within 4 s stops the
-  task. A **wheel click** starts an interruption, and says no to a question.
+- **The bar's buttons are reset.** **Pause** says yes -- pause, resume,
+  join, dismiss. **Pause twice** within 4 s stops the task, or an
+  interruption. A **wheel click** starts an interruption, and says no to a question.
   **Turning** the wheel opens a short menu. **Back** does nothing. The bar's
   own task picker, its paused menu and "hold BACK = done" are gone, and with
   them any bindings you had set: choosing a task happens on the computer.
@@ -31,8 +31,8 @@ months of history: every screen answers within about a tenth of a second.
   Discard, a correction, a move. The entry reaches your provider ten seconds
   later than it did.
 - **Interrupt holds your task.** Its time runs on its own and goes nowhere
-  until you **place** it on a task, or keep it off: **Back** returns to the
-  task you held.
+  until you **place** it on a task, or keep it off. It pauses as a task
+  does, and **Stop** ends it and returns to the task you held.
 - **Closing the window keeps SprintTicker in the tray.** Quit from the tray
   icon, or change *When I close the window* in Settings › General.
 - **Four keyboard shortcuts are on**, from any app: Ctrl+Alt+Shift+I
@@ -43,13 +43,13 @@ months of history: every screen answers within about a tenth of a second.
   Account.
 - **No prompt takes the window any more.** The stand-up, *Back at your
   desk?* and the reminders wait as cards on Today and in the mini timer.
-- **The Stream Deck plugin is 0.6.4**, in the installer: the first run
+- **The Stream Deck plugin is 0.6.5**, in the installer: the first run
   offers it. A deck laid out with 0.5 keeps working.
 - **Unity support is gone** -- see Removed.
 
 ### Added
 
-- **Stream Deck plugin 0.6.4: one meaning per key.** A says yes -- DONE,
+- **Stream Deck plugin 0.6.5: one meaning per key.** A says yes -- DONE,
   BACK to your task during an interruption, JOIN, RESUME, END STAND-UP, END MY DAY --
   in green; B stops or waits -- STOP, SKIP, NOT NOW -- in blue-grey; C
   throws away -- DISCARD, or DISCARD ⚡ for an interruption -- in red, and
@@ -59,10 +59,11 @@ months of history: every screen answers within about a tenth of a second.
   NOT YOURS for a task given to someone else. New keys to add: **Previous
   task** and **Recent 1-3**. A deck laid out with 0.5 keeps its keys. A
   ready-made **SprintTicker** profile for the Stream Deck Mini and one for
-  Stream Deck Mobile come with it, beside your own profiles.
+  Stream Deck Mobile come with it, beside your own profiles. The Session
+  key pauses and resumes an interruption, as it does a task.
 - **The app speaks the Stream Deck's protocol 2** -- an interruption, what
   waits to be placed, the previous and recent tasks, the stand-up running
-  -- which plugin 0.6.4 uses. Plugin 0.5 keeps working as it does: the app
+  -- which plugin 0.6.5 uses. Plugin 0.5 keeps working as it does: the app
   tells the two apart and answers each in its own protocol.
 - **Four keyboard shortcuts, from any app**: Interrupt (Ctrl+Alt+Shift+I),
   Switch task (S), Previous task (P) and Back (B), on by default and each
@@ -162,17 +163,17 @@ months of history: every screen answers within about a tenth of a second.
 - **Interrupt: a timer at once, and the task waits.** When someone comes to
   your desk, one click starts a timer -- on Today's session card, in the
   mini timer, in the tray menu, on the deck or on the bar -- with nothing to
-  fill in. The task you were on waits, paused, with nothing logged or sent:
-  **Back** resumes it where it was. **Another** starts the next
-  interruption when someone else arrives first, so Marc, Ana and Marc again
-  are three interruptions and one Back. **Stop** ends the interruption
-  alone, opens a small **Place** window in front -- that run's
-  interruptions, each named and placed on its own -- and asks whether to go
-  back, in the window and on the bar, with the choice to count the time
-  since as work. While one runs, no task can be chosen: end it first.
-  **Keep as its own entry** keeps one in your history without a task,
-  never sent. On the bar, Interrupt is the
-  paused menu's first choice: pause, turn the wheel two notches left, click.
+  fill in. The task you were on waits, paused, with nothing logged or sent.
+  The interruption is timed like a task you had not planned: **Pause**
+  pauses it, and **Stop** ends it and resumes your task where it was.
+  **Another** starts the next interruption when someone else arrives
+  first, so Marc, Ana and Marc again are three interruptions and one Stop.
+  Each waits on Today to be named and placed. When SprintTicker ends one
+  itself -- lunch, the end of your day -- it asks whether to go back, in
+  the window and on the bar, with the choice to count the time since as
+  work. While one runs, no task can be chosen: end it first. **Keep as its
+  own entry** keeps one in your history without a task, never sent. On the
+  bar, Interrupt is a click of the wheel.
 - **One task picker, search first.** Start, Switch, Assign, Place and Move
   open the same picker: type and it searches every project at once, or pick
   from the previous task, Recent, Starred (☆ on any task), your open tasks
@@ -338,11 +339,11 @@ months of history: every screen answers within about a tenth of a second.
   says why and what to do, rather than "Error invoking remote method".
 
 - **The bar's buttons each do one thing.** **Pause** says yes -- pause,
-  resume, back to your task from an interruption, join, dismiss -- and with
+  resume, join, dismiss -- and with
   nothing running opens the task picker on the computer. **Pause again**
   within 4 s stops the task (its time logged, LOGGED on the bar; the bar
-  says AGAIN=STOP meanwhile); during an interruption, two presses stop it
-  and the Place window opens on the computer. A **wheel click** starts an
+  says AGAIN=STOP meanwhile); an interruption pauses and stops the same
+  way, and its Stop takes your task up again. A **wheel click** starts an
   interruption, or the next one, and says no to a question. **Back** is no
   longer used. A press just as a question or a notification appears only
   settles. The paused screen shows ❚❚ and the key, the time below. The

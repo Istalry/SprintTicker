@@ -266,6 +266,27 @@ describe('undoable commands', () => {
     expect(undo.current()?.outcome).toBe('to-place');
   });
 
+  it.each([
+    ['Stop', () => stopUndoably(deps, renderer)],
+    ['Discard', () => discardUndoably(deps)]
+  ])('%sAnInterruptionThenUndo_ItRunsAgain_TheTaskWaitsPausedAgain', (_name, end) => {
+    // Its end resumes the held task now (2026-11-16): Undo puts both back.
+    const sessionId = runA();
+    const fragment = engine.startInterruption();
+    end();
+    expect(engine.getCurrentSession()).toMatchObject({ sessionId, status: 'TRACKING' });
+
+    // The held task running again is not "another session started".
+    expect(undo.currentResumes()).toBe(sessionId);
+
+    expect(undo.run()).toBe(true);
+
+    expect(engine.getCurrentSession()).toMatchObject({ sessionId: fragment.sessionId, status: 'TRACKING' });
+    expect(engine.isInterrupted()).toBe(true);
+    engine.stopSession();
+    expect(engine.getCurrentSession()).toMatchObject({ sessionId, status: 'TRACKING' });
+  });
+
   it('Discard_SaysNothingIsKept', () => {
     runA();
     discardUndoably(deps);

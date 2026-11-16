@@ -358,11 +358,14 @@ describe('planPress', () => {
     expect(planPress('session', online(stateMessage({ session: session({ status: 'paused' }) })))).toEqual({ type: 'request', action: 'resume' });
   });
 
-  it('PlanPress_SessionDuringAnInterruption_DoesNothingHeldOrNot', () => {
-    // Pausing would end it, and choosing a task waits for its end (2026-11-12).
+  it('PlanPress_SessionDuringAnInterruption_PausesAndResumesIt_HeldDoesNothing', () => {
+    // An interruption pauses as a task does (2026-11-16); choosing a task
+    // still waits for its end (2026-11-12), so held does nothing.
     const ctx = online(stateMessage(STATES.interruption));
-    expect(planPress('session', ctx)).toEqual({ type: 'none', reason: 'nothing' });
+    expect(planPress('session', ctx)).toEqual({ type: 'request', action: 'pause' });
     expect(planPress('session', ctx, true)).toEqual({ type: 'none', reason: 'nothing' });
+    const paused = online(stateMessage({ session: { ...INTERRUPTION, status: 'paused' } }));
+    expect(planPress('session', paused)).toEqual({ type: 'request', action: 'resume' });
   });
 
   it('PlanPress_NotDone_StopsTheSession', () => {

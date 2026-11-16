@@ -347,32 +347,33 @@ and then, with nothing to fill in. The task you were on **waits, paused**:
 nothing is logged or sent for it, and its timer goes on from where it was
 when you come back. Interrupt is on Today's session card, in the mini timer,
 in the tray menu, on the Stream Deck's Interrupt key, and on the bar: click
-the wheel. On the bar, Pause then goes back to your task, Pause twice stops
-the interruption, and another click is **Another**. And on Ctrl+Alt+Shift+I,
+the wheel. An interruption is then timed like a task you had not planned:
+Pause pauses it, Pause twice stops it, and another click is **Another**. And on Ctrl+Alt+Shift+I,
 from any app -- see [the shortcuts](#-the-tray-closing-the-window-and-the-shortcuts).
 
 While it runs, the session card says which task waits, and offers:
 
-- ↩ **Back to MG-12** ends the interruption and goes back to the task, as
-  it was: a task already paused when you pressed Interrupt stays paused.
-- ⏹️ **Stop** ends the interruption alone, and a small **Place** window
-  opens in front at once, wherever you are: the interruptions of that run
-  -- Marc, then Ana -- each on its own row, with its name to type and its
-  own **Choose a task ▾**. Place the ones you chose; **Later** or Escape
-  leaves them to place on Today, with the names you typed. The task still
-  waits, paused, and SprintTicker asks **Back to MG-12?**: in the window,
-  and on the bar as the task's key over **BACK TO IT?**. **↩ Back to MG-12**
-  goes back; **↩ Back, add the 6 min** also puts the minutes between the
-  Stop and now on the task; **Not now** leaves it paused.
+- ⏸️ **Pause** and ▶ **Resume**, as on a task: a paused interruption's
+  timer stops, and the time it spent paused is not counted.
+- ⏹️ **Stop** ends the interruption and goes back to the task, as it was:
+  a task already paused when you pressed Interrupt stays paused. The
+  interruption waits on Today to be placed; Undo, for 10 s, puts both back
+  as they were.
 - ⚡ **Another**: someone else arrives before you got back. The interruption
   ends and the next starts, waiting on the same task. Marc, then Ana, then
-  Marc again is three interruptions in a row and one **Back**.
+  Marc again is three interruptions in a row and one **Stop**.
 - **No task can be chosen while it runs**: an interruption is already being
-  timed. To move on to another task, end it first -- Back, Stop or Discard
-  -- then start the task.
+  timed. To move on to another task, end it first -- Stop or Discard --
+  then start the task.
 
-The mini timer has the same: ↩, ⏹️ and ⚡. The tray menu has **↩ Back to
-MG-12** and **Stop**, which ends the interruption.
+The mini timer has the same: ⏸️, ↳ Place, ⚡ and ⏹️. The tray menu has
+**Pause** and **Stop, back to MG-12**.
+
+When SprintTicker itself ends an interruption -- lunch, the end of your
+day, a night away -- the task stays paused and it asks **Back to MG-12?**:
+in the window, and on the bar as the task's key over **BACK TO IT?**.
+**↩ Back to MG-12** goes back; **↩ Back, add the 6 min** also puts the
+minutes since on the task; **Not now** leaves it paused.
 
 - **Lunch time during an interruption** asks first, on Today and the mini
   timer: *Start lunch? It ends "Call with Marc", which waits to be placed.*
@@ -902,7 +903,7 @@ in the mini timer, and by notification while the window is hidden:
 | :--- | :--- | :--- |
 | Nothing timing for 10 min | *Did you mean to stop?* | **Not now** · **▶ Start a task…** |
 | A pause of 30 min | *Still paused?* | **Still paused** · **▶ Resume** |
-| An interruption of 20 min | *Still on it?* | **Still on it** · **↩ Back to MG-12** (or **■ Stop**) |
+| An interruption of 20 min, not paused | *Still on it?* | **Still on it** · **↩ Back to MG-12** (or **■ Stop**) |
 | The stand-up at 25 min | *Still in it?* | **Still in it** · **End stand-up** |
 
 On the bar, *Nothing timing* shows **NO TASK** beside an empty office chair,
@@ -1179,7 +1180,7 @@ there.
 🧭 **The tray**: a click opens the window. Its menu, on a right-click, holds
 what you reach for without the window: **Switch task…**, **Previous task:
 PF-31**, **Pause** or **Resume**, **Stop** (as Today's, with Undo),
-**Interrupt** -- or **↩ Back to MG-12** during an interruption -- **Lunch**
+**Interrupt** -- **Another interruption** during one, when Stop reads **Stop, back to MG-12** -- **Lunch**
 and **Away** (ticked while on; click again to go back to work), **End my
 day…**, **Mini timer**, **Start with Windows** and **Quit**. Quit clears the
 bar and lets go of the Stream Deck.
@@ -1306,8 +1307,8 @@ the computer, in front of what you are doing.
 
 | Control | Does |
 | :--- | :--- |
-| ⏯️ **Pause** | **Yes.** Pauses, resumes, goes back to your task from an interruption, joins the stand-up, answers yes, dismisses a notification. With nothing running, opens the task picker on the computer |
-| ⏯️⏯️ **Pause again** | **Stop.** Within 4 s of pausing -- the bar says **AGAIN=STOP** meanwhile -- stops the task: its time logged, the task left open, **LOGGED** on the bar and Undo in the app. After the 4 s, Pause resumes |
+| ⏯️ **Pause** | **Yes.** Pauses, resumes, joins the stand-up, answers yes, dismisses a notification. With nothing running, opens the task picker on the computer |
+| ⏯️⏯️ **Pause again** | **Stop.** Within 4 s of pausing -- the bar says **AGAIN=STOP** meanwhile -- stops the task: its time logged, the task left open, **LOGGED** on the bar and Undo in the app. An interruption stops the same way, and you are back on your task. After the 4 s, Pause resumes |
 | 🖱️ **Wheel** click | **Interrupt**; during an interruption, **Another**. On a question or a notification, **no** |
 | 🔄 **Wheel** turn | **The menu**: one entry per screen, Pause picks it, a click closes it |
 | ↩️ **Back** | Nothing |
@@ -1315,11 +1316,9 @@ the computer, in front of what you are doing.
 The same list is in the app: **Settings, Desk devices, Bar controls**.
 
 - **During an interruption** the bar shows a bolt (⚡) where the stopwatch
-  was, a light running down it. One Pause goes back to your task and two stop
-  the interruption without going back -- the Place window then opens on the
-  computer. The bar waits 2 s, showing **AGAIN=STOP**, to see whether a
-  second press comes, so going back takes that long; the interruption ends
-  at your first press either way.
+  was, a light running down it. It is paused and stopped as a task is:
+  Pause, then Pause again within 4 s, ends it and takes your task up again;
+  it waits on Today to be placed.
 - **A press right as a question or a notification appears only settles.**
   Within 0.7 s of it coming up, the press was meant for what was there
   before, so it neither answers nor dismisses.
@@ -1378,7 +1377,7 @@ onto any key, as many times as you like:
 
 | Action | The key shows | A press |
 | :--- | :--- | :--- |
-| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (**NOT YOURS**). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes; with nothing running, opens the task picker. **Held** half a second, it opens the task picker. During an interruption it does neither: end it first |
+| **Session** | the task, its time and the bar's icon, moving as it does on the bar -- a notification's own icon while its banner holds the bar -- under a band: green while tracking, amber while paused, during an interruption (its time) and for a task that is no longer yours (**NOT YOURS**). With nothing running, START -- amber **NOT TIMING** in your working hours | pauses or resumes -- an interruption too; with nothing running, opens the task picker. **Held** half a second, it opens the task picker; not during an interruption: end it first |
 | **Interrupt** | INTERRUPT -- ANOTHER during an interruption -- and "3 to place" while interruptions wait for you in the app | starts a timer at once, whatever runs -- see [Interrupt](#-interrupt-a-timer-at-once) |
 | **Previous task** | PREV and the task's key | goes back to the task you timed before this one. Blank during an interruption: A goes back |
 | **Answer A** | says yes, in green: DONE, BACK to the task during an interruption, JOIN the stand-up, END STAND-UP, RESUME, START LUNCH, DONE ANYWAY, and END MY DAY | does that. DONE takes two presses |

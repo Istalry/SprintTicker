@@ -18,6 +18,12 @@ export interface UndoableAction {
    * never after an undo.
    */
   commit?: () => void;
+  /**
+   * The session the action itself set running again -- the task an
+   * interruption held, resumed by its Stop (2026-11-16). Its running is not
+   * "another session started", which makes a stop final.
+   */
+  resumes?: string;
 }
 
 /** Timers, injected so a test steps through the window. */
@@ -84,6 +90,11 @@ export class UndoService {
   /** The kind of action that can still be undone, or null. */
   public currentKind(): UndoKind | null {
     return this.current()?.kind ?? null;
+  }
+
+  /** The session the action that can still be undone set running again, or null. */
+  public currentResumes(): string | null {
+    return this.current() ? this._current!.action.resumes ?? null : null;
   }
 
   /**

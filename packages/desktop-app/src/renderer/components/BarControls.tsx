@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarWord } from '../../shared/words';
-import { BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS } from '../../shared/render-constants';
+import { BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS } from '../../shared/render-constants';
 
 const seconds = (ms: number): string => `${Math.round(ms / 1000)} s`;
 
@@ -21,20 +21,21 @@ export const BarControls: React.FC = () => (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2">
       <dt className="font-semibold text-text-primary">Pause</dt>
       <dd className="text-text-secondary">
-        Yes: pauses, resumes, goes back to your task after an interruption, answers a question, dismisses a
-        notification. With nothing running, opens the task picker on the computer.
+        Yes: pauses, resumes, answers a question, dismisses a notification. With nothing running, opens the task
+        picker on the computer.
       </dd>
 
       <dt className="font-semibold text-text-primary">Pause twice</dt>
       <dd className="text-text-secondary">
         Stop, within {seconds(BAR_STOP_AGAIN_MS)} of pausing (the bar shows <Word>{BarWord.AGAIN_STOP}</Word>): the time
-        is logged, the task stays open. During an interruption, within {seconds(BAR_INTERRUPTION_AGAIN_MS)}: stops it
-        without going back.
+        is logged, the task stays open. An interruption pauses and stops the same way, and its stop takes you back to
+        the task it interrupted.
       </dd>
 
       <dt className="font-semibold text-text-primary">Wheel click</dt>
       <dd className="text-text-secondary">
-        Interrupt, or <Word>{BarWord.ANOTHER}</Word> during an interruption. On a question or a notification: no.
+        Interrupt; during an interruption, the next one (<Word>{BarWord.ANOTHER}</Word>). On a question or a
+        notification: no.
       </dd>
 
       <dt className="font-semibold text-text-primary">Wheel turn</dt>

@@ -321,10 +321,12 @@ export function planPress(key: KeyKind, ctx: KeyContext, held: boolean = false):
     case 'previous':
       return !session?.interruption && state.previousTask ? { type: 'request', action: 'previous' } : nothing;
     case 'session':
-      // During an interruption it does nothing, held or not: pausing would
-      // end it, and choosing a task waits for its end (the user's choice,
-      // 2026-11-12). A, B and C end it.
-      if (session?.interruption) return nothing;
+      // An interruption pauses and resumes as a task does (2026-11-16); it
+      // used to do nothing here, since pausing it ended it. Held, it still
+      // does nothing: choosing a task waits for the interruption's end (the
+      // user's choice, 2026-11-12). A and B end it, and the task it held
+      // runs again.
+      if (session?.interruption && held) return nothing;
       if (held || !session) return { type: 'request', action: 'open-picker' };
       return { type: 'request', action: session.status === 'tracking' ? 'pause' : 'resume' };
     case 'not-done':

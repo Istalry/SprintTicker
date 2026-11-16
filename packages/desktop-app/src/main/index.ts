@@ -530,22 +530,6 @@ async function startApplication(): Promise<void> {
   // use, raised past the foreground lock, since the press reached the bar.
   inputDecoder?.setOpenPickerCallback(() => { pickers.open('start', { raise: true }); });
 
-  // A Stop ends a run of interruptions: its parts still to place come up at
-  // once, each to name and place on its own, in front of the app in use --
-  // the user's choice (2026-11-12), and the one prompt that takes the focus.
-  // After the engine's listeners: a window opened from inside one is a second
-  // notification's work (CLAUDE.md §5).
-  if (engine) {
-    const ending = engine;
-    ending.onInterruptionEnded(({ fragment, how }) => {
-      if (how !== 'stop') return;
-      setImmediate(() => {
-        const ids = ending.getRunToPlace(fragment.id);
-        if (ids.length > 0) pickers.open('place-ended', { raise: true, ids });
-      });
-    });
-  }
-
   // The global shortcuts (P12e): Interrupt, Switch, Previous and Back from
   // any app, on by default; a chord another app holds reads "taken".
   const schedule = contextScheduleService;
@@ -614,9 +598,13 @@ async function startApplication(): Promise<void> {
   });
   // A session started makes a held stop final: undoing it would reopen a
   // second session beside the new one.
+  // The task an interruption held, which its Stop resumes, is not a new one:
+  // that stop stays undoable (2026-11-16).
   engine.subscribe(session => {
     const kind = undo.currentKind();
-    if (session && (kind === 'stop' || kind === 'discard' || kind === 'end-day')) undo.commitPending();
+    if (session && (kind === 'stop' || kind === 'discard' || kind === 'end-day') && session.sessionId !== undo.currentResumes()) {
+      undo.commitPending();
+    }
   });
 
   ipcRegistry = new IPCHandlerRegistry({

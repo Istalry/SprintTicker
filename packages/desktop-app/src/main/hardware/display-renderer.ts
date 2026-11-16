@@ -1296,7 +1296,7 @@ export class DisplayRenderer {
         const layout = DISPLAY_CONSTANTS.LAYOUT_OFFSETS;
         this.canvas.drawTextClipped(titleText, layout.TEXT_X, layout.ROW0_Y, row0Color, layout.TEXT_FIELD_WIDTH);
         if (session && this.showsAgainHint(session)) {
-          // An interruption waiting to see whether a second Pause comes.
+          // A Pause's AGAIN=STOP on a frame still drawn as running.
           this.canvas.drawSmallText(BarWord.AGAIN_STOP, layout.TEXT_X, layout.ROW1_Y, row1Color, layout.TEXT_FIELD_WIDTH);
         } else if (session) {
           // Large, because it is the one thing read from across the room.

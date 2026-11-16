@@ -17,6 +17,10 @@ export interface InterruptionRecord {
   keptOff: boolean;
   discardedAtUtc: string | null;
   legacyWorklogId: string | null;
+  /** The open pause's start, or null when it is not paused (migration 17). */
+  pausedAtUtc: string | null;
+  /** The seconds of its pauses already ended. */
+  pausedSeconds: number;
 }
 
 interface Row {
@@ -33,6 +37,8 @@ interface Row {
   kept_off: number;
   discarded_at_utc: string | null;
   legacy_worklog_id: string | null;
+  paused_at_utc: string | null;
+  paused_seconds: number | null;
 }
 
 const toRecord = (row: Row): InterruptionRecord => ({
@@ -48,7 +54,9 @@ const toRecord = (row: Row): InterruptionRecord => ({
   placedWorklogId: row.placed_worklog_id,
   keptOff: row.kept_off === 1,
   discardedAtUtc: row.discarded_at_utc,
-  legacyWorklogId: row.legacy_worklog_id
+  legacyWorklogId: row.legacy_worklog_id,
+  pausedAtUtc: row.paused_at_utc ?? null,
+  pausedSeconds: row.paused_seconds ?? 0
 });
 
 /**
@@ -100,8 +108,35 @@ export class InterruptionRepository {
     this._db.getDb().prepare('UPDATE interruptions SET started_at_utc = ? WHERE id = ? AND ended_at_utc IS NULL').run(startedAtUtc, id);
   }
 
+  /**
+   * Ends a running fragment. A pause still open ends with it, its seconds
+   * kept: stopped while paused, the fragment's time is what ran before.
+   */
   public close(id: string, endedAtUtc: string): void {
-    this._db.getDb().prepare('UPDATE interruptions SET ended_at_utc = ? WHERE id = ? AND ended_at_utc IS NULL').run(endedAtUtc, id);
+    this._db.getDb().prepare(`
+      UPDATE interruptions
+         SET paused_seconds = paused_seconds + ${OPEN_PAUSE_SECONDS_SQL},
+             paused_at_utc = NULL,
+             ended_at_utc = ?
+       WHERE id = ? AND ended_at_utc IS NULL
+    `).run(endedAtUtc, endedAtUtc, id);
+  }
+
+  /** Pauses a running fragment at `atUtc`; one already paused stays as it is. */
+  public pause(id: string, atUtc: string): void {
+    this._db.getDb()
+      .prepare('UPDATE interruptions SET paused_at_utc = ? WHERE id = ? AND ended_at_utc IS NULL AND paused_at_utc IS NULL')
+      .run(atUtc, id);
+  }
+
+  /** Resumes a paused fragment at `atUtc`, its pause's seconds kept. */
+  public resume(id: string, atUtc: string): void {
+    this._db.getDb().prepare(`
+      UPDATE interruptions
+         SET paused_seconds = paused_seconds + ${OPEN_PAUSE_SECONDS_SQL},
+             paused_at_utc = NULL
+       WHERE id = ? AND ended_at_utc IS NULL AND paused_at_utc IS NOT NULL
+    `).run(atUtc, id);
   }
 
   public rename(id: string, name: string): void {
@@ -119,9 +154,15 @@ export class InterruptionRepository {
   }
 
   public markDiscarded(id: string, atUtc: string): void {
-    this._db.getDb()
-      .prepare('UPDATE interruptions SET discarded_at_utc = ?, ended_at_utc = COALESCE(ended_at_utc, ?) WHERE id = ?')
-      .run(atUtc, atUtc, id);
+    // A running fragment ends here; a pause still open ends with it, as in `close`.
+    this._db.getDb().prepare(`
+      UPDATE interruptions
+         SET paused_seconds = paused_seconds + CASE WHEN ended_at_utc IS NULL THEN ${OPEN_PAUSE_SECONDS_SQL} ELSE 0 END,
+             paused_at_utc = CASE WHEN ended_at_utc IS NULL THEN NULL ELSE paused_at_utc END,
+             discarded_at_utc = ?,
+             ended_at_utc = COALESCE(ended_at_utc, ?)
+       WHERE id = ?
+    `).run(atUtc, atUtc, atUtc, id);
   }
 
   /** Ended, and neither placed, kept off nor discarded: oldest first. */
@@ -176,8 +217,25 @@ export class InterruptionRepository {
   }
 }
 
-/** A fragment's length in whole seconds: to its end, or to `nowIso` while it runs. */
-export function interruptionSeconds(fragment: Pick<InterruptionRecord, 'startedAtUtc' | 'endedAtUtc'>, nowIso?: string): number {
+/**
+ * The open pause's seconds up to the time bound as the next parameter, in
+ * SQL: whole seconds, as `interruptionSeconds` counts them. Zero with no
+ * pause open.
+ */
+const OPEN_PAUSE_SECONDS_SQL =
+  "CASE WHEN paused_at_utc IS NULL THEN 0 ELSE MAX(0, CAST(ROUND((julianday(?) - julianday(paused_at_utc)) * 86400) AS INTEGER)) END";
+
+/**
+ * A fragment's length in whole seconds: to its end, or to `nowIso` while it
+ * runs, less its pauses -- the ended ones and the one still open.
+ */
+export function interruptionSeconds(
+  fragment: Pick<InterruptionRecord, 'startedAtUtc' | 'endedAtUtc'> & Partial<Pick<InterruptionRecord, 'pausedAtUtc' | 'pausedSeconds'>>,
+  nowIso?: string
+): number {
   const end = fragment.endedAtUtc ?? nowIso ?? new Date().toISOString();
-  return Math.max(0, Math.floor((Date.parse(end) - Date.parse(fragment.startedAtUtc)) / 1000));
+  const endMs = Date.parse(end);
+  const openPause = fragment.pausedAtUtc ? Math.max(0, Math.round((endMs - Date.parse(fragment.pausedAtUtc)) / 1000)) : 0;
+  const span = Math.floor((endMs - Date.parse(fragment.startedAtUtc)) / 1000);
+  return Math.max(0, span - (fragment.pausedSeconds ?? 0) - openPause);
 }

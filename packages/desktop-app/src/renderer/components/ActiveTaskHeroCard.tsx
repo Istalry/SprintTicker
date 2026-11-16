@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, Repeat, AlertTriangle, Zap, Link2, Square, Undo2, History } from 'lucide-react';
+import { Play, Pause, Repeat, AlertTriangle, Zap, Link2, Square, History } from 'lucide-react';
 import { ActiveSessionDTO, TaskDTO } from '../../shared/dtos';
 import { triggerDesktopConfetti } from '../utils/confetti-fx';
 import { formatSeconds } from '../utils/formatters';
@@ -27,8 +27,6 @@ interface ActiveTaskHeroCardProps {
   onOpenTaskModal: () => void;
   /** Interrupt: a timer at once, the task running waits paused. During one, Another. */
   onInterrupt: () => void;
-  /** Ends the interruption and goes back to the task it interrupted, as it was. */
-  onBack?: () => void;
   /** Ends the interruption; it waits to be placed. */
   onStopInterruption?: () => void;
   /** Opens the task picker to assign the open ad-hoc session to a task. */
@@ -77,7 +75,6 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
   onOpenTaskModal,
   onInterrupt,
   onAssign,
-  onBack,
   onStopInterruption,
   onPrevious
 }) => {
@@ -93,7 +90,8 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
     startRef.current?.focus();
   }, [session]);
   // An interruption is timed apart from the task it interrupted, which waits
-  // paused (P6): its controls are Back, Stop and Another, never Pause or Done.
+  // paused (P6). It is otherwise a task nobody planned (2026-11-16): Pause,
+  // Stop -- which takes the task it held up again -- and Another; never Done.
   const interruption = session?.interruption ?? null;
   const previous = usePreviousTask(session && !interruption ? session.taskId : null);
 
@@ -205,24 +203,27 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
           </>
         ) : interruption ? (
           <>
-            {interruption.interruptedSessionId && onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                title={`End the interruption and go back to ${interruption.interruptedTaskKey}`}
-                className={PRIMARY_GREEN}
-              >
-                <Undo2 className="w-4 h-4" />
-                <span>{Verb.BACK} to {interruption.interruptedTaskKey}</span>
+            {session.status === 'TRACKING' ? (
+              <button type="button" onClick={onPause} className={`${BUTTON} bg-primary hover:bg-primary/90 text-dark-900 shadow-md`}>
+                <Pause className="w-4 h-4" />
+                <span>{Verb.PAUSE}</span>
+              </button>
+            ) : (
+              <button type="button" onClick={onResume} className={PRIMARY_GREEN}>
+                <Play className="w-4 h-4" />
+                <span>{Verb.RESUME}</span>
               </button>
             )}
             {/* No Switch here: choosing a task does nothing during an
-                interruption -- it ends first (the user's choice, 2026-11-12). */}
+                interruption -- it ends first (the user's choice, 2026-11-12).
+                Back is Stop now: a Stop takes the held task up again. */}
             {onStopInterruption && (
               <button
                 type="button"
                 onClick={onStopInterruption}
-                title="End the interruption; place it on a task afterwards"
+                title={interruption.interruptedSessionId
+                  ? `End the interruption and go back to ${interruption.interruptedTaskKey}; place it on a task afterwards`
+                  : 'End the interruption; place it on a task afterwards'}
                 className={PLAIN}
               >
                 <Square className="w-4 h-4" />

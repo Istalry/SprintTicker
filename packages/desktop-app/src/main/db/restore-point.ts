@@ -6,7 +6,8 @@ import type Database from 'better-sqlite3';
  * INTEGER PRIMARY KEY (`paused_intervals`) the rowid *is* the key and
  * `SELECT rowid` names it otherwise.
  */
-export type RestorableTable = 'worklogs' | 'worklog_sync_queue' | 'tasks' | 'active_sessions' | 'interruptions';
+export type RestorableTable =
+  'worklogs' | 'worklog_sync_queue' | 'tasks' | 'active_sessions' | 'interruptions' | 'paused_intervals';
 
 /** Some rows of one table: `where` is SQL over it, with `?` bound from `params`. */
 export interface RowScope {
@@ -23,7 +24,9 @@ interface Snapshot {
 }
 
 const read = (db: Database.Database, scope: RowScope): Row[] =>
-  db.prepare(`SELECT rowid, * FROM ${scope.table} WHERE ${scope.where} ORDER BY rowid`).all(...scope.params) as Row[];
+  // `AS rowid`: in a table keyed by an INTEGER PRIMARY KEY a bare `rowid`
+  // comes back named after the key, and the restore then matched nothing.
+  db.prepare(`SELECT rowid AS rowid, * FROM ${scope.table} WHERE ${scope.where} ORDER BY rowid`).all(...scope.params) as Row[];
 
 const sameRow = (a: Row, b: Row): boolean => {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);

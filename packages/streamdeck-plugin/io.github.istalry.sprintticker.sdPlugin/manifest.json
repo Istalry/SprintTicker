@@ -2,7 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "io.github.istalry.sprintticker",
   "Name": "SprintTicker",
-  "Version": "0.6.4.0",
+  "Version": "0.6.5.0",
   "Author": "Istalry",
   "Description": "Keys that drive SprintTicker's running session: pause, pick a task, go back to the previous one, start an interruption and go back from it, end the session, and answer the stand-up and the wrap-up. Needs SprintTicker running on the same machine.",
   "URL": "https://github.com/Istalry/SprintTicker",

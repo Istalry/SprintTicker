@@ -67,7 +67,8 @@ export function dueReminder(
     if (minutes < delays.nothingTiming) return null;
     return { id: `nothing-timing:${new Date(idleSinceMs).toISOString()}`, kind: 'nothing-timing', sinceUtc: new Date(from).toISOString(), minutes };
   }
-  if (session.interruption) {
+  // A paused interruption is asked about as any pause is (2026-11-16).
+  if (session.interruption && session.status !== 'PAUSED') {
     const since = Date.parse(session.interruption.startedAtUtc);
     const minutes = minutesSince(since);
     if (minutes < delays.interruptionRunning) return null;

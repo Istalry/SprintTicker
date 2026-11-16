@@ -38,6 +38,18 @@ function sessionScopes(sessionId: string, taskId: string): RowScope[] {
   ];
 }
 
+/**
+ * The session an interruption held, which its end now resumes (2026-11-16):
+ * Undo puts it back paused for the interruption, as it was.
+ */
+function heldScopes(heldSessionId: string | null | undefined): RowScope[] {
+  if (!heldSessionId) return [];
+  return [
+    { table: 'active_sessions', where: 'id = ?', params: [heldSessionId] },
+    { table: 'paused_intervals', where: 'session_id = ?', params: [heldSessionId] }
+  ];
+}
+
 /** The rows a change to one worklog touches: it, its sends, and the tasks it moves between. */
 function worklogScopes(worklogId: string, taskIds: readonly string[]): RowScope[] {
   return [
@@ -54,9 +66,10 @@ function worklogScopes(worklogId: string, taskIds: readonly string[]): RowScope[
  */
 function reopen(deps: UndoableDeps, point: RestorePoint, heldSessionId: string | null = null): boolean {
   const open = deps.engine.getCurrentSession();
-  // An interruption ended leaves the session it held open, paused for it:
-  // that one does not stand in the way of bringing the interruption back.
-  if (open && !(heldSessionId && open.sessionId === heldSessionId && open.status === 'PAUSED')) return false;
+  // An interruption ended resumes the session it held: that one does not
+  // stand in the way of bringing the interruption back -- the restore point
+  // puts it back paused for it.
+  if (open && !(heldSessionId && open.sessionId === heldSessionId)) return false;
   if (!point.restore()) return false;
   deps.engine.resumeAfterUndo();
   return true;
@@ -75,7 +88,10 @@ export function stopUndoably(
 ): { success: boolean; loggedSeconds: number } {
   const active = deps.engine.getCurrentSession();
   if (!active) return { success: false, loggedSeconds: 0 };
-  const point = RestorePoint.capture(deps.db, sessionScopes(active.sessionId, active.taskId));
+  const point = RestorePoint.capture(deps.db, [
+    ...sessionScopes(active.sessionId, active.taskId),
+    ...heldScopes(active.interruption?.interruptedSessionId)
+  ]);
   const held: Array<() => void> = [];
   const result = completeSession(
     {
@@ -97,7 +113,8 @@ export function stopUndoably(
       ? undoLabel('stop', fragment.title, formatHoursAndMinutes(active.elapsedSeconds))
       : undoLabel(markDone ? 'done' : 'stop', active.taskKey, formatHoursAndMinutes(result.loggedSeconds)),
     undo: () => reopen(deps, point, fragment?.interruptedSessionId ?? null),
-    commit: () => held.forEach(send => send())
+    commit: () => held.forEach(send => send()),
+    ...(fragment?.interruptedSessionId ? { resumes: fragment.interruptedSessionId } : {})
   });
   return result;
 }
@@ -106,7 +123,10 @@ export function stopUndoably(
 export function discardUndoably(deps: UndoableDeps): { success: boolean; discardedSeconds: number } {
   const active = deps.engine.getCurrentSession();
   if (!active) return { success: false, discardedSeconds: 0 };
-  const point = RestorePoint.capture(deps.db, sessionScopes(active.sessionId, active.taskId));
+  const point = RestorePoint.capture(deps.db, [
+    ...sessionScopes(active.sessionId, active.taskId),
+    ...heldScopes(active.interruption?.interruptedSessionId)
+  ]);
   const result = deps.engine.discardSession();
   if (!result.success) return result;
   point.seal();
@@ -115,7 +135,8 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
     kind: 'discard',
     outcome: 'nothing',
     label: undoLabel('discard', fragment ? fragment.title : active.taskKey, formatHoursAndMinutes(result.discardedSeconds)),
-    undo: () => reopen(deps, point, fragment?.interruptedSessionId ?? null)
+    undo: () => reopen(deps, point, fragment?.interruptedSessionId ?? null),
+    ...(fragment?.interruptedSessionId ? { resumes: fragment.interruptedSessionId } : {})
   });
   return result;
 }

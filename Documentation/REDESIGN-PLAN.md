@@ -2794,6 +2794,18 @@ user's to try; before it, what REVIEW §8 left for P15d:
   as the stand-up prompt's does, a lock scene (`LOCK_SCENES`), and the
   simulator checks it in `expectSettledScreen`. The studio's export failed
   at the compile, though both compilers ran cleanly by hand: listed.
+- **An interruption behaves like a task** (the user's question on rc5,
+  2026-11-16: "an interruption is just a task we did not plan"). On the
+  bar, one Pause on an interruption went back after a 2 s wait and two
+  stopped it, so Pause meant pause on a task and end on an interruption.
+  Now, everywhere: Pause and Resume pause it (migration 17, its paused
+  time left out of its own), Stop -- Pause twice on the bar -- ends it and
+  takes the held task up again, Undo puts both back, and a paused one is
+  asked about as a pause. Back has no button left: Stop is Back. The
+  Place window a Stop opened in front is gone with it; the fragment waits
+  on Today. The wheel menu stays DISCARD alone during one. Plugin 0.6.5:
+  the Session key pauses an interruption. `BAR_INTERRUPTION_AGAIN_MS` and
+  the decoder's held return are gone.
 
 **To try, the user's (P15d):** the packaged build, on a day of real work,
 on the real bar and Stream Deck Mobile. Install over 1.4.0 and keep the
@@ -2824,8 +2836,8 @@ refresh the counts with the next full run.
    the tray; Quit from the tray clears the bar. The plugin 0.6.4 offered
    by the first run installs over 0.6.3. *Done 2026-11-13.*
 2. **The bar's buttons (P14b),** in each state: Pause pauses and resumes;
-   Pause twice within 4 s stops (AGAIN=STOP on row 1); during an
-   interruption one Pause goes back after 2 s and two stop it; the wheel's
+   Pause twice within 4 s stops (AGAIN=STOP on row 1); an interruption
+   the same, its Stop taking the task up again (rc6); the wheel's
    click interrupts, and says no on a question or a notification; Back does
    nothing on our screen. A Pause just as the stand-up comes up does not
    join it.
@@ -2840,7 +2852,8 @@ refresh the counts with the next full run.
    **Settings › Desk devices › Bar health** charts every press while you
    try 2 to 5: a hollow mark is a press that arrived and did nothing.
 6. **The deck:** END MY DAY then CONFIRM at the wrap-up; one interruption
-   placed from the Place window; the Session key held for the picker.
+   paused on the Session key and stopped (rc6); the Session key held for
+   the picker.
 7. **The day:** the stand-up, lunch and *Back at your desk?*, an
    interruption placed on a task, End my day with Undo, the entries at
    OpenProject or Jira the next morning, split at lunch. Notifications:

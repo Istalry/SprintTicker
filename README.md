@@ -138,7 +138,8 @@ discards existing worklogs.
 click on the session card, in the mini timer or in the tray, a wheel click on
 the bar, a Stream Deck key, or a keyboard shortcut from any app
 (Ctrl+Alt+Shift+I; Switch, Previous and Back have theirs too). Your task
-waits, paused; **Back** returns to it, and the interruption's time goes to
+waits, paused; the interruption pauses and stops as a task does, its **Stop**
+returns to your task, and its time goes to
 the task you **place** it on -- or stays off your provider.
 
 A **mini timer**, a small always-on-top window, shows the running task and its
@@ -257,8 +258,8 @@ Every icon and scene is drawn for SprintTicker, and animated on the bar itself:
 
 ### 🎛️ Physical input
 
-Each control has one meaning: **Pause** says yes (pause, resume, back from an
-interruption, dismiss) and **Pause again** stops; a **wheel click** starts an
+Each control has one meaning: **Pause** says yes (pause, resume, dismiss)
+and **Pause again** stops -- a task or an interruption; a **wheel click** starts an
 interruption, or says no to a question; **turning** it opens a short menu --
 DONE, DISCARD, the previous and recent tasks -- one entry at a
 time. Back is not used. Any other task is chosen in the picker on the

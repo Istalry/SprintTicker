@@ -59,18 +59,24 @@ export function paletteActions(state: PaletteState): PaletteAction[] {
     add({ id: 'previous', label: `${Verb.PREVIOUS} task: ${previousKey}`, glyph: '⟲', words: ['last task', 'prev', 'go back'] });
   }
 
-  if (interruption) {
-    if (interruption.interruptedSessionId) {
-      add({ id: 'back', label: `${Verb.BACK} to ${interruption.interruptedTaskKey}`, glyph: '↩', words: ['return', 'resume', 'end interruption'] });
-    }
-    add({ id: 'stop', label: Verb.STOP, glyph: '■', words: ['end interruption', 'finish', 'end'] });
-    add({ id: 'another', label: `${Verb.ANOTHER} interruption`, glyph: '⚡', words: ['interrupt', 'next interruption', 'new interruption'] });
-  } else if (session) {
+  // An interruption pauses and stops as a task does (2026-11-16); its Stop
+  // takes the task it held up again, so Back has no entry of its own.
+  if (session) {
     if (session.status === 'TRACKING') {
       add({ id: 'pause', label: Verb.PAUSE, glyph: '❚❚', words: ['hold', 'break', 'wait'] });
     } else {
       add({ id: 'resume', label: Verb.RESUME, glyph: '▶', words: ['continue', 'unpause', 'go on'] });
     }
+  }
+  if (interruption) {
+    add({
+      id: 'stop',
+      label: interruption.interruptedSessionId ? `${Verb.STOP}, ${Verb.BACK.toLowerCase()} to ${interruption.interruptedTaskKey}` : Verb.STOP,
+      glyph: '■',
+      words: ['end interruption', 'finish', 'end', 'return', 'go back']
+    });
+    add({ id: 'another', label: `${Verb.ANOTHER} interruption`, glyph: '⚡', words: ['interrupt', 'next interruption', 'new interruption'] });
+  } else if (session) {
     add({ id: 'stop', label: Verb.STOP, glyph: '■', words: ['finish', 'end', 'log', 'log time', 'not done', 'stop timer'] });
     add({ id: 'interrupt', label: Verb.INTERRUPT, glyph: '⚡', words: ['interruption', 'call', 'meeting', 'someone at my desk'] });
     if (isAdHocSession(session)) {

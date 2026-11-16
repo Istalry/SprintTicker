@@ -565,18 +565,26 @@ export class TimeTrackingEngine extends EventEmitter {
       }
       fragment = this._interruptions.getLatestFor(open.sessionId);
     }
-    const held = this.sessionView();
-    if (
-      held && fragment && held.sessionId === fragment.interruptedSessionId && !fragment.interruptedWasPaused &&
-      held.status === 'PAUSED' && held.lastPauseStartUtc &&
-      this._sessionRepo.getOpenPauseReason(held.sessionId) === 'interruption'
-    ) {
-      const resumeAt = Math.max(Date.parse(held.lastPauseStartUtc), nowMs - addGapMinutes * 60_000);
-      this.resumeHeldAt(held, resumeAt);
-    }
+    if (fragment) this.resumeHeldBy(fragment, nowMs - addGapMinutes * 60_000);
     if (running) this.tellInterruptionEnded(running.id, 'back');
     this.notifyListeners();
     return this.getCurrentSession();
+  }
+
+  /**
+   * The session `fragment` held runs again, from `atMs` -- never before its
+   * pause began -- when it ran before the interruption and still waits,
+   * paused for it. A task paused before stays paused.
+   */
+  private resumeHeldBy(fragment: InterruptionRecord, atMs: number): void {
+    const held = this.sessionView();
+    if (
+      held && held.sessionId === fragment.interruptedSessionId && !fragment.interruptedWasPaused &&
+      held.status === 'PAUSED' && held.lastPauseStartUtc &&
+      this._sessionRepo.getOpenPauseReason(held.sessionId) === 'interruption'
+    ) {
+      this.resumeHeldAt(held, Math.max(Date.parse(held.lastPauseStartUtc), atMs));
+    }
   }
 
   /**
@@ -597,7 +605,9 @@ export class TimeTrackingEngine extends EventEmitter {
 
   /**
    * Discards an interruption: the one running, or one waiting to be placed.
-   * Its time is kept nowhere. The held session stays paused, as after Stop.
+   * Its time is kept nowhere. Discarding the one running ends it as Stop
+   * does: the session it held runs again (2026-11-16, an interruption is a
+   * task nobody planned).
    */
   public discardInterruption(id?: string): { success: boolean; discardedSeconds: number } {
     const fragment = id ? this._interruptions.get(id) : this._interruptions.getRunning();
@@ -607,7 +617,10 @@ export class TimeTrackingEngine extends EventEmitter {
     const nowIso = new Date().toISOString();
     const seconds = interruptionSeconds(fragment, nowIso);
     this._interruptions.markDiscarded(fragment.id, nowIso);
-    if (!fragment.endedAtUtc) this.tellInterruptionEnded(fragment.id, 'discard');
+    if (!fragment.endedAtUtc) {
+      this.resumeHeldBy(fragment, Date.parse(nowIso));
+      this.tellInterruptionEnded(fragment.id, 'discard');
+    }
     this.notifyListeners();
     return { success: true, discardedSeconds: seconds };
   }
@@ -883,6 +896,7 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   private fragmentView(running: InterruptionRecord): ActiveSessionDTO {
+    const nowIso = new Date().toISOString();
     const session = this.sessionView();
     const held = session && session.sessionId === running.interruptedSessionId ? session : null;
     const run = this._interruptions.getRun(running.id);
@@ -909,10 +923,13 @@ export class TimeTrackingEngine extends EventEmitter {
         ...(held ? { heldElapsedSeconds: held.elapsedSeconds } : {}),
         ...this.chosenTaskOf(running.id)
       },
-      status: 'TRACKING',
+      // An interruption pauses as a task does (2026-11-16): its time is its
+      // span less its pauses, and a paused one reads PAUSED everywhere.
+      status: running.pausedAtUtc ? 'PAUSED' : 'TRACKING',
       startTimeUtc: running.startedAtUtc,
-      totalPausedSeconds: 0,
-      elapsedSeconds: Math.max(0, Math.floor((Date.now() - Date.parse(running.startedAtUtc)) / 1000))
+      totalPausedSeconds: Math.max(0, Math.floor((Date.now() - Date.parse(running.startedAtUtc)) / 1000)) - interruptionSeconds(running, nowIso),
+      elapsedSeconds: interruptionSeconds(running, nowIso),
+      ...(running.pausedAtUtc ? { lastPauseStartUtc: running.pausedAtUtc } : {})
     };
   }
 
@@ -1390,8 +1407,17 @@ export class TimeTrackingEngine extends EventEmitter {
   /// the user, or Lunch and Away, which ask "Back at your desk?" after.
   /// </summary>
   public pauseSession(reason: PauseReason = 'user'): ActiveSessionDTO {
-    // An interruption has no pause of its own: pausing it is its Stop.
-    if (this._interruptions.getRunning()) return this.stopInterruption() ?? this.getCurrentSession()!;
+    // An interruption pauses as a task does (2026-11-16). It used to have no
+    // pause of its own -- pausing it was its Stop -- so one Pause meant
+    // "pause" on a task and "end it" on an interruption.
+    const fragment = this._interruptions.getRunning();
+    if (fragment) {
+      if (fragment.pausedAtUtc) throw new Error('No active tracking session available to pause');
+      this._interruptions.pause(fragment.id, new Date().toISOString());
+      this.stopTickLoop();
+      this.notifyListeners();
+      return this.getCurrentSession()!;
+    }
     const active = this.sessionView();
     if (!active || active.status !== 'TRACKING') {
       throw new Error('No active tracking session available to pause');
@@ -1412,7 +1438,14 @@ export class TimeTrackingEngine extends EventEmitter {
   /// Resumes a paused session.
   /// </summary>
   public resumeSession(): ActiveSessionDTO {
-    if (this._interruptions.getRunning()) return this.backFromInterruption() ?? this.getCurrentSession()!;
+    const fragment = this._interruptions.getRunning();
+    if (fragment) {
+      if (!fragment.pausedAtUtc) throw new Error('No paused session available to resume');
+      this._interruptions.resume(fragment.id, new Date().toISOString());
+      this.startTickLoop();
+      this.notifyListeners();
+      return this.getCurrentSession()!;
+    }
     const active = this.sessionView();
     if (!active || active.status !== 'PAUSED' || !active.lastPauseStartUtc) {
       throw new Error('No paused session available to resume');
@@ -1639,9 +1672,11 @@ export class TimeTrackingEngine extends EventEmitter {
     options: StopOptions = {}
   ): { success: boolean; loggedSeconds: number } {
     // Stop and Done on an interruption end it, and log nothing: its time is
-    // placed afterwards. The session it held stays paused.
+    // placed afterwards. The session it held runs again -- Stop is how an
+    // interruption ends, as a task's does (2026-11-16); it used to stay
+    // paused, and "Back to MG-12?" was asked.
     if (this._interruptions.getRunning()) {
-      this.stopInterruption();
+      this.backFromInterruption();
       return { success: true, loggedSeconds: 0 };
     }
     const active = this.sessionView();

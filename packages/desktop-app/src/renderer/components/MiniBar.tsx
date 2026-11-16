@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CornerDownRight, History, Link2, ListTodo, Pause, Play, Repeat, Square, Undo2, X, Zap } from 'lucide-react';
+import { AlertTriangle, CornerDownRight, History, Link2, ListTodo, Pause, Play, Repeat, Square, X, Zap } from 'lucide-react';
 import { useSession } from '../hooks/useSession';
 import { useScreenIcon } from '../hooks/useScreenIcon';
 import { useToPlaceCount } from '../hooks/useToPlaceCount';
@@ -122,7 +122,7 @@ function notYoursLabel(session: ActiveSessionDTO): string {
  * Lunch -- so someone without one sees what it would say.
  */
 export const MiniBar: React.FC = () => {
-  const { session, pause, resume, complete, discard, interrupt, back, stopInterruption, startTask } = useSession();
+  const { session, pause, resume, complete, discard, interrupt, stopInterruption, startTask } = useSession();
   // During an interruption the task it interrupted waits paused (P6): Back
   // returns to it, Stop ends the interruption alone, and Interrupt is Another.
   const interruption = session?.interruption ?? null;
@@ -391,17 +391,15 @@ export const MiniBar: React.FC = () => {
     if (interruption) {
       return (
         <>
-          {interruption.interruptedSessionId && (
-            <button
-              type="button"
-              title={`${Verb.BACK} to ${interruption.interruptedTaskKey}: end the interruption and go back to it`}
-              aria-label={`${Verb.BACK} to ${interruption.interruptedTaskKey}`}
-              // The main answer here, green as in the window; set apart from
-              // Place, or ↶ beside ↳ read as Undo and Redo (C16).
-              className="mr-1.5 p-1.5 rounded-md bg-accent-green text-dark-900 hover:bg-accent-green/90 transition-colors [-webkit-app-region:no-drag]"
-              onClick={run('Back', back)}
-            >
-              <Undo2 className="w-4 h-4" />
+          {/* Paused and stopped as a task is (2026-11-16); Stop takes the
+              held task up again, so Back has no button of its own. */}
+          {tracking ? (
+            <button type="button" title={Verb.PAUSE} aria-label={Verb.PAUSE} className={button} onClick={run('Pause', pause)}>
+              <Pause className="w-4 h-4" />
+            </button>
+          ) : (
+            <button type="button" title={Verb.RESUME} aria-label={Verb.RESUME} className={button} onClick={run('Resume', resume)}>
+              <Play className="w-4 h-4" />
             </button>
           )}
           <button
@@ -417,7 +415,9 @@ export const MiniBar: React.FC = () => {
           {interruptButton}
           <button
             type="button"
-            title="End the interruption; place it on a task afterwards"
+            title={interruption.interruptedSessionId
+              ? `End the interruption and go back to ${interruption.interruptedTaskKey}; place it on a task afterwards`
+              : 'End the interruption; place it on a task afterwards'}
             aria-label={Verb.STOP}
             className={button}
             onClick={run('Stop the interruption', stopInterruption)}

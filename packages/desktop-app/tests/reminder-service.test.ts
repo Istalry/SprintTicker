@@ -232,6 +232,22 @@ describe('ReminderService', () => {
       expect(service.getReminder()).toMatchObject({ kind: 'interruption-running', minutes: 20, heldTaskKey: expect.any(String) });
     });
 
+    it('Interruption_Paused_AskedAsAPause_NotStillOnIt', () => {
+      // An interruption pauses as a task does (2026-11-16); paused, it is
+      // not still being worked on.
+      at(9, 30);
+      engine.startTask('', true, 'Writing the spec');
+      at(10, 0);
+      engine.startInterruption(new Date());
+      engine.pauseSession();
+
+      tick(10, 20);
+      expect(service.getReminder()).toBeNull();
+      tick(10, 30);
+
+      expect(service.getReminder()).toMatchObject({ kind: 'long-pause', minutes: 30 });
+    });
+
     it('Standup_AfterTwentyFiveMinutes_AsksStillInIt', () => {
       at(9, 30);
       engine.startNamedAdHocTask(DAILY_STANDUP_TITLE);

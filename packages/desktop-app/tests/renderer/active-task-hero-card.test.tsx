@@ -357,7 +357,9 @@ describe('ActiveTaskHeroCard', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull();
     });
   });
-  it('DuringAnInterruption_BackStopAnother_NoPauseNorFinish', () => {
+  it('DuringAnInterruption_PauseStopAnother_NoFinishNorBack', () => {
+    // An interruption is a task nobody planned (2026-11-16): it pauses, and
+    // its Stop takes the held task up again, so Back has no button.
     const during = {
       ...INTERRUPTION,
       sessionId: 'int_1',
@@ -368,32 +370,32 @@ describe('ActiveTaskHeroCard', () => {
         interruptedTaskTitle: 'The task', interruptedWasPaused: false
       }
     };
-    const onBack = vi.fn();
+    const onPause = vi.fn();
     const onStop = vi.fn();
     const onInterrupt = vi.fn();
     render(
       <ActiveTaskHeroCard
         session={during}
-        onPause={vi.fn()}
+        onPause={onPause}
         onResume={vi.fn()}
         onComplete={vi.fn()}
         onDiscard={vi.fn()}
         onOpenTaskModal={vi.fn()}
         onInterrupt={onInterrupt}
-        onBack={onBack}
         onStopInterruption={onStop}
       />
     );
 
     expect(screen.getByText(/SPR-142 waits, paused(, as it was)?; this time is sent once it is placed/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Back to/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'More ways to stop' })).toBeNull();
     // Choosing a task does nothing during an interruption (2026-11-12).
     expect(screen.queryByRole('button', { name: 'Switch task…' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to SPR-142' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
     fireEvent.click(screen.getByRole('button', { name: 'Another' }));
-    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onPause).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Stop' }).getAttribute('title')).toMatch(/go back to SPR-142/);
     expect(onStop).toHaveBeenCalledTimes(1);
     expect(onInterrupt).toHaveBeenCalledTimes(1);
   });

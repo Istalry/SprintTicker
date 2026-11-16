@@ -530,6 +530,17 @@ const M016_REFUSED_ENTRIES = `
   ALTER TABLE worklog_sync_queue ADD COLUMN refused_at_utc TEXT;
 `;
 
+/**
+ * An interruption pauses as a task does (2026-11-16, the user's choice: an
+ * interruption is a task nobody planned). One open pause at a time, and the
+ * seconds of the pauses already ended: a fragment's time is its span less
+ * both. Additive -- an existing fragment reads as never paused.
+ */
+const M017_INTERRUPTION_PAUSES = `
+  ALTER TABLE interruptions ADD COLUMN paused_at_utc TEXT;
+  ALTER TABLE interruptions ADD COLUMN paused_seconds INTEGER NOT NULL DEFAULT 0;
+`;
+
 const M014_STARS_AND_PREVIOUS_TASK = `
   CREATE TABLE task_stars (
       provider_id TEXT NOT NULL,
@@ -615,7 +626,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 13, name: 'task-unsorted', up: db => db.exec(M013_TASK_UNSORTED) },
   { version: 14, name: 'stars-and-previous-task', up: db => db.exec(M014_STARS_AND_PREVIOUS_TASK) },
   { version: 15, name: 'interruptions', up: m015Interruptions },
-  { version: 16, name: 'refused-entries', up: db => db.exec(M016_REFUSED_ENTRIES) }
+  { version: 16, name: 'refused-entries', up: db => db.exec(M016_REFUSED_ENTRIES) },
+  { version: 17, name: 'interruption-pauses', up: db => db.exec(M017_INTERRUPTION_PAUSES) }
 ];
 
 /** Schema version a fully migrated database reports. */

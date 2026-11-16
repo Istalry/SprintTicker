@@ -23,7 +23,6 @@ interface TodayViewProps {
   onComplete: (comment?: string, markDone?: boolean) => void;
   onDiscard: () => void;
   onInterrupt: () => void;
-  onBack?: () => void;
   onStopInterruption?: () => void;
   onOpenPicker: (mode: PickerMode) => void;
   /** Switches back to the task before, in one press. */
@@ -48,7 +47,6 @@ export const TodayView: React.FC<TodayViewProps> = ({
   onComplete,
   onDiscard,
   onInterrupt,
-  onBack,
   onStopInterruption,
   onOpenPicker,
   onPrevious,
@@ -109,7 +107,6 @@ export const TodayView: React.FC<TodayViewProps> = ({
       onOpenTaskModal={() => onOpenPicker('start')}
       onAssign={() => onOpenPicker('assign')}
       onInterrupt={onInterrupt}
-      onBack={onBack}
       onStopInterruption={onStopInterruption}
       onPrevious={onPrevious}
     />

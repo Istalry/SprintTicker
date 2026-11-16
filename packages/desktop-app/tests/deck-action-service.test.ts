@@ -413,7 +413,7 @@ describe('DeckActionService', () => {
       expect(refused(ask('open-picker'))).toBe('no-window');
     });
 
-    it('Perform_Interrupt_StopsTheTaskAndAsksAboutItWhenTheInterruptionEnds', async () => {
+    it('Perform_Interrupt_HoldsTheTask_StopTakesItUpAgain_NothingAsked', async () => {
       engine.startTask(MINE.id);
       at(9, 30);
 
@@ -422,13 +422,12 @@ describe('DeckActionService', () => {
 
       at(9, 45);
       expect(ask('stop').ok).toBe(true);
-      // The question waits for the engine's listeners.
+      // An interruption's Stop goes back, as a task's ends it (2026-11-16):
+      // "Back to?" is no longer asked.
       await Promise.resolve();
-      expect(service.getState().prompt).toBe('back');
-
-      // Yes on the deck is OK on the bar: the task comes back.
-      expect(ask('prompt-yes').ok).toBe(true);
+      expect(service.getState().prompt).toBeNull();
       expect(engine.getCurrentSession()).toMatchObject({ taskId: MINE.id, status: 'TRACKING' });
+      expect(service.getState().toPlace).toBe(1);
     });
 
     it('Perform_Back_EndsTheInterruptionAndResumesTheTask', () => {

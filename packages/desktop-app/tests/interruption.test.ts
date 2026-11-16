@@ -229,15 +229,29 @@ describe('Interruptions in a row', () => {
   });
 
   describe('stop, and the question after it', () => {
-    it('Stop_TheTaskStaysPaused_AndBackIsAsked', async () => {
+    it('Stop_TheTaskRunsAgain_NothingIsAsked', async () => {
+      // Stop ends an interruption as it ends a task, and the task it held
+      // runs again (2026-11-16). It used to stay paused, and Back was asked.
       interruptA();
 
       engine.stopSession();
       await settle();
 
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING', elapsedSeconds: minutes(30) });
+      expect(prompts()).toEqual([]);
+      expect(engine.getToPlaceSummary().count).toBe(1);
+    });
+
+    it('StopInterruption_ItselfLeavesTheTaskPaused_AndBackIsAsked', async () => {
+      // The engine's own end, which lunch, the wrap-up and a night away use:
+      // nothing is resumed behind them.
+      interruptA();
+
+      engine.stopInterruption();
+      await settle();
+
       expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
       expect(prompts()).toEqual([expect.objectContaining({ taskKey: A.key, after: 'interruption', interruptionEndedAtUtc: new Date(2026, 9, 14, 10, 45).toISOString() })]);
-      expect(engine.getToPlaceSummary().count).toBe(1);
     });
 
     it('StopThenBackPlusTheGap_TheGapCountsAsWork', () => {
@@ -281,13 +295,47 @@ describe('Interruptions in a row', () => {
       expect(prompts()).toEqual([]);
     });
 
-    it('PauseOnAnInterruption_IsItsStop', () => {
+    it('PauseOnAnInterruption_PausesIt_TheTaskStillWaits', () => {
+      // An interruption pauses as a task does (2026-11-16); pausing it used
+      // to be its Stop.
       interruptA();
 
       engine.pauseSession();
 
-      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
-      expect(engine.isInterrupted()).toBe(false);
+      expect(engine.isInterrupted()).toBe(true);
+      expect(session()).toMatchObject({ status: 'PAUSED', elapsedSeconds: minutes(15), interruption: { interruptedTaskKey: A.key } });
+    });
+
+    it('PausedInterruption_TimeStops_ResumeRunsItAgain', () => {
+      interruptA();
+      engine.pauseSession();
+      at(10, 55);
+      expect(session()).toMatchObject({ status: 'PAUSED', elapsedSeconds: minutes(15) });
+
+      engine.resumeSession();
+      at(11, 0);
+
+      expect(session()).toMatchObject({ status: 'TRACKING', elapsedSeconds: minutes(20) });
+      expect(engine.isInterrupted()).toBe(true);
+    });
+
+    it('PausedInterruption_Stopped_ItsTimeLeavesThePauseOut_TheTaskRunsAgain', () => {
+      interruptA();
+      engine.pauseSession();
+      at(10, 55);
+
+      engine.stopSession();
+
+      expect(engine.getInterruptionsToPlace().map(i => i.durationSeconds)).toEqual([minutes(15)]);
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+    });
+
+    it('PausedInterruption_PauseAgain_IsRefused_LikeAPausedTask', () => {
+      interruptA();
+      engine.pauseSession();
+
+      expect(() => engine.pauseSession()).toThrow(/No active tracking session/);
+      expect(() => { engine.resumeSession(); engine.resumeSession(); }).toThrow(/No paused session/);
     });
 
     it('SomethingStartsWhileAsked_TheQuestionGoes', () => {
@@ -521,15 +569,15 @@ describe('Interruptions in a row', () => {
       expect(engine.getInterruptionsToPlace()).toEqual([]);
     });
 
-    it('DiscardRunning_NothingKept_BackIsAsked', async () => {
+    it('DiscardRunning_NothingKept_TheTaskRunsAgain', async () => {
       interruptA();
 
       expect(engine.discardSession()).toEqual({ success: true, discardedSeconds: minutes(15) });
       await settle();
 
       expect(engine.getInterruptionsToPlace()).toEqual([]);
-      expect(session()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
-      expect(prompts()).toHaveLength(1);
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING' });
+      expect(prompts()).toEqual([]);
     });
 
     it('PlaceTwice_IsRefused', () => {

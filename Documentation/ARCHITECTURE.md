@@ -93,7 +93,7 @@ the **picker window** load the same `index.html`; the mini timer loads it at
 `#mini`, and `main.tsx` mounts `MiniBar` instead of `App` for that hash. The
 picker window (redesign P7b) loads it at `#picker` -- `#picker?mode=assign`
 to assign the ad-hoc session, `place-ended&ids=…` for the Place window a
-Stop opens (`shared/picker-window.ts`) -- and mounts
+Stop opened until 2026-11-16, unused since (`shared/picker-window.ts`) -- and mounts
 `PickerWindow`: the window's `TaskPicker`, its pick done by the same
 `utils/pick-task.ts` as the dashboard's. `PickerWindowManager` owns it: one at
 a time, centred on the display under the pointer, frameless and on top,
@@ -766,7 +766,7 @@ nothing rebindable:
 | Input | Means |
 | :--- | :--- |
 | Pause (`start`) | yes: pause, resume, a question's yes; a notification dismissed; with nothing running, `setOpenPickerCallback` -- main opens the picker window, raised. **Again** within `BAR_STOP_AGAIN_MS` (4 s) of the bar's own pause, the session stops with **LOGGED** (`stopSession`); `DisplayRenderer.showAgainHint` draws AGAIN=STOP on row 1 meanwhile |
-| Pause during an interruption | held `BAR_INTERRUPTION_AGAIN_MS` (2 s): none more and it goes back (`backFromInterruption`); a second and the interruption stops where the first was pressed (`stopInterruption(atUtc)`), which opens the Place window. One holding no task stops at once |
+| Pause during an interruption | as on a task (2026-11-16): `pauseSession` pauses the fragment, and again within `BAR_STOP_AGAIN_MS` stops it, which resumes the task it held. It used to wait 2 s to tell going back from stopping |
 | Wheel click | no on a question or a notification; elsewhere `START_INTERRUPTION`, handed to `ContextScheduleService.answerFromBar`, which interrupts -- Another during one |
 | Back | nothing |
 | Wheel turn | the menu (P14c), below |
@@ -889,12 +889,17 @@ runs at a time, by a partial unique index as for sessions. **Another**
 closes it and opens the next with `after_id`, holding the same session, so
 a run reads back as Marc, Ana, Marc and one Back. **Back**
 (`backFromInterruption(addGapMinutes)`) closes it and ends the held pause --
-earlier by the gap, after a Stop -- unless the session was paused before.
-**Stop** closes it alone, and main opens the **Place window** in front
-(`onInterruptionEnded` with `how: 'stop'`, then `getRunToPlace`): the
-run's fragments still waiting, each named and placed on its own row, the
-one exception to "a prompt never takes the focus" -- the user's, on
-2026-11-12. **Discard** marks it discarded. `switchFromInterruption` is
+earlier by the gap, after a `stopInterruption` -- unless the session was
+paused before. An interruption is a task nobody planned (2026-11-16):
+**Pause** and **Resume** pause the fragment (migration 17,
+`paused_at_utc` and `paused_seconds`; `interruptionSeconds` is its span
+less them), and **Stop** -- `stopSession` -- is Back. Undone, the held
+session's rows come back with the fragment's, paused again
+(`heldScopes`, `UndoableAction.resumes`). `stopInterruption` closes it
+alone and leaves the task paused: the engine's own end, for lunch, the
+wrap-up and a night away. The Place window a Stop used to open in front
+(2026-11-12) opens no more: the fragment waits on Today. **Discard**
+marks it discarded, and resumes the held task as Stop does. `switchFromInterruption` is
 still in the engine, but nothing reaches it: a task cannot be chosen while
 a fragment runs.
 
@@ -902,12 +907,12 @@ While a fragment runs, `getCurrentSession()` answers a **fragment view**:
 the fragment's id as session and task id, ad-hoc, tracking, titled
 `Interruption HH:MM` until named, with `interruption: RunningInterruptionDTO`
 saying what it holds. The bar, the deck, the tray and the mini timer read
-that view, and the engine routes their commands to the fragment: pause,
-stop and Done are Stop, resume is Back, discard is Discard, a start is a
+that view, and the engine routes their commands to the fragment: pause
+and resume pause it, stop and Done are Back, discard is Discard, a start is a
 switch, assigning is a switch taking it along, renaming names the fragment,
 and Interrupt is Another. Inside the engine `sessionView()` is the session
 itself. `onInterruptionEnded` tells who ended one and how; the schedule
-service asks "Back to MG-12?" from it after a Stop or a Discard -- never
+service asks "Back to MG-12?" from it after `stopInterruption` -- never
 over lunch or the wrap-up, never for a task paused before -- and its Yes is
 Back, with the gap counted when asked (`interruptionEndedAtUtc`). Lunch
 during an interruption stops it, and the held task, if it was running before,
@@ -1168,7 +1173,7 @@ testing runs against your actual worklogs.
 | `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts. `previous_task_id` is the task of the session `startTask` stopped to start it (migration 14). Recent tasks are read from here, with no table of their own |
 | `task_stars` | Starred tasks, keyed by `provider_id` and `task_key` so a star survives the task being retired and fetched again under a new id; an ad-hoc task is keyed by its id under `adhoc`, since every ad-hoc task shows the same key. `task_id` is the row last seen (migration 14) |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE`; `reason` is `user`, `interruption`, `lunch` or `away` (migration 15) |
-| `interruptions` | The interruption fragments (migration 15): span, `name`, `source`, the session it held (`interrupted_session_id`, `interrupted_was_paused`), the fragment before it in its run (`after_id`), and its fate -- `placed_task_id` and `placed_worklog_id`, `kept_off`, or `discarded_at_utc`. `legacy_worklog_id` names the worklog of an interruption of the model before. At most one has no end |
+| `interruptions` | The interruption fragments (migration 15): span, `name`, `source`, the session it held (`interrupted_session_id`, `interrupted_was_paused`), the fragment before it in its run (`after_id`), and its fate -- `placed_task_id` and `placed_worklog_id`, `kept_off`, or `discarded_at_utc`. `legacy_worklog_id` names the worklog of an interruption of the model before. `paused_at_utc` and `paused_seconds` (migration 17) are its pauses, left out of its time. At most one has no end |
 | `worklogs` | Local record of tracked time. Written even when the remote refuses it. `task_id` is a FK to `tasks` |
 | `worklog_sync_queue` | Outbound worklogs: `PENDING` / `SYNCING` / `SYNCED` / `FAILED`, with backoff and `last_error`. Each row names the `worklog_id` it sends, its `operation` (`CREATE` today), and once sent the provider's `remote_worklog_id`. `refused_at_utc` (migration 16) marks a FAILED send the provider refused for good, never requeued |
 | `settings` | Key/value, JSON: provider configuration, and the redesigned flows' settings -- the start's side effects, Done per project, the prompts' delays, the shortcuts, close to tray, the stand-up's task -- each read through a reader in `shared/flow-settings.ts` that answers a whole, valid value whatever is stored |
@@ -1237,6 +1242,10 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
     be placed, with `legacy_worklog_id` naming it; the ad-hoc tasks and
     their worklogs are kept, so nothing is lost before
     `db:check-migration` has said so.
+16. `refused-entries` — `worklog_sync_queue.refused_at_utc` (P11c).
+17. `interruption-pauses` — `interruptions.paused_at_utc` and
+    `paused_seconds`: an interruption pauses as a task does (2026-11-16).
+    No row is rewritten; every fragment so far has no pause.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares

@@ -692,11 +692,13 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     between cases -- a dozen image-plus-animation closes in a row.
 
 **The bar's inputs have one meaning each** (P14b, the user's layout,
-revised after trying it): Pause is yes (pause, resume, back from an
-interruption, a question's yes, dismiss) and **Pause again stops** -- within
-`BAR_STOP_AGAIN_MS` of the bar's own pause, or, during an interruption, of
-the first press, which waits `BAR_INTERRUPTION_AGAIN_MS` to tell one press
-from two. The wheel's click is Interrupt, and no on a question or a
+revised after trying it): Pause is yes (pause, resume, a question's yes,
+dismiss) and **Pause again stops** -- within `BAR_STOP_AGAIN_MS` of the
+bar's own pause. An interruption is no exception (2026-11-16, the user's
+"an interruption is just a task we did not plan"): the same presses pause
+and stop it, and its Stop takes the held task up again. One Pause used to
+go back, after a 2 s wait for a second, so the same press meant pause on a
+task and end on an interruption. The wheel's click is Interrupt, and no on a question or a
 notification; turning is the menu's (P14c). **Back does nothing**: the
 user does not want it. Three things measured on the bar (2026-11-12) shape
 it:
@@ -857,11 +859,10 @@ changing it:
   does not raise the window either; the ones that still do are the wrap-up's
   confirm and a wheel click while timing, which ask for the app. Anything
   new that asks goes through the outlet -- never `show()` or `focus()`.
-  **One exception, the user's (2026-11-12): the Place window at a Stop.**
-  Stopping an interruption opens the picker window in `place-ended` mode,
-  raised, with the run's fragments still waiting (`getRunToPlace`), each
-  named and placed on its own row; Later or Escape leaves them on Today.
-  It answers a press the user just made, which a stand-up does not.
+  The Place window at an interruption's Stop (2026-11-12) was the one
+  exception; since a Stop takes the held task up again (2026-11-16), the
+  stopped interruption waits on Today like any other, and nothing opens.
+  The `place-ended` mode of the picker window is unused since.
 - **During an interruption, choosing a task does nothing** (the user's
   choice, 2026-11-12). Main refuses `session:start-task` and
   `interruption:switch` with `END_THE_INTERRUPTION_FIRST`, the picker
@@ -930,7 +931,15 @@ changing it:
   task's total already leaves the fragment out -- never subtract it again.
   While a fragment runs, `getCurrentSession()` answers the fragment as an
   ad-hoc session (`interruption` set), and the engine routes every command
-  to it: Stop, Done and pause are Stop, resume is Back, a start is a switch.
+  to it: pause and resume pause it (migration 17: `paused_at_utc`,
+  `paused_seconds`, and its time is the span less them), Stop and Done end
+  it and resume the held task -- `backFromInterruption`, reported `back` --
+  a start is a switch. `stopInterruption` leaves the task paused and asks
+  "Back to MG-12?": the engine's own end, for lunch, the wrap-up and a
+  night away. **An undone Stop puts the held task back to waiting**: the
+  restore point holds the held session's rows too, and the action names
+  it (`UndoableAction.resumes`), since "another session started" is what
+  makes a pending undo final and the task resuming is not another.
   A surface that reads the session works unchanged; one that needs the
   held task reads `interruption.interruptedTaskKey`, never a second
   `getCurrentSession`. Inside the engine, use `sessionView()`.
@@ -944,7 +953,7 @@ changing it:
   the session it holds: stopped from its IPC handler, a stand-up running at
   wrap-up time brought its task back to run all night (2026-11-09).
 - **"Back to MG-12?" comes from `onInterruptionEnded`, not from the session
-  ending.** The schedule service asks after a Stop or a Discard, never while
+  ending.** The schedule service asks after `stopInterruption` (a Stop or a Discard resumes the task, so it finds nothing to ask), never while
   it is itself ending one for lunch or the wrap-up (`_endingForLunch`), and
   never for a task paused before the interruption, which Back would leave
   paused. The LOGGED scene does not play for a fragment's stop

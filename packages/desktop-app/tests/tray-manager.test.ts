@@ -258,21 +258,24 @@ describe('TrayManager Unit Tests', () => {
       manager.destroy();
     });
 
-    it('Menu_DuringAnInterruption_BackToTheTask_NoPauseNorPrevious', () => {
+    it('Menu_DuringAnInterruption_PauseAndStopBack_NoPreviousNorBack', () => {
+      // Paused and stopped as a task is (2026-11-16); Stop goes back.
       engine.startTask('PROJ-1', false, 'First');
       engine.startTask('PROJ-2', false, 'Second');
       engine.startInterruption(new Date(), 'tray');
-      const manager = trayWith({ interrupt: vi.fn(), commands: commands() });
+      const stopping = commands();
+      const manager = trayWith({ interrupt: vi.fn(), commands: stopping });
 
-      expect(labels()).toContain('↩ Back to PROJ-2');
-      expect(labels()).not.toContain('Pause');
+      expect(labels()).toContain('Stop, back to PROJ-2');
+      expect(labels().some(l => l?.startsWith('↩'))).toBe(false);
       expect(labels().some(l => l?.startsWith('Previous'))).toBe(false);
       expect(labels()).not.toContain('Interrupt');
       // Choosing a task does nothing during one (2026-11-12).
       expect(labels()).not.toContain('Switch task…');
-      click('↩ Back to PROJ-2');
-      expect(engine.getCurrentSession()).toMatchObject({ taskId: 'PROJ-2', status: 'TRACKING' });
-      expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+      click('Pause');
+      expect(engine.getCurrentSession()).toMatchObject({ status: 'PAUSED', interruption: { interruptedTaskKey: 'PROJ-2' } });
+      click('Stop, back to PROJ-2');
+      expect(stopping.stop).toHaveBeenCalledTimes(1);
       manager.destroy();
     });
 

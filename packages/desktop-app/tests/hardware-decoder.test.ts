@@ -10,7 +10,7 @@ import { barInputDidNothing, type BarInputDTO } from '../src/shared/bar-input';
 import { DisplayRenderer } from '../src/main/hardware/display-renderer';
 import { InputDecoder } from '../src/main/hardware/input-decoder';
 import { BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT } from '../src/shared/priority-defaults';
-import { BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS } from '../src/shared/render-constants';
+import { BAR_ANSWER_SETTLE_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS } from '../src/shared/render-constants';
 import { WORKLOG_COMMENTS } from '../src/shared/worklog-comments';
 import type { TaskDTO } from '../src/shared/dtos';
 import { BarWord } from '../src/shared/words';
@@ -628,102 +628,65 @@ describe('Hardware Bridge & InputDecoder Unit Tests', () => {
     });
 
     describe('Pause during an interruption', () => {
-      it('Pause_Once_GoesBackToTheTask_WhenTheWaitIsOver', () => {
+      // An interruption is a task nobody planned (2026-11-16): Pause pauses
+      // it, Pause again within BAR_STOP_AGAIN_MS stops it, and its Stop
+      // resumes the task it held. One Pause used to go back, after a 2 s wait.
+      it('Pause_Once_PausesIt_TheTaskStillWaits', () => {
         engine.startTask('T-1');
         engine.startInterruption(new Date(), 'bar');
 
-        expect(press('start')).toBe('AWAIT_SECOND_PRESS');
+        expect(press('start')).toBe('PAUSE_SESSION');
+
         expect(engine.isInterrupted()).toBe(true);
-
-        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
-
-        expect(heard).toEqual(['BACK_FROM_INTERRUPTION']);
-        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'TRACKING' });
-        expect(engine.getCurrentSession()?.interruption).toBeUndefined();
+        expect(engine.getCurrentSession()).toMatchObject({ status: 'PAUSED', interruption: { interruptedSessionId: expect.any(String) } });
       });
 
-      it('Pause_Once_SaysAgainStopWhileItWaits', () => {
+      it('Pause_Once_SaysAgainStop_AsOnATask', () => {
         engine.startTask('T-1');
         engine.startInterruption(new Date(), 'bar');
         vi.spyOn(renderer['canvas'], 'drawSmallText');
 
         press('start');
 
+        renderer.renderActiveSession(engine.getCurrentSession());
         expect(row1Says(BarWord.AGAIN_STOP)).toBe(true);
       });
 
-      it('Pause_Twice_StopsTheInterruptionWhereTheFirstWasPressed', () => {
-        // Nothing is logged for an interruption: it waits to be placed, and
-        // the task it held stays paused. Its end is the first press, not the
-        // second, so the wait is no one's time.
+      it('Pause_AfterTheWait_ResumesIt', () => {
+        engine.startTask('T-1');
+        engine.startInterruption(new Date(), 'bar');
+        press('start');
+        vi.advanceTimersByTime(BAR_STOP_AGAIN_MS);
+
+        expect(press('start')).toBe('RESUME_SESSION');
+
+        expect(engine.isInterrupted()).toBe(true);
+        expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+      });
+
+      it('Pause_Twice_StopsIt_AndTheTaskItHeldRunsAgain', () => {
+        // Nothing is logged for an interruption: it waits to be placed.
         engine.startTask('T-1');
         engine.startInterruption(new Date(), 'bar');
         vi.advanceTimersByTime(60_000);
-        const firstPress = Date.now();
         press('start');
-        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS - 1);
 
         expect(press('start')).toBe('STOP_INTERRUPTION');
 
         expect(engine.isInterrupted()).toBe(false);
-        const placed = engine.getInterruptionsToPlace();
-        expect(placed).toHaveLength(1);
-        expect(Date.parse(placed[0].endedAtUtc)).toBe(firstPress);
-        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'PAUSED' });
-        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
-        expect(heard).toEqual(['STOP_INTERRUPTION']);
+        expect(engine.getInterruptionsToPlace()).toHaveLength(1);
+        expect(engine.getCurrentSession()).toMatchObject({ taskId: 'T-1', status: 'TRACKING' });
+        expect(heard).toEqual(['PAUSE_SESSION', 'STOP_INTERRUPTION']);
       });
 
-      it('Pause_InterruptionHoldingNothing_StopsIt', () => {
+      it('Pause_Twice_InterruptionHoldingNothing_StopsIt_NothingRuns', () => {
         engine.startInterruption(new Date(), 'bar');
+        press('start');
 
         expect(press('start')).toBe('STOP_INTERRUPTION');
+
         expect(engine.isInterrupted()).toBe(false);
-      });
-
-      it('Click_WhileTheReturnWaits_GoesBackFirst_ThenInterrupts', () => {
-        // The first press is honoured: back to the task, then the click is
-        // Interrupt as anywhere.
-        engine.startTask('T-1');
-        engine.startInterruption(new Date(), 'bar');
-        press('start');
-
-        expect(press('ok')).toBe('START_INTERRUPTION');
-        expect(heard).toEqual(['BACK_FROM_INTERRUPTION', 'START_INTERRUPTION']);
-      });
-
-      it('Pause_TheInterruptionEndedElsewhereMeanwhile_NothingHappens', () => {
-        engine.startTask('T-1');
-        engine.startInterruption(new Date(), 'bar');
-        press('start');
-        engine.stopInterruption();
-
-        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
-
-        expect(heard).toEqual([]);
-        expect(engine.getCurrentSession()?.status).toBe('PAUSED');
-      });
-
-      it('Dispose_DropsTheWaitingReturn', () => {
-        engine.startTask('T-1');
-        engine.startInterruption(new Date(), 'bar');
-        press('start');
-
-        decoder.dispose();
-        vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS);
-
-        expect(heard).toEqual([]);
-        expect(engine.isInterrupted()).toBe(true);
-      });
-
-      it('Pause_TheReturnThrows_IsLoggedNotThrown', () => {
-        engine.startTask('T-1');
-        engine.startInterruption(new Date(), 'bar');
-        press('start');
-        vi.spyOn(engine, 'backFromInterruption').mockImplementation(() => { throw new Error('boom'); });
-
-        expect(() => vi.advanceTimersByTime(BAR_INTERRUPTION_AGAIN_MS)).not.toThrow();
-        expect(vi.mocked(console.error)).toHaveBeenCalled();
+        expect(engine.getCurrentSession()).toBeNull();
       });
     });
 

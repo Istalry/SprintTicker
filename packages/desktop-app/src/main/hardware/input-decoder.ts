@@ -6,7 +6,7 @@ import { BarMenuEntry, barMenuEntries } from './bar-menu';
 import { BAR_MENU_EVENT, NOTHING_TIMING_EVENT, RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import {
-  BAR_ANSWER_SETTLE_MS, BAR_INTERRUPTION_AGAIN_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS
+  BAR_ANSWER_SETTLE_MS, BAR_MENU_IDLE_MS, BAR_STOP_AGAIN_MS
 } from '../../shared/render-constants';
 import { BarWord } from '../../shared/words';
 import { finishNeedsConfirmation } from '../../shared/task-left';
@@ -52,23 +52,17 @@ export interface BarMenuDeps {
   recentTasks?: (limit: number) => TaskDTO[];
 }
 
-/** An interruption's return, held to see whether a second Pause comes. */
-interface PendingBack {
-  sessionId: string;
-  pressedAt: number;
-  timer: ReturnType<typeof setTimeout>;
-}
-
 /**
  * Decodes the bar's inputs (redesign P14b, the user's layout of 2026-11-12,
  * revised the same day after trying it). One meaning per input, in every
  * state, and no menu but the one the wheel will open (P14c):
  *
- * - **Pause** is yes: pause, resume, back to the task an interruption holds,
- *   join, accept, dismiss a notification; with nothing running it opens the
- *   task picker on the computer. **Pause again** within `BAR_STOP_AGAIN_MS`
- *   of pausing stops the session, its time logged; during an interruption,
- *   one Pause goes back to the task and two stop the interruption.
+ * - **Pause** is yes: pause, resume, join, accept, dismiss a notification;
+ *   with nothing running it opens the task picker on the computer. **Pause
+ *   again** within `BAR_STOP_AGAIN_MS` of pausing stops the session, its
+ *   time logged. An interruption is a task nobody planned (2026-11-16): the
+ *   same two presses pause and stop it, and its Stop resumes the task it
+ *   held. One Pause used to go back, after a 2 s wait for a second.
  * - **The wheel's click** is no on a question or a notification, and
  *   Interrupt everywhere else -- Another during one.
  * - **Back** does nothing: the user did not want to use it.
@@ -94,7 +88,6 @@ export class InputDecoder {
   private _eodConfirmStep: number = 0;
   /** The session the bar's Pause just paused, which a second Pause stops until `until`. */
   private _stopArmed: { sessionId: string; until: number } | null = null;
-  private _pendingBack: PendingBack | null = null;
   private _menu: OpenMenu | null = null;
   private _menuDeps: BarMenuDeps = {};
   private _unregisterMenu: (() => void) | null = null;
@@ -231,10 +224,8 @@ export class InputDecoder {
     }
   }
 
-  /** Drops a return still waiting on a second Pause and the menu's timers, for shutdown. */
+  /** Drops the menu's timers, for shutdown. */
   public dispose(): void {
-    if (this._pendingBack) clearTimeout(this._pendingBack.timer);
-    this._pendingBack = null;
     if (this._menu) clearTimeout(this._menu.idle);
     this._menu = null;
     this._unregisterMenu?.();
@@ -271,14 +262,6 @@ export class InputDecoder {
   public handleHardwareInput(event: HardwareEvent): string {
     const key = (event.key || '').toLowerCase();
     const input = InputDecoder.inputOf(event);
-
-    // A return from an interruption waiting on a second Pause: Pause stops
-    // the interruption instead, and anything else lets the return happen
-    // before it is handled.
-    if (this._pendingBack) {
-      if (input === 'pause' && this.stillShowing(this._pendingBack.sessionId)) return this.stopPendingInterruption(key);
-      this.flushPendingBack();
-    }
 
     const question = this.questionShown();
     if (question !== 'eod') this._eodConfirmStep = 0;
@@ -386,31 +369,6 @@ export class InputDecoder {
       this._openPickerCallback?.();
       return this.report('OPEN_TASK_PICKER', key);
     }
-    if (session.interruption) {
-      // One holding no task has nothing to go back to: Pause ends it.
-      if (!session.interruption.interruptedSessionId) {
-        this._engine.stopInterruption();
-        return this.report('STOP_INTERRUPTION', key);
-      }
-      // One Pause goes back to the task, two stop the interruption: the wait
-      // tells them apart, with AGAIN=STOP on the bar meanwhile.
-      this._renderer?.showAgainHint(session.sessionId, BAR_INTERRUPTION_AGAIN_MS);
-      this._renderer?.renderActiveSession(session);
-      this._pendingBack = {
-        sessionId: session.sessionId,
-        pressedAt: Date.now(),
-        timer: setTimeout(() => {
-          try {
-            this.flushPendingBack();
-          } catch (err) {
-            // A timer's throw would end the process; the press is lost, the
-            // interruption runs on, and the next press acts afresh.
-            console.error('[InputDecoder] Going back from the interruption failed:', err);
-          }
-        }, BAR_INTERRUPTION_AGAIN_MS)
-      };
-      return 'AWAIT_SECOND_PRESS';
-    }
     if (session.status === 'TRACKING') {
       // Shown before the pause, so the paused frame already carries it.
       this._renderer?.showAgainHint(session.sessionId, BAR_STOP_AGAIN_MS);
@@ -425,8 +383,9 @@ export class InputDecoder {
       // Stop means stop: the time is logged and the task stays open, with
       // LOGGED on the bar -- through the window's own Stop, so Undo offers
       // it back.
+      // An interruption's Stop resumes the task it held, in the engine.
       this.ending().complete(WORKLOG_COMMENTS.BAR_STOP, false);
-      return this.report('STOP_SESSION', key);
+      return this.report(session.interruption ? 'STOP_INTERRUPTION' : 'STOP_SESSION', key);
     }
     this._engine.resumeSession();
     return this.report('RESUME_SESSION', key);
@@ -563,34 +522,6 @@ export class InputDecoder {
     clearTimeout(menu.idle);
     this._menu = null;
     this._priorityEngine?.releaseActiveLock(BAR_MENU_EVENT);
-  }
-
-  private stillShowing(sessionId: string): boolean {
-    return this._engine.getCurrentSession()?.sessionId === sessionId;
-  }
-
-  /** The second Pause: the interruption ends where the first was pressed. */
-  private stopPendingInterruption(key: string): string {
-    const pending = this._pendingBack!;
-    clearTimeout(pending.timer);
-    this._pendingBack = null;
-    this._renderer?.clearAgainHint();
-    this._engine.stopInterruption(new Date(pending.pressedAt).toISOString());
-    return this.report('STOP_INTERRUPTION', key);
-  }
-
-  /** The wait is over, or another input came: back to the task. */
-  private flushPendingBack(): void {
-    const pending = this._pendingBack;
-    if (!pending) return;
-    clearTimeout(pending.timer);
-    this._pendingBack = null;
-    this._renderer?.clearAgainHint();
-    // Ended or replaced meanwhile, from the app or the deck: nothing to go
-    // back from.
-    if (!this._engine.getCurrentSession()?.interruption || !this.stillShowing(pending.sessionId)) return;
-    this._engine.backFromInterruption();
-    this.report('BACK_FROM_INTERRUPTION', 'start');
   }
 
   private report(action: string, inputKey: string): string {

@@ -181,18 +181,11 @@ export class TrayManager {
   }
 
   /**
-   * Interrupt; during one, "↩ Back to MG-12" when it holds a task (S26). An
-   * interruption holding nothing has no Back, and Interrupt there is
-   * Another, which main decides.
+   * Interrupt; during one, Another, which main decides. Back has no item:
+   * Stop takes the held task up again (2026-11-16).
    */
   private interruptItem(): Electron.MenuItemConstructorOptions[] {
     const running = this.engine.getCurrentSession()?.interruption;
-    if (running?.interruptedSessionId) {
-      return [{
-        label: `↩ ${Verb.BACK} to ${running.interruptedTaskKey ?? 'the task'}`,
-        click: this.guarded('go back from the interruption', () => this.engine.backFromInterruption())
-      }];
-    }
     if (!this.interrupt) return [];
     return [{
       label: running ? `${Verb.ANOTHER} interruption` : Verb.INTERRUPT,
@@ -238,14 +231,19 @@ export class TrayManager {
             })
           }]),
       ...this.previousItem(interrupting),
-      // Pausing an interruption is ending it: Stop says so.
-      ...(session && !interrupting
+      // An interruption pauses and stops as a task does (2026-11-16).
+      ...(session
         ? [session.status === 'PAUSED'
             ? { label: Verb.RESUME, click: this.guarded('resume', () => this.engine.resumeSession()) }
             : { label: Verb.PAUSE, click: this.guarded('pause', () => this.engine.pauseSession()) }]
         : []),
       ...(session && this.commands
-        ? [{ label: Verb.STOP, click: this.guarded('stop', () => this.commands?.stop()) }]
+        ? [{
+            label: session.interruption?.interruptedSessionId
+              ? `${Verb.STOP}, ${Verb.BACK.toLowerCase()} to ${session.interruption.interruptedTaskKey ?? 'the task'}`
+              : Verb.STOP,
+            click: this.guarded('stop', () => this.commands?.stop())
+          }]
         : []),
       ...this.interruptItem(),
       { type: 'separator' },
