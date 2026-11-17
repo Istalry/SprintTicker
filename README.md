@@ -26,6 +26,8 @@
   <a href="#-features"><b>✨ Features</b></a>
 </p>
 
+https://github.com/user-attachments/assets/1b92dc52-8c89-4097-917a-e5fe35775f69
+
 > [!NOTE]
 > Not affiliated with, endorsed by, or supported by Flipper FZCO. "BUSY Bar" is
 > their product; this is a third-party companion app for it.
