@@ -41,6 +41,8 @@ export function random(seed: number): () => number {
 export type EventName =
   | 'banner' | 'highBanner'
   | 'startTask' | 'startTaskFromBar' | 'pause' | 'resume' | 'tick' | 'stop' | 'finish'
+  /** An interruption over the task, as the engine answers it: an ad-hoc session with the bolt. */
+  | 'interrupt'
   /** The menu's DISCARD: the question, the click refusing it, and the second Pause that confirms. */
   | 'askDiscard' | 'cancelDiscard' | 'discard'
   /** The wheel's menu (P14c): turned to in any state, turned through, and closed. */
@@ -168,6 +170,23 @@ export class Desk {
         // The reminder's subscriber: a start ends "nothing timing".
         this.closeNothingTiming();
         // The IPC registry's subscriber renders the session.
+        this.renderer.renderActiveSession(this.session);
+        return;
+      }
+      case 'interrupt': {
+        if (this.session?.interruption) return;
+        const held = this.session;
+        const next = this.newSession();
+        this.session = {
+          ...next, isAdHoc: true, taskId: `adhoc_${this.sessionCount}`, taskKey: 'MISC-1', taskTitle: 'Interruption',
+          interruption: {
+            id: `i${this.sessionCount}`, name: null, title: 'Interruption', startedAtUtc: next.startTimeUtc, index: 1,
+            source: 'window', interruptedSessionId: held?.sessionId ?? null, interruptedTaskKey: held?.taskKey ?? null,
+            interruptedTaskTitle: held?.taskTitle ?? null, interruptedWasPaused: held?.status === 'PAUSED'
+          }
+        };
+        this.closeMenu();
+        this.closeNothingTiming();
         this.renderer.renderActiveSession(this.session);
         return;
       }
@@ -301,16 +320,15 @@ export class Desk {
         return this.enterMode('LUNCH');
       case 'lunchStartUnderAway':
         if (this.mode !== 'AWAY') return;
-        // Away paused the task already; Lunch takes the pause over
-        // (relabelPause) and notifies nobody. Only a task started under
-        // Away is paused here, and drawn so.
+        // Lunch pauses the task Away left timing, and it is drawn so
+        // under the scene.
         this.pauseForBreak();
         return;
       case 'awayEndIntoLunch':
         if (this.mode !== 'AWAY') return;
         return this.enterMode('LUNCH');
       case 'awayStart':
-        this.pauseForBreak();
+        // Away pauses nothing (2026-11-17): the task keeps timing under it.
         return this.enterMode('AWAY');
       case 'lunchEnd':
       case 'awayEnd':

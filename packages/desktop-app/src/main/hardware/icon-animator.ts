@@ -1,5 +1,5 @@
 import { BusyBarDriver, DEFAULT_DRAW_PRIORITY } from './busybar-driver';
-import { describeError, isElementAbsent } from './device-errors';
+import { describeError, isElementAbsent, isFileInUse } from './device-errors';
 import { AnimationData, animFor } from './animation-sequence';
 import { DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z } from '../../shared/device-constants';
 import { ArgumentNullException } from '../../shared/dtos';
@@ -223,6 +223,14 @@ export class IconAnimator {
       this.uploaded.add(name);
       return true;
     } catch (err) {
+      if (isFileInUse(err)) {
+        // The device is playing a file of this name -- the icon a previous run
+        // left on the panel -- so it holds it: drawn from its copy, as a scene
+        // still on the panel is. If that draw is refused, the icon is.
+        console.log(`[IconAnimator] ${name}.anim is on the device and playing; drawing its copy.`);
+        this.uploaded.add(name);
+        return true;
+      }
       this.refuse(name, `device would not store ${name}.anim (${anim.length} bytes): ${describeError(err)}`);
       return false;
     }

@@ -336,9 +336,76 @@ describe('Display hand-back: the screen that ends gives the display to the right
       expectSettledScreen(desk);
     });
 
-    it('AwayPausesTheRunningTask_TheCoffeeCupCoversIt_UnlockingIntoLunchShowsTheSandwich', async () => {
-      await play('startTask', 1000, 'awayStart', SETTLE_MS);
-      expect(desk.session?.status).toBe('PAUSED');
+    it.each([
+      ['settled', 3000, '1.2.4'], ['its icon still on the way', 5, '1.2.4'], ['its icon mid-upload', 40, '1.2.4'],
+      ['settled', 3000, '1.3.1'], ['its icon still on the way', 5, '1.3.1'], ['its icon mid-upload', 40, '1.3.1']
+    ])('InterruptionThenAway_%s_on%s_TheCoffeeCupAloneShows', async (_name, gap, firmware) => {
+      // rc10 on the bar (2026-11-17): the bolt stayed over the coffee cup.
+      if (firmware !== '1.2.4') {
+        desk.dispose();
+        desk = new Desk(1, firmware);
+        await desk.connect();
+      }
+      await play('startTask', 1000, 'interrupt', gap, 'awayStart', 1000, 'tick', 1000, 'tick', SETTLE_MS);
+      expect(desk.session?.interruption).toBeDefined();
+      expectSettledScreen(desk);
+    });
+
+    /**
+     * The panel a previous run left -- killed by the installer, not quit --
+     * and a new run on it that knows nothing of it: rc9's stopwatch, and
+     * Away's scene resting on the empty animation.
+     */
+    const startOnPanelLeftBehind = async (firmware: string): Promise<void> => {
+      desk.dispose();
+      desk = new Desk(1, firmware);
+      await desk.connect();
+      await play('startTask', 1000, 'awayStart', SETTLE_MS, 'awayEnd', SETTLE_MS);
+      const left = [...desk.device.elements.entries()];
+      desk.device.expectClean();
+      desk.dispose();
+      desk = new Desk(2, firmware);
+      for (const [id, element] of left) desk.device.elements.set(id, element);
+      desk.device.screenOpen = true;
+      await desk.connect();
+    };
+    /** The driver could learn what plays only by an upload over it. */
+    const uploadsOverPlayingAllowed = (): void => {
+      desk.device.expectClean({ allow: ['upload-over-playing-anim'] });
+      desk.device.violations.length = 0;
+    };
+
+    it.each(['1.2.4', '1.3.1'])('PanelLeftByAPreviousRun_InterruptionThenAway_TheBoltIsPutToRest_on%s', async firmware => {
+      // rc10's log (2026-11-17): putting the bolt to rest uploaded the empty
+      // animation, which the scene left by the previous run was playing; the
+      // bar answered 508, and the bolt stayed over Away's coffee cup.
+      await startOnPanelLeftBehind(firmware);
+
+      await play('startTask', SETTLE_MS, 'interrupt', 3000, 'awayStart', SETTLE_MS);
+
+      expect(desk.session?.interruption).toBeDefined();
+      expectSettledScreen(desk);
+      uploadsOverPlayingAllowed();
+    });
+
+    it('PanelLeftByAPreviousRun_TheStopwatchIsDrawnFromTheDevicesCopy_On131', async () => {
+      // rc10's log (2026-11-17): on firmware 1.3.1 every upload over the
+      // stopwatch the previous run left playing reset the connection, read
+      // as an outage every 3 s for four minutes. The bar was there; it holds
+      // the file.
+      await startOnPanelLeftBehind('1.3.1');
+
+      await play('startTask', SETTLE_MS, 'tick', SETTLE_MS);
+
+      expect(icon()).toMatch(/^icon_stopwatch/);
+      expect(desk.device.violations.filter(v => v.detail.includes('icon_stopwatch')).length).toBeLessThan(3);
+      uploadsOverPlayingAllowed();
+    });
+
+    it('AwayKeepsTheTaskTiming_TheCoffeeCupCoversIt_UnlockingIntoLunchShowsTheSandwich', async () => {
+      // rc10 on the bar (2026-11-17): the session's icon played over Away.
+      await play('startTask', 1000, 'awayStart', 1000, 'tick', 1000, 'tick', SETTLE_MS);
+      expect(desk.session?.status).toBe('TRACKING');
       expectSettledScreen(desk);
 
       await play('lunchStartUnderAway', 500, 'awayEndIntoLunch', SETTLE_MS);

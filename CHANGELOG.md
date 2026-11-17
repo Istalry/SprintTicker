@@ -494,6 +494,11 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Fixed
 
+- **The bar no longer shows the interruption's ⚡ over Away's coffee cup.**
+  After an update, the bar could still be playing animations left by the
+  previous version, and the bar's refusal to take the empty animation again
+  left the ⚡ playing. On firmware 1.3.1 the same leftovers made the app read
+  the bar as dropping out every 3 seconds after start, redrawing each time.
 - **A window opened from the bar or the Stream Deck could stay behind**,
   its taskbar button flashing: the helper that brings it forward was
   stopped after 5 s, and it can take longer to start. It now has 15 s.

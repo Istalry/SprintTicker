@@ -3,7 +3,7 @@ import WebSocket from 'ws';
 import { DeviceStatusDTO, AccessSettingsDTO, BrightnessDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
 import { DEFAULT_USB_IP, DEVICE_APPLICATION_NAME, FRONT_ELEMENT_IDS, FRONT_LAYER_Z, redactTokenInUrl } from '../../shared/device-constants';
 import { sanitizeAsciiText } from '../../shared/text-sanitizer';
-import { ClearOutcome, DeviceRequestError, DrawOutcome, FrameOutcome, describeError, isElementAbsent } from './device-errors';
+import { ClearOutcome, DeviceRequestError, DrawOutcome, FILE_IN_USE_STATUS, FrameOutcome, describeError, isElementAbsent, isFileInUse } from './device-errors';
 import { DisplayLedger } from './display-ledger';
 import { DisplayHealthMonitor } from './display-health';
 import { SerialQueue } from './serial-queue';
@@ -125,6 +125,13 @@ export function isUnreachableReminderDue(consecutiveFailures: number): boolean {
  * half worth keeping, and it is the difference between "the bar is asleep" and
  * "the USB network adapter is not there at all".
  */
+/** Whether a fetch failed because the peer reset the connection: it is there, and closed on us. */
+export function isConnectionReset(err: unknown): boolean {
+  const cause = err instanceof Error ? (err as { cause?: unknown }).cause : undefined;
+  const code = cause instanceof Error ? (cause as { code?: string }).code : undefined;
+  return code === 'ECONNRESET' || code === 'EPIPE';
+}
+
 export function describeTransportError(err: unknown): string {
   if (!(err instanceof Error)) return String(err);
 
@@ -940,9 +947,15 @@ export class BusyBarDriver extends EventEmitter {
     operation: string,
     url: string,
     init: RequestInit,
-    options: { allowConflict?: boolean; timeoutMs?: number; absentIsExpected?: boolean } = {}
+    options: {
+      allowConflict?: boolean;
+      timeoutMs?: number;
+      absentIsExpected?: boolean;
+      /** A transport failure that is the device's answer, not its absence; null for none. */
+      refusalOf?: (err: unknown) => DeviceRequestError | null;
+    } = {}
   ): Promise<'ok' | 'conflict'> {
-    const response = await this.deviceFetch(url, init, options.timeoutMs);
+    const response = await this.deviceFetch(url, init, options.timeoutMs, options.refusalOf);
     const kind = this.reportDeviceResponse(operation, response, options.absentIsExpected);
     if (kind === 'ok') return 'ok';
     if (kind === 'conflict' && options.allowConflict) return 'conflict';
@@ -981,7 +994,7 @@ export class BusyBarDriver extends EventEmitter {
         return { skip: undefined };
       },
       async () => {
-        await this.uploadRequest(operation, url, binaryData);
+        await this.uploadRequest(operation, url, binaryData, cleanFilename.toLowerCase().endsWith('.anim'));
       }
     );
   }
@@ -1012,17 +1025,17 @@ export class BusyBarDriver extends EventEmitter {
     throw new DeviceRequestError('rejected', operation, null, `${detail}; not sent, since the bar would draw its load-error icon`);
   }
 
-  private async uploadRequest(operation: string, url: string, binaryData: Buffer | Uint8Array): Promise<void> {
+  private async uploadRequest(operation: string, url: string, binaryData: Buffer | Uint8Array, isAnim = false): Promise<void> {
     const started = Date.now();
     try {
-      await this.uploadRequestUntimed(operation, url, binaryData);
+      await this.uploadRequestUntimed(operation, url, binaryData, isAnim);
     } finally {
       // Answered or not: a timeout is the slowest upload of all.
       this.health.recordUpload(Date.now() - started);
     }
   }
 
-  private async uploadRequestUntimed(operation: string, url: string, binaryData: Buffer | Uint8Array): Promise<void> {
+  private async uploadRequestUntimed(operation: string, url: string, binaryData: Buffer | Uint8Array, isAnim = false): Promise<void> {
     await this.deviceRequest(
       operation,
       url,
@@ -1041,7 +1054,20 @@ export class BusyBarDriver extends EventEmitter {
         )
       },
       // An upload carries a payload rather than a few bytes of JSON.
-      { timeoutMs: DEVICE_UPLOAD_TIMEOUT_MS }
+      // Firmware 1.3.1 resets the connection, rather than answer 508, when
+      // a few KB of `.anim` come over a file an element is playing: the
+      // stopwatch a previous run left on the panel reset every upload for
+      // four minutes (2026-11-17), while the 80-byte empty animation still
+      // got its 508. Read as an outage, each reset forgot the panel, the
+      // ping saw the bar back and the redraw uploaded again -- every 3 s.
+      // The bar was there to reset it: it is the 508's answer.
+      {
+        timeoutMs: DEVICE_UPLOAD_TIMEOUT_MS,
+        refusalOf: err => isAnim && isConnectionReset(err)
+          ? new DeviceRequestError('rejected', operation, FILE_IN_USE_STATUS,
+            `the bar reset the connection (${describeTransportError(err)}), as firmware 1.3.1 does over an .anim it is playing`)
+          : null
+      }
     );
   }
 
@@ -1381,13 +1407,22 @@ export class BusyBarDriver extends EventEmitter {
   private async deviceFetch(
     url: string,
     init: RequestInit = {},
-    timeoutMs: number = DEVICE_REQUEST_TIMEOUT_MS
+    timeoutMs: number = DEVICE_REQUEST_TIMEOUT_MS,
+    refusalOf?: (err: unknown) => DeviceRequestError | null
   ): Promise<Response | null> {
     try {
       const response = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
       this.lastTransportError = null;
       return response;
     } catch (err) {
+      // An answer in the shape of a transport failure: the device is there,
+      // so nothing it holds is forgotten.
+      const refusal = refusalOf?.(err) ?? null;
+      if (refusal) {
+        this.lastTransportError = describeTransportError(err);
+        console.warn(`[BusyBarDriver] ${refusal.message}.`);
+        throw refusal;
+      }
       this.answerLost = true;
       this.loseTrackOfDevice();
       // Timeout, abort, DNS, refused connection: from the caller's point of
@@ -1671,7 +1706,16 @@ export class BusyBarDriver extends EventEmitter {
       // Skipped by the upload's own guard when an element already plays it.
       // In the bar's own format; an unknown one is refused by the upload's
       // guard, and the animation then stays as it was.
-      await this.uploadAsset(applicationName, BLANK_ANIMATION_FILE, BLANK_ANIMATION_BYTES[this.getAnimationFormat() ?? 0]);
+      try {
+        await this.uploadAsset(applicationName, BLANK_ANIMATION_FILE, BLANK_ANIMATION_BYTES[this.getAnimationFormat() ?? 0]);
+      } catch (err) {
+        // 508: another element rests on the empty animation already -- the
+        // scene's, after an outage made the ledger forget it -- so the device
+        // holds it. Giving up here left the interruption's bolt playing over
+        // Away's coffee cup (rc10 on the bar, 2026-11-17).
+        if (!isFileInUse(err)) throw err;
+        console.log(`[BusyBarDriver] ${operation}: the empty animation is on the device and playing; drawing its copy.`);
+      }
       this.blankAnimationStored = true;
     }
     const zIndex = this.ledger.element(applicationName, elementId)?.zIndex ?? FRONT_LAYER_Z.ICON;

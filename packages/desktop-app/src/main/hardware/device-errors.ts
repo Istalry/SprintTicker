@@ -79,6 +79,22 @@ export function isElementAbsent(err: unknown): boolean {
   return err instanceof DeviceRequestError && err.kind === 'rejected' && err.status === 400;
 }
 
+/**
+ * The status the firmware answers to an upload over an `.anim` an element is
+ * playing ("Failed to open file for writing"). The device holds that file:
+ * it is playing it.
+ */
+export const FILE_IN_USE_STATUS = 508;
+
+/**
+ * Whether a failed upload means the device is playing a file of that name,
+ * and so holds it already: drawing it from the device's copy works where
+ * uploading it again cannot.
+ */
+export function isFileInUse(err: unknown): boolean {
+  return err instanceof DeviceRequestError && err.kind === 'rejected' && err.status === FILE_IN_USE_STATUS;
+}
+
 /** A thrown value as one log-friendly line. */
 export function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

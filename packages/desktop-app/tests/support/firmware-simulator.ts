@@ -31,6 +31,9 @@ import { BLANK_ANIMATION_FILE } from '../../src/main/hardware/blank-animation';
 import { animFormatForFirmware, animFormatOf } from '../../src/shared/anim-format';
 
 /** The ways a request can break the hardware contract. */
+/** Above this, firmware 1.3.1 resets an upload over a playing `.anim` rather than answer 508; measured between 80 B and 4.5 KB. */
+const UPLOAD_RESET_ABOVE_BYTES = 1024;
+
 export type RuleId =
   /**
    * An animation removed by `element_ids`. Hung the bar on the 30th and the
@@ -292,6 +295,15 @@ export class FirmwareSimulator {
       const playing = [...this.elements.values()].some(el => el.type === 'animation' && el.path === file);
       if (playing) {
         this.violate('upload-over-playing-anim', label, `${file} is playing`);
+        // Firmware 1.3.1 resets the connection instead when a few KB come
+        // over it -- the stopwatch's 4.5 KB did, every time, while the empty
+        // animation's 80 bytes still got the 508 (real bar, 2026-11-17).
+        const size = init?.body instanceof Uint8Array ? init.body.byteLength : 0;
+        if (animFormatForFirmware(this.firmwareVersion) === 1 && size > UPLOAD_RESET_ABOVE_BYTES) {
+          throw Object.assign(new TypeError('fetch failed'), {
+            cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })
+          });
+        }
         return this.answer(508);
       }
       if (file.toLowerCase().endsWith('.anim')) {

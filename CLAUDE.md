@@ -687,7 +687,17 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
   - **An upload over an `.anim` the device is playing answers 508** ("Failed to
     open file for writing"). Restarting the scene that is still on the panel
     therefore draws it from the copy the device holds instead of uploading it
-    again, and uploads once more only if that draw is refused.
+    again, and uploads once more only if that draw is refused. **On firmware
+    1.3.1 a few KB over a playing `.anim` reset the connection instead**
+    (2026-11-17; the 80-byte empty animation still gets its 508): the
+    stopwatch a previous run left playing reset every upload for four
+    minutes, each read as an outage and redrawn every 3 s. An `.anim`
+    upload's reset is that 508 (`refusalOf`, `isFileInUse`), never an
+    outage. A 508 means the device holds the file: the icon is drawn from
+    its copy, and putting an animation to rest draws the empty one anyway --
+    giving up there left the interruption's bolt over Away's coffee cup,
+    the scene left by the previous run resting on the empty animation the
+    ledger never knew of.
   - **The probe follows the same rule.** `--compositing` keeps a transparent
     floor element under every case so removing the case never empties the
     panel, and closes once at the end, animations first. It used to clear

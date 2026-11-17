@@ -72,7 +72,9 @@ const WEIGHTS: Partial<Record<EventName, number>> = {
   // NOTHING TIMING asked with nothing running, and answered (P14e).
   nothingTiming: 2, answerNothingTiming: 2,
   // The bar dropping out and coming back, as a Wi-Fi blip or a restart does.
-  barDrop: 1, barBack: 2, barReboot: 1
+  barDrop: 1, barBack: 2, barReboot: 1,
+  // An interruption over the task: its bolt under Away and Lunch (2026-11-17).
+  interrupt: 2
 };
 
 /** Gaps between steps, in milliseconds. Zero is the same tick. */
