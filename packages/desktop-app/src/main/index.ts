@@ -461,6 +461,8 @@ async function startApplication(): Promise<void> {
   });
   const reminders = reminderService;
   daySchedule.onChecked(() => reminders.evaluate());
+  // Back from a lock with the task still timing: maybe a question (2026-11-17).
+  daySchedule.onAwayEnded(span => reminders.noteAway(span));
   // Asked is a state until answered, not an alert: refused under a screen
   // above it -- the stand-up's prompt still up -- it comes back when the
   // display frees, as the bar's menu does, and never after its answer.

@@ -307,11 +307,16 @@ export interface CeremonyPromptDTO {
 export interface ReminderDTO {
   /** The occurrence: dismissing it is final for this one, never for the next. */
   id: string;
-  kind: 'nothing-timing' | 'long-pause' | 'interruption-running' | 'standup-running';
+  kind: 'nothing-timing' | 'long-pause' | 'interruption-running' | 'standup-running' | 'time-away';
   /** Since when the state has lasted (the later of idle and the day's start, for nothing timing). */
   sinceUtc: string;
   minutes: number;
-  /** The paused task, or the stand-up's. */
+  /**
+   * For `time-away`: when the user came back. The task kept timing from
+   * `sinceUtc` to here; only the user's answer moves that time.
+   */
+  untilUtc?: string;
+  /** The paused task, the stand-up's, or the task timed while away. */
   taskKey?: string;
   /** The interruption's name. */
   name?: string;

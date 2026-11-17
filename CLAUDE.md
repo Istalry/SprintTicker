@@ -893,9 +893,9 @@ changing it:
   `completeSession`), so it holds no rule of its own. Nothing timing is not
   asked while "Back to MG-12?" is; that question gets one toast more
   instead.
-- **Lunch and Away pause; they never stop** (D1, redesign P8b). The
+- **Lunch pauses; it never stops** (D1, redesign P8b). The
   running session is paused with a `paused_intervals` row of reason `lunch`
-  or `away`, and `lunch_resume` keeps the held session's id
+  (`away` only on rows from before 2026-11-17), and `lunch_resume` keeps the held session's id
   (`heldSessionId`, `pausedFor`). The morning is not logged at 12:30 but at
   the task's stop, where `splitWork` cuts at the break (`splitPauseMinutes`)
   -- the provider gets the same two entries, to the second. When the break
@@ -910,8 +910,20 @@ changing it:
   (`answerLunchQuestion`) ends it and its held task takes Lunch's pause
   (`relabelPause`); Not now is working through lunch for the day; Back is
   too, as any resume during lunch. The mode chip's Lunch is the user's
-  choice and ends it unasked. Away leaves an interruption running. An entry with no held session is a task to *start* again -- the
+  choice and ends it unasked. An entry with no held session is a task to *start* again -- the
   stand-up stopped by lunch, or one stored by a version that stopped.
+- **Away pauses nothing** (the user's rule, 2026-11-17: "I should be able
+  to make me a coffee or go to the toilet without the task being
+  paused"). A lock, a sleep or the mode chip's Away changes the mode and
+  the bar, never the session: time away the same day is work, as §7 says.
+  Back after `prompt_delays.timeAway` minutes (15) with the same task still
+  timing, the reminders ask once "Away 23 min. Was it on MG-12?"
+  (`onAwayEnded` → `ReminderService.noteAway`, kind `time-away`, in or out
+  of working hours). Keeping it is the quiet answer; "Something else…" is
+  `interruptionBetween`, which makes the span an ended interruption to
+  place. **Never move that time without the user's answer** -- not to a
+  pause, not to an interruption. Across midnight the forgotten-session
+  check asks instead, and Lunch still pauses a task Away left timing.
 - **Lunch never overrides the user.** `ContextScheduleService` listens to the
   engine: a session *going* TRACKING during lunch ends Lunch for the day
   (`lunch_skipped_date`) and drops the stored entry (`lunch_resume`) --
@@ -969,11 +981,11 @@ changing it:
   never for a task paused before the interruption, which Back would leave
   paused. The LOGGED scene does not play for a fragment's stop
   (`completeSession` checks `isInterrupted`): nothing was logged.
-- **Lunch takes over Away's pause.** Lunch never *leaves* Away -- Away
+- **Lunch pauses under Away.** Lunch never *leaves* Away -- Away
   outranks it -- and that used to mean it never began at all: locked at
-  12:30, the session ran on and the break was logged as work. Away pauses
-  now, and the check at lunch relabels the stored entry `pausedFor: 'lunch'`
-  while staying Away, so the question after it is lunch's; `exitAwayMode`
+  12:30, the session ran on and the break was logged as work. The check at
+  lunch pauses the task Away left timing, for lunch, while staying Away, so
+  the question after it is lunch's; `exitAwayMode`
   goes straight to LUNCH during the lunch hours (pausing a session the
   machine slept through the start of), never WORK first: WORK and then LUNCH
   at the next check is two renders, and a session started in between reads

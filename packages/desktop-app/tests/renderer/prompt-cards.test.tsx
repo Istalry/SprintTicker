@@ -100,6 +100,19 @@ describe('prompt cards', () => {
 
       expect(left).toEqual(['away']);
     });
+
+    it('Away_TaskTiming_SaysItKeepsTiming_ImBackLeavesAway', () => {
+      // Away pauses nothing (2026-11-17): a coffee is work.
+      installElectronApi();
+      const left: string[] = [];
+      render(<BreakCard mode="AWAY" session={TRACKING_SESSION} onLeaveAway={() => left.push('away')} />);
+
+      expect(screen.getByRole('region', { name: 'Away' }).textContent).toMatch(new RegExp(`${TRACKING_SESSION.taskKey} keeps timing`));
+      expect(screen.queryByRole('button', { name: /Resume/ })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: "I'm back" }));
+
+      expect(left).toEqual(['away']);
+    });
   });
 
   describe('joined late, and lunch during an interruption (P8c2)', () => {

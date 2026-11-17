@@ -22,12 +22,13 @@ const REMINDER_MINUTES = [5, 10, 15, 20, 25, 30, 45, 60, 90, 120];
 const SPLIT_MINUTES = [0, 5, 10, 15, 30, 60];
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/** The four "still...?" reminders (P8d), each a row, in S21's words. */
+/** The "still...?" reminders (P8d), each a row, in S21's words, and the time-away question. */
 const REMINDER_ROWS: ReadonlyArray<{ key: keyof PromptDelaysSetting; title: string; does: string }> = [
   { key: 'nothingTiming', title: 'Nothing timing in working hours', does: 'Asks once, after this long, whether you meant to stop.' },
   { key: 'longPause', title: 'A pause that runs long', does: 'Asks once, after this long, whether you are still paused.' },
   { key: 'standupRunning', title: 'A stand-up still running', does: 'Asks once, after this long, whether it is still going on.' },
-  { key: 'interruptionRunning', title: 'An interruption still running', does: 'Asks once, after this long, whether it is still going on.' }
+  { key: 'interruptionRunning', title: 'An interruption still running', does: 'Asks once, after this long, whether it is still going on.' },
+  { key: 'timeAway', title: 'Back after time away', does: 'Locking keeps the task timing. Back after this long, asks once whether the time was on it.' }
 ];
 
 const withStored = (choices: readonly number[], stored: number): number[] =>

@@ -17,12 +17,14 @@ import { RESUME_PROMPT_EVENT } from '../../shared/priority-defaults';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 import { InterruptionSource } from '../../shared/interruption';
 import type { InterruptionEnded } from '../engine/time-tracking-engine';
+import type { AwaySpan } from './reminder-service';
 
 /**
  * The task to come back to after a break, and the day of the break. Lunch
- * and Away pause the session now (redesign P8b, D1): `heldSessionId` names
- * the session paused, which "Back at your desk?" resumes, and `pausedFor`
- * what paused it. An entry without it is a task to start again -- the
+ * pauses the session (redesign P8b, D1): `heldSessionId` names the session
+ * paused, which "Back at your desk?" resumes, and `pausedFor` what paused
+ * it -- `away` only in an entry stored before Away stopped pausing
+ * (2026-11-17). An entry without it is a task to start again -- the
  * stand-up's, ended during lunch, or one stored by an earlier version.
  */
 interface LunchResume {
@@ -161,6 +163,12 @@ export class ContextScheduleService {
   private readonly _calendar: WorkingCalendar;
   private readonly _weekEndedListeners = new Set<(week: WeekEndedDTO) => void>();
   private readonly _checkListeners = new Set<() => void>();
+  private readonly _awayEndedListeners = new Set<(span: AwaySpan) => void>();
+  /**
+   * When Away began, and the task timing then, if one was: a lock and a
+   * sleep after it are one absence, timed from the first.
+   */
+  private _awaySince: { atUtc: string; session: { sessionId: string; taskKey: string } | null } | null = null;
 
   constructor(
     priorityEngine: PriorityPreemptionEngine,
@@ -279,9 +287,9 @@ export class ContextScheduleService {
         } else if (workingToday && isLunchTime && currentMode !== 'LUNCH' && currentMode !== 'AWAY' && !workingThroughLunch) {
           this.enterLunchMode();
         } else if (workingToday && isLunchTime && currentMode === 'AWAY' && !workingThroughLunch) {
-          // Locked when lunch began. Lunch never leaves Away; it takes over
-          // Away's pause of the task (an interruption asks, above).
-          // Unlocking during the break shows LUNCH.
+          // Locked when lunch began. Lunch never leaves Away, but pauses the
+          // task Away left timing (an interruption asks, above). Unlocking
+          // during the break shows LUNCH.
           this.pauseForBreak('lunch');
         } else if (!isLunchTime && currentMode === 'LUNCH') {
           this.exitLunchMode();
@@ -336,6 +344,16 @@ export class ContextScheduleService {
   }
 
   /** Called after every check, every 30 s: the reminders ride on it (P8d). */
+  /**
+   * Told when the user comes back from Away -- an unlock, a wake, the mode
+   * chip -- with the task that kept timing all along still running, for
+   * the reminders to ask about the time away (2026-11-17).
+   */
+  public onAwayEnded(listener: (span: AwaySpan) => void): () => void {
+    this._awayEndedListeners.add(listener);
+    return () => this._awayEndedListeners.delete(listener);
+  }
+
   public onChecked(listener: () => void): () => void {
     this._checkListeners.add(listener);
     return () => this._checkListeners.delete(listener);
@@ -691,23 +709,22 @@ export class ContextScheduleService {
   }
 
   /**
-   * Pauses the running session for Lunch or Away (redesign P8b, D1) and
-   * keeps which one, to ask "Back at your desk?" after; the mode is the
-   * caller's. A pause is excluded from the session, and one of
+   * Pauses the running session for Lunch (redesign P8b, D1) and keeps it,
+   * to ask "Back at your desk?" after; the mode is the caller's. Away
+   * pauses nothing since 2026-11-17; `pausedFor: 'away'` is an entry an
+   * earlier version stored. A pause is excluded from the session, and one of
    * `splitPauseMinutes` or more splits the worklog at the stop, so the
    * provider still gets the morning and the afternoon as two entries --
    * sent at the task's stop rather than at 12:30.
    *
    * An interruption ends at lunch, and the task it held -- running before
-   * it -- takes Lunch's pause from now, so the answer resumes it. Away
-   * leaves an interruption running: a call goes on away from the desk.
+   * it -- takes Lunch's pause from now, so the answer resumes it.
    * Nothing running, or a session paused already, leaves the stored entry
    * alone.
    */
-  private pauseForBreak(reason: 'lunch' | 'away'): void {
+  private pauseForBreak(reason: 'lunch'): void {
     let session = this._engine.getCurrentSession();
     if (session?.interruption) {
-      if (reason === 'away') return;
       const wasRunning = !session.interruption.interruptedWasPaused;
       this._endingForLunch = true;
       try {
@@ -722,7 +739,7 @@ export class ContextScheduleService {
       }
       return;
     }
-    if (reason === 'lunch' && session && isStandupSession(session, this.getStandupTask())) {
+    if (session && isStandupSession(session, this.getStandupTask())) {
       // The meeting is over at lunch: stopped and logged, and the task it set
       // aside becomes lunch's restart (`resumeAfterSetAside`).
       this._engine.stopSession(WORKLOG_COMMENTS.LUNCH, false);
@@ -733,10 +750,10 @@ export class ContextScheduleService {
       this.keepHeld(session, reason);
       return;
     }
-    // Away's pause running into lunch is lunch's now: the question after
-    // it is lunch's.
+    // Away's pause, stored by an earlier version, running into lunch is
+    // lunch's now: the question after it is lunch's.
     const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.LUNCH_RESUME_KEY, null);
-    if (reason === 'lunch' && session && isLunchResume(stored) && stored.heldSessionId === session.sessionId) {
+    if (session && isLunchResume(stored) && stored.heldSessionId === session.sessionId) {
       this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, { ...stored, pausedFor: 'lunch' });
     }
   }
@@ -758,9 +775,11 @@ export class ContextScheduleService {
   /// tells the user's own start during lunch from this one by the mode.
   /// </summary>
   public exitLunchMode(): void {
+    const away = this.takeAwaySpan();
     this._priorityEngine.setUserMode('WORK');
     this._renderer.setContextMode('WORK');
     this.resumeAfterLunch();
+    this.tellAwayEnded(away);
   }
 
   /// <summary>
@@ -810,14 +829,51 @@ export class ContextScheduleService {
     else this.exitLunchMode();
   }
 
-  /// <summary>
-  /// Manually or automatically triggers transition into AWAY mode.
-  /// </summary>
+  /**
+   * Away: Windows locked or asleep, or the user's own choice. The bar says
+   * so; the task keeps timing (2026-11-17, the user's rule: "I should be
+   * able to make me a coffee or go to the toilet without the task being
+   * paused"). It used to pause, which made every coffee a gap in the
+   * worklog. Back after `timeAway` minutes, the user is asked whether the
+   * time was on the task (`onAwayEnded`); nothing is chosen for them.
+   */
   public enterAwayMode(): void {
-    // Paused before the mode, so the paused frame is what Away covers.
-    this.pauseForBreak('away');
+    if (this._priorityEngine.getUserMode() !== 'AWAY' || !this._awaySince) {
+      const session = this._engine.getCurrentSession();
+      this._awaySince = {
+        atUtc: new Date().toISOString(),
+        session: session && session.status === 'TRACKING' && !session.interruption
+          ? { sessionId: session.sessionId, taskKey: session.taskKey }
+          : null
+      };
+    }
     this._priorityEngine.setUserMode('AWAY');
     this._renderer.setContextMode('AWAY');
+  }
+
+  /** The absence ending now, if Away began with a task timing; forgotten either way. */
+  private takeAwaySpan(): AwaySpan | null {
+    const since = this._awaySince;
+    this._awaySince = null;
+    if (!since?.session || this._priorityEngine.getUserMode() !== 'AWAY') return null;
+    return { ...since.session, fromUtc: since.atUtc, toUtc: new Date().toISOString() };
+  }
+
+  /**
+   * Told after the mode has changed, so a session lunch pauses on the way
+   * is no longer one to ask about.
+   */
+  private tellAwayEnded(span: AwaySpan | null): void {
+    if (!span) return;
+    const open = this._engine.getCurrentSession();
+    if (open?.sessionId !== span.sessionId || open.status !== 'TRACKING' || open.interruption) return;
+    for (const listener of this._awayEndedListeners) {
+      try {
+        listener(span);
+      } catch (err) {
+        console.error('[ContextScheduleService] An away listener failed:', err);
+      }
+    }
   }
 
   /// <summary>
@@ -829,6 +885,7 @@ export class ContextScheduleService {
   /// slept through lunch's start, so no check stopped it -- stops now.
   /// </summary>
   public exitAwayMode(): void {
+    const away = this.takeAwaySpan();
     if (this._priorityEngine.getUserMode() === 'AWAY' && this.isLunchHour() && !this.isWorkingThroughLunch()) {
       if (!this.interruptionRunning()) {
         this.enterLunchMode();
@@ -844,6 +901,7 @@ export class ContextScheduleService {
     this._priorityEngine.setUserMode('WORK');
     this._renderer.setContextMode('WORK');
     this.resumeAfterLunch();
+    this.tellAwayEnded(away);
   }
 
   /// <summary>

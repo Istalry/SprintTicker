@@ -10,6 +10,7 @@ const NOTHING: ReminderDTO = { id: 'nothing-timing:x', kind: 'nothing-timing', s
 const PAUSED: ReminderDTO = { id: 'long-pause:S1:x', kind: 'long-pause', sinceUtc: 'x', minutes: 30, taskKey: 'MG-12' };
 const CALL: ReminderDTO = { id: 'interruption:i1', kind: 'interruption-running', sinceUtc: 'x', minutes: 20, name: 'Call with Marc', heldTaskKey: 'MG-12' };
 const STANDUP: ReminderDTO = { id: 'standup:S2', kind: 'standup-running', sinceUtc: 'x', minutes: 25, taskKey: 'ADHOC-1' };
+const AWAY: ReminderDTO = { id: 'time-away:S1:x', kind: 'time-away', sinceUtc: 'x', untilUtc: 'y', minutes: 23, taskKey: 'MG-12' };
 
 /**
  * The "still...?" reminders (P8d) on Today and the mini timer. The quiet
@@ -28,7 +29,8 @@ describe('reminders', () => {
     [NOTHING, 'Nothing timing for 10 min', 'Not now'],
     [PAUSED, '30 min paused on MG-12', 'Still paused'],
     [CALL, '20 min on "Call with Marc"', 'Still on it'],
-    [STANDUP, '25 min in the stand-up', 'Still in it']
+    [STANDUP, '25 min in the stand-up', 'Still in it'],
+    [AWAY, 'Away 23 min', 'Keep it on MG-12']
   ])('Card_%#_SaysHowLongAndTheQuietAnswerDismisses', (reminder, heading, quiet) => {
     const bridge = installElectronApi();
     const { onAnswered } = card(reminder);
@@ -53,7 +55,8 @@ describe('reminders', () => {
   it.each([
     [PAUSED, '▶ Resume', 'resumeSession'],
     [CALL, '↩ Back to MG-12', 'backFromInterruption'],
-    [{ ...CALL, heldTaskKey: undefined }, '■ Stop', 'stopInterruption']
+    [{ ...CALL, heldTaskKey: undefined }, '■ Stop', 'stopInterruption'],
+    [AWAY, '⚡ Something else…', 'giveAwayTime']
   ] as const)('Act_%#_RunsTheCommand', (reminder, label, method) => {
     const bridge = installElectronApi();
     card(reminder);

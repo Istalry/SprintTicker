@@ -58,6 +58,8 @@ export interface PromptDelaysSetting {
   longPause: number;
   standupRunning: number;
   interruptionRunning: number;
+  /** Back at the computer after this long away, with a task timing: asks whether the time was on it. */
+  timeAway: number;
 }
 
 export interface ShortcutChord {
@@ -86,7 +88,8 @@ export const DEFAULT_PROMPT_DELAYS: PromptDelaysSetting = {
   nothingTiming: 10,
   longPause: 30,
   standupRunning: 25,
-  interruptionRunning: 20
+  interruptionRunning: 20,
+  timeAway: 15
 };
 
 /**
@@ -157,7 +160,8 @@ export function readPromptDelays(stored: unknown): PromptDelaysSetting {
     nothingTiming: read('nothingTiming'),
     longPause: read('longPause'),
     standupRunning: read('standupRunning'),
-    interruptionRunning: read('interruptionRunning')
+    interruptionRunning: read('interruptionRunning'),
+    timeAway: read('timeAway')
   };
 }
 

@@ -321,9 +321,11 @@ yet on a physical deck.
 Configurable working hours, lunch and away detection, a stand-up prompt whose
 Join switches the timer to the stand-up's task and back to your task after it,
 and **End my day**, which the bar's **Pause** confirms and a **wheel click**
-puts off. Lunch and Away pause the running task, and when they end the window
+puts off. Lunch pauses the running task, and when it ends the window
 and the bar ask *Back at your desk?* -- nothing restarts on its own; start or
-resume a task during lunch and Lunch ends for the day instead. No question
+resume a task during lunch and Lunch ends for the day instead. Locking the
+computer only shows Away on the bar: the task keeps timing, and back after a
+while you are asked whether that time was on it. No question
 takes the window: each waits as a card on Today and in the mini timer, and a
 reminder asks once when nothing is timing, a pause runs long, or an
 interruption does.

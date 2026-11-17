@@ -872,6 +872,58 @@ export class TimeTrackingEngine extends EventEmitter {
     return this.getCurrentSession()!;
   }
 
+  /**
+   * "It was something else" (2026-11-17): a span already past, timed on the
+   * running task, becomes an interruption that ended -- the task's pause
+   * from `fromUtc` to `toUtc`, closed, and a fragment over the same span,
+   * waiting to be placed. The task keeps running. Asked after time away
+   * from the computer, which never pauses the task: only the user moves
+   * that time.
+   *
+   * Never before what the task could lend -- its start, its last pause's
+   * end -- nor after now, so no second is counted twice.
+   *
+   * @returns the fragment's id.
+   * @throws ArgumentException without a task running, during an
+   * interruption, or for a span that is not one.
+   */
+  public interruptionBetween(fromUtc: string, toUtc: string, source: InterruptionSource = 'window'): string {
+    if (this._interruptions.getRunning()) throw new ArgumentException('An interruption is running already.', 'fromUtc');
+    const held = this.sessionView();
+    if (!held || held.status !== 'TRACKING') throw new ArgumentException('No task is running.', 'fromUtc');
+    const askedFrom = Date.parse(fromUtc);
+    const askedTo = Date.parse(toUtc);
+    if (!Number.isFinite(askedFrom) || !Number.isFinite(askedTo)) {
+      throw new ArgumentException(`Not a span: ${String(fromUtc)} to ${String(toUtc)}.`, 'fromUtc');
+    }
+    let floor = Date.parse(held.startTimeUtc);
+    for (const pause of this._sessionRepo.getPauseIntervals(held.sessionId)) {
+      if (pause.resumedAtUtc) floor = Math.max(floor, Date.parse(pause.resumedAtUtc));
+    }
+    const fromMs = Math.max(askedFrom, floor);
+    const toMs = Math.min(askedTo, Date.now());
+    if (toMs <= fromMs) throw new ArgumentException('The span has no time the task can give.', 'toUtc');
+    const fromIso = new Date(fromMs).toISOString();
+    const toIso = new Date(toMs).toISOString();
+
+    this._sessionRepo.recordPauseInterval(held.sessionId, fromIso, toIso, 'interruption');
+    const stored = this._sessionRepo.getStoredPausedSeconds(held.sessionId);
+    this._sessionRepo.updateStatus(held.sessionId, 'TRACKING', stored + Math.floor((toMs - fromMs) / 1000), undefined);
+    const id = createId(IdPrefix.INTERRUPTION);
+    this._interruptions.open({
+      id,
+      startedAtUtc: fromIso,
+      source,
+      interruptedSessionId: held.sessionId,
+      interruptedWasPaused: false,
+      afterId: null
+    });
+    this._interruptions.close(id, toIso);
+    this._currentSession = this._sessionRepo.getActiveSession();
+    this.notifyListeners();
+    return id;
+  }
+
   private requireRunningFragment(): InterruptionRecord {
     const running = this._interruptions.getRunning();
     if (!running) throw new ArgumentException('No interruption is running.', 'id');

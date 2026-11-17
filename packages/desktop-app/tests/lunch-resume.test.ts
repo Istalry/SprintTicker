@@ -27,7 +27,7 @@ import { ProjectDTO, TaskDTO } from '../src/shared/dtos';
  * Real engine, real priority engine, real settings, on a database in memory;
  * only the renderer is a stand-in, and the clock is faked.
  */
-describe('Lunch and Away pause the task', () => {
+describe('Lunch pauses the task; Away keeps it timing', () => {
   let dbConn: DatabaseConnection;
   let settings: SettingsRepository;
   let engine: TimeTrackingEngine;
@@ -243,30 +243,82 @@ describe('Lunch and Away pause the task', () => {
   });
 
   describe('Away', () => {
-    it('EnterAwayMode_PausesTheTask_LeavingAsksBackAtYourDesk', () => {
+    // The user's rule (2026-11-17): "I should be able to make me a coffee or
+    // go to the toilet without the task being paused."
+    const awaySpans = () => {
+      const told: Array<{ sessionId: string; taskKey: string; fromUtc: string; toUtc: string }> = [];
+      service.onAwayEnded(span => told.push(span));
+      return told;
+    };
+    const utc = (hours: number, minutes: number) => new Date(2026, 9, 14, hours, minutes, 0).toISOString();
+
+    it('EnterAwayMode_KeepsTheTaskTiming_BackTellsTheAbsence', () => {
+      const told = awaySpans();
       startA();
       at(15, 0);
 
       service.enterAwayMode();
-      expect(open()?.status).toBe('PAUSED');
-      expect(engine.openPauseReason()).toBe('away');
+      expect(open()?.status).toBe('TRACKING');
+      expect(priority.getUserMode()).toBe('AWAY');
 
       at(15, 20);
       service.exitAwayMode();
 
       expect(priority.getUserMode()).toBe('WORK');
-      expect(service.getResumePrompt()).toEqual(heldPrompt('away'));
-      service.answerResumePrompt(true, 0, true);
       expect(open()?.status).toBe('TRACKING');
+      expect(service.getResumePrompt()).toBeNull();
+      expect(told).toEqual([{ sessionId: open()!.sessionId, taskKey: A.key, fromUtc: utc(15, 0), toUtc: utc(15, 20) }]);
     });
 
-    it('EnterAwayMode_Twice_PausesOnce', () => {
+    it('EnterAwayMode_Twice_TheAbsenceRunsFromTheFirst', () => {
       // Windows sends lock-screen and suspend for one absence.
+      const told = awaySpans();
+      startA();
+      at(15, 0);
+      service.enterAwayMode();
+      at(15, 5);
+      service.enterAwayMode();
+      at(15, 30);
+
+      service.exitAwayMode();
+
+      expect(told.map(s => s.fromUtc)).toEqual([utc(15, 0)]);
+    });
+
+    it('ChooseMode_AwayThenWork_TellsTheAbsence', () => {
+      // The mode chip's way back is WORK, not an unlock.
+      const told = awaySpans();
+      startA();
+      at(15, 0);
+      service.chooseMode('AWAY');
+      expect(open()?.status).toBe('TRACKING');
+      at(15, 40);
+
+      service.chooseMode('WORK');
+
+      expect(told.map(s => [s.fromUtc, s.toUtc])).toEqual([[utc(15, 0), utc(15, 40)]]);
+    });
+
+    it('ExitAwayMode_TaskStoppedMeanwhile_TellsNothing', () => {
+      // Stopped from the deck while locked: no time left to ask about.
+      const told = awaySpans();
       startA();
       service.enterAwayMode();
-      service.enterAwayMode();
+      engine.stopSession();
 
-      expect(engine.openPauseReason()).toBe('away');
+      service.exitAwayMode();
+
+      expect(told).toEqual([]);
+    });
+
+    it('ExitAwayMode_NothingTimingWhenItBegan_TellsNothing', () => {
+      const told = awaySpans();
+      service.enterAwayMode();
+      startA();
+
+      service.exitAwayMode();
+
+      expect(told).toEqual([]);
     });
 
     it('EnterAwayMode_DuringAnInterruption_LeavesItRunning', () => {
@@ -292,7 +344,7 @@ describe('Lunch and Away pause the task', () => {
       expect(service.getResumePrompt()).toEqual(heldPrompt());
     });
 
-    it('LockedWhenLunchStarts_PausedByAway_LunchAsksAfter', () => {
+    it('LockedWhenLunchStarts_LunchPausesIt_AndAsksAfter', () => {
       startA();
       at(12, 20);
       service.enterAwayMode();
@@ -322,7 +374,8 @@ describe('Lunch and Away pause the task', () => {
       expect(service.getResumePrompt()).toBeNull();
     });
 
-    it('ExitAwayMode_DuringALunchWorkedThrough_GoesBackToWorkAndAsks', () => {
+    it('ExitAwayMode_DuringALunchWorkedThrough_GoesBackToWorkStillTiming', () => {
+      const told = awaySpans();
       check(12, 35);
       startA();
       at(12, 40);
@@ -333,7 +386,23 @@ describe('Lunch and Away pause the task', () => {
       service.exitAwayMode();
 
       expect(priority.getUserMode()).toBe('WORK');
-      expect(service.getResumePrompt()).toEqual(heldPrompt('away'));
+      expect(open()?.status).toBe('TRACKING');
+      expect(service.getResumePrompt()).toBeNull();
+      expect(told.map(s => s.fromUtc)).toEqual([utc(12, 40)]);
+    });
+
+    it('LockedWhenLunchStarts_LunchPausedIt_TellsNoAbsence', () => {
+      // Lunch's own question is about that task; nothing is asked twice.
+      const told = awaySpans();
+      startA();
+      at(12, 20);
+      service.enterAwayMode();
+      check(12, 31);
+      at(13, 40);
+
+      service.exitAwayMode();
+
+      expect(told).toEqual([]);
     });
   });
 

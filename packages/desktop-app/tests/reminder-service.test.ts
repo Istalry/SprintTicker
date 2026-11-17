@@ -298,4 +298,102 @@ describe('ReminderService', () => {
       expect(asked()).toEqual([]);
     });
   });
+
+  describe('time away (2026-11-17)', () => {
+    // Locking keeps the task timing; back after a while, the user is asked
+    // whether the time was on it, and nothing moves unless they say so.
+    const utc = (hours: number, minutes: number, day = 14) => new Date(2026, 9, day, hours, minutes).toISOString();
+    const away = (fromH: number, fromM: number, toH: number, toM: number) => {
+      at(toH, toM);
+      const open = engine.getCurrentSession()!;
+      service.noteAway({ sessionId: open.sessionId, taskKey: 'MG-12', fromUtc: utc(fromH, fromM), toUtc: utc(toH, toM) });
+    };
+
+    beforeEach(() => {
+      at(10, 0);
+      startA();
+    });
+
+    it('NoteAway_15MinOrMore_AsksOnceWithTheSpan', () => {
+      away(10, 10, 10, 40);
+      tick(10, 41);
+
+      expect(asked()).toEqual([{
+        id: expect.stringMatching(/^time-away:/), kind: 'time-away', sinceUtc: utc(10, 10), untilUtc: utc(10, 40), minutes: 30, taskKey: 'MG-12'
+      }]);
+      expect(service.getReminder()?.kind).toBe('time-away');
+      expect(outlet.announce).toHaveBeenCalledWith(expect.objectContaining({ title: 'Away 30 min. Was it on MG-12?' }));
+    });
+
+    it('NoteAway_UnderTheDelay_AsksNothing', () => {
+      // A coffee is work.
+      away(10, 10, 10, 24);
+
+      expect(asked()).toEqual([]);
+    });
+
+    it('NoteAway_TheUsersDelay_IsRead', () => {
+      settings.setSetting('prompt_delays', { timeAway: 45 });
+
+      away(10, 0, 10, 40);
+
+      expect(asked()).toEqual([]);
+    });
+
+    it('NoteAway_AfterWorkingHours_StillAsks', () => {
+      // The task timed either way; the question is about that time.
+      away(18, 0, 18, 30);
+
+      expect(asked().map(r => r.kind)).toEqual(['time-away']);
+    });
+
+    it('NoteAway_AcrossMidnight_AsksNothing', () => {
+      // The forgotten-session check asks about that one.
+      at(23, 0);
+      const open = engine.getCurrentSession()!;
+      vi.setSystemTime(new Date(2026, 9, 15, 8, 0));
+      service.noteAway({ sessionId: open.sessionId, taskKey: 'MG-12', fromUtc: utc(23, 0), toUtc: utc(8, 0, 15) });
+
+      expect(asked()).toEqual([]);
+    });
+
+    it('Dismiss_KeepsTheTime_NeverAskedAgain', () => {
+      away(10, 10, 10, 40);
+      const id = service.getReminder()!.id;
+
+      expect(service.dismiss(id)).toBe(true);
+      tick(10, 45);
+
+      expect(service.getReminder()).toBeNull();
+      expect(asked()).toHaveLength(1);
+      expect(engine.getCurrentSession()?.status).toBe('TRACKING');
+    });
+
+    it('TaskTicks_TheQuestionStays', () => {
+      // The engine's listeners hear every second of a running task.
+      away(10, 10, 10, 40);
+      vi.advanceTimersByTime(5_000);
+
+      expect(service.getReminder()?.kind).toBe('time-away');
+    });
+
+    it('TaskStopped_TheQuestionGoes', () => {
+      away(10, 10, 10, 40);
+
+      engine.stopSession();
+
+      expect(service.getReminder()).toBeNull();
+      expect(sent().at(-1)).toBeNull();
+    });
+
+    it('Asked_OverAnotherReminder_ThatOneComesBackAfter', () => {
+      away(10, 10, 10, 40);
+      service.dismiss(service.getReminder()!.id);
+      engine.pauseSession();
+
+      tick(11, 20);
+
+      expect(service.getReminder()?.kind).toBe('long-pause');
+    });
+  });
 });

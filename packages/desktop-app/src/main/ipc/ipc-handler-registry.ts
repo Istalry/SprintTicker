@@ -996,6 +996,19 @@ export class IPCHandlerRegistry {
       if (typeof id !== 'string' || id === '') throw new ArgumentException(`Not a reminder: ${String(id)}.`, 'id');
       return this.reminders?.dismiss(id) ?? false;
     });
+    // The time away was something else (2026-11-17): an interruption over
+    // that span, ended, which the user then places -- the click is theirs,
+    // so the picker comes up for it.
+    ipcMain.handle(IPCChannel.GIVE_AWAY_TIME, async (_event, id: unknown): Promise<boolean> => {
+      if (typeof id !== 'string' || id === '') throw new ArgumentException(`Not a reminder: ${String(id)}.`, 'id');
+      const asked = this.reminders?.getReminder();
+      if (asked?.id !== id || asked.kind !== 'time-away' || !asked.untilUtc) return false;
+      const fragmentId = this.engine.interruptionBetween(asked.sinceUtc, asked.untilUtc, 'window');
+      this.reminders?.dismiss(id);
+      this.broadcastInterruptions();
+      if (!this.pickerWindow?.open('place-ended', { ids: [fragmentId] })) openWindowOn(this.getWindow(), 'today');
+      return true;
+    });
 
     ipcMain.handle(IPCChannel.GET_MORNING, async () => this.morning?.getMorning() ?? null);
     ipcMain.handle(IPCChannel.MORNING_SEEN, async () => {

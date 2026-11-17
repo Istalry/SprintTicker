@@ -6,7 +6,7 @@ import { UserMode } from '../../shared/dtos';
 const MODES: readonly { id: UserMode; label: string; hint: string }[] = [
   { id: 'WORK', label: 'Work', hint: 'The normal day.' },
   { id: 'LUNCH', label: 'Lunch', hint: 'Pauses your task; after, asks if you are back.' },
-  { id: 'AWAY', label: 'Away', hint: "Pauses your task. The bar shows that you're away." }
+  { id: 'AWAY', label: 'Away', hint: "The bar shows that you're away. Your task keeps timing." }
 ];
 
 /**

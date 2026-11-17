@@ -95,9 +95,11 @@ function useLunchEnd(active: boolean): string | null {
 }
 
 /**
- * Lunch or Away, on Today (S6): the task is paused, as it was, and nothing
- * is sent. Resume during lunch is working through it -- main ends Lunch for
- * the day -- and Resume during Away resumes the task and leaves Away.
+ * Lunch or Away, on Today (S6). Lunch pauses the task, as it was, and
+ * nothing is sent; Resume during lunch is working through it -- main ends
+ * Lunch for the day. Away pauses nothing (2026-11-17): the task keeps
+ * timing, and back after a while the user is asked whether the time was on
+ * it. A task paused before Away stays paused, and Resume leaves Away too.
  */
 export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | null; onLeaveAway: () => void }> = ({
   mode,
@@ -106,7 +108,9 @@ export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | n
 }) => {
   const lunch = mode === 'LUNCH';
   const lunchEnd = useLunchEnd(lunch);
-  useAnnounce(mode === 'WORK' ? null : mode, lunch ? 'Lunch. Your task is paused.' : 'Away. Your task is paused.');
+  const timing = !lunch && session?.status === 'TRACKING' && !session.interruption ? session : null;
+  useAnnounce(mode === 'WORK' ? null : mode,
+    lunch ? 'Lunch. Your task is paused.' : timing ? 'Away. Your task keeps timing.' : 'Away.');
   if (mode === 'WORK') return null;
   const api = window.electronAPI;
   const held = session?.status === 'PAUSED' && !session.interruption ? session : null;
@@ -135,12 +139,18 @@ export const BreakCard: React.FC<{ mode: UserMode; session: ActiveSessionDTO | n
           <>
             <span className="font-mono text-text-primary">{held.taskKey}</span> is paused, as it was; nothing is sent.{' '}
           </>
+        ) : timing ? (
+          <>
+            <span className="font-mono text-text-primary">{timing.taskKey}</span> keeps timing; after a while away you are asked if the time was on it.{' '}
+          </>
+        ) : session?.interruption ? (
+          <>The interruption keeps timing. </>
         ) : (
           <>Nothing is timing. </>
         )}
         {lunch
           ? <>Lunch is not timed.{held && lunchEnd && <> At {lunchEnd} you are asked if you are back.</>}</>
-          : <>Away is not timed, and the bar shows you are away. Leave it from here, the mode chip, the tray, the bar or the deck.</>}
+          : <>The bar shows you are away. Leave it from here, the mode chip, the tray, the bar or the deck.</>}
       </p>
       {held && (
         <div className="flex justify-end">

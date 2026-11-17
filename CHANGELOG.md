@@ -5,8 +5,8 @@
 SprintTicker, redesigned. The window has four places -- Today, Tasks,
 History, Settings -- and in greys, colour means one thing: green is running,
 amber waits on you, red is danger. Everything you send waits ten seconds for
-Undo. An interruption holds your task instead of stopping it. Lunch and Away
-pause instead of stopping. History shows each day as a timeline and the week
+Undo. An interruption holds your task instead of stopping it. Lunch pauses
+instead of stopping, and locking the computer leaves your task timing. History shows each day as a timeline and the week
 as a timesheet. End my day replaces the wrap-up wizard. The BUSY Bar's
 buttons, the Stream Deck's keys and four keyboard shortcuts each mean one
 thing everywhere. Measured with a dry run of 20 projects of 50 tasks and two
@@ -20,7 +20,14 @@ months of history: every screen answers within about a tenth of a second.
   **Turning** the wheel opens a short menu. **Back** does nothing. The bar's
   own task picker, its paused menu and "hold BACK = done" are gone, and with
   them any bindings you had set: choosing a task happens on the computer.
-- **Lunch and Away pause your task; they no longer stop it.** At the break's
+- **Locking your computer no longer stops or pauses your task.** A coffee
+  is work: the bar shows Away, and the task keeps timing. Back after 15
+  minutes or more, Today and the mini timer ask once *Away 23 min. Was it
+  on MG-12?* -- **Keep it**, or **Something else…**, which makes that time
+  an interruption to place on another task or keep off. Nothing moves
+  unless you say so. The delay is *Back after time away* in Settings › My
+  workday. Choosing Away from the mode chip or the tray works the same way.
+- **Lunch pauses your task; it no longer stops it.** At the break's
   end the window and the bar ask *Back at your desk?* -- Resume, **I worked
   through it**, or Not now; nothing restarts on its own. The morning still
   goes to Jira or OpenProject as its own entry, cut at the break, when you

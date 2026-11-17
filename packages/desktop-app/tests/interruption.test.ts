@@ -801,4 +801,72 @@ describe('Interruptions in a row', () => {
       expect(session()?.interruption).toMatchObject({ source: 'bar', interruptedWasPaused: true });
     });
   });
+
+  describe('time away given to something else (2026-11-17)', () => {
+    const utc = (hours: number, minutes: number) => new Date(2026, 9, 14, hours, minutes).toISOString();
+
+    it('InterruptionBetween_TheTaskKeepsRunning_TheSpanWaitsToBePlaced', () => {
+      at(10, 0);
+      startA();
+      at(10, 40);
+
+      engine.interruptionBetween(utc(10, 10), utc(10, 30));
+
+      expect(session()).toMatchObject({ taskId: A.id, status: 'TRACKING', elapsedSeconds: minutes(20) });
+      expect(session()?.interruption).toBeUndefined();
+      expect(engine.getInterruptionsToPlace().map(f => [f.title, f.startedAtUtc, f.endedAtUtc, f.durationSeconds, f.interruptedTaskKey]))
+        .toEqual([['Interruption 10:10', utc(10, 10), utc(10, 30), minutes(20), A.key]]);
+    });
+
+    it('InterruptionBetween_ThenStop_LogsTheTaskWithoutTheSpan', () => {
+      at(10, 0);
+      startA();
+      at(10, 40);
+      engine.interruptionBetween(utc(10, 10), utc(10, 30));
+      at(11, 0);
+
+      engine.stopSession();
+
+      expect(logged(A.id).reduce((a, b) => a + b, 0)).toBe(minutes(40));
+    });
+
+    it('InterruptionBetween_NeverBeforeTheTaskOrAfterNow', () => {
+      at(10, 0);
+      startA();
+      at(10, 40);
+
+      engine.interruptionBetween(utc(9, 0), utc(11, 0));
+
+      expect(engine.getInterruptionsToPlace().map(f => [f.startedAtUtc, f.endedAtUtc])).toEqual([[utc(10, 0), utc(10, 40)]]);
+      expect(session()?.elapsedSeconds).toBe(0);
+    });
+
+    it('InterruptionBetween_NotBeforeThePauseItFollows', () => {
+      // Time already out of the task is not lent twice.
+      at(10, 0);
+      startA();
+      at(10, 10);
+      engine.pauseSession();
+      at(10, 20);
+      engine.resumeSession();
+      at(10, 40);
+
+      engine.interruptionBetween(utc(10, 5), utc(10, 30));
+
+      expect(engine.getInterruptionsToPlace().map(f => f.startedAtUtc)).toEqual([utc(10, 20)]);
+      expect(session()?.elapsedSeconds).toBe(minutes(20));
+    });
+
+    it.each([
+      ['nothing running', () => undefined],
+      ['an interruption running', () => { startA(); service.interrupt(); }],
+      ['the task paused', () => { startA(); engine.pauseSession(); }]
+    ])('InterruptionBetween_With%s_Refused', (_name, arrange) => {
+      at(10, 0);
+      arrange();
+      at(10, 40);
+
+      expect(() => engine.interruptionBetween(utc(10, 10), utc(10, 30))).toThrow();
+    });
+  });
 });

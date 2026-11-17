@@ -272,6 +272,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getCeremonyPrompt: vi.fn().mockResolvedValue(null),
     getReminder: vi.fn().mockResolvedValue(null),
     dismissReminder: vi.fn().mockResolvedValue(true),
+    giveAwayTime: vi.fn().mockResolvedValue(true),
     onReminder: subscribe('onReminder'),
     getMorning: vi.fn().mockResolvedValue(null),
     markMorningSeen: vi.fn().mockResolvedValue(undefined),

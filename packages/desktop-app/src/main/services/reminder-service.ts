@@ -29,6 +29,18 @@ export interface ReminderDeps {
   now?: () => number;
 }
 
+/**
+ * Time spent away from the computer -- locked, asleep or Away -- while a task
+ * kept timing (2026-11-17): told by the schedule service when the user is
+ * back, for "Away 23 min. Was it on MG-12?".
+ */
+export interface AwaySpan {
+  sessionId: string;
+  taskKey: string;
+  fromUtc: string;
+  toUtc: string;
+}
+
 /** The working hours of a day: from the stand-up to the wrap-up, on a working day. */
 export function inWorkingHours(now: Date, schedule: ScheduleSettingsDTO, isWorkingDay: (dateKey: string) => boolean): boolean {
   if (!isWorkingDay(localDateKey(now))) return false;
@@ -111,6 +123,11 @@ function announcementOf(reminder: ReminderDTO): { title: string; body: string } 
       return { title: `${reminder.minutes} min on "${reminder.name}"`, body: 'Still on it? Click to go back, or carry on.' };
     case 'standup-running':
       return { title: `${reminder.minutes} min in the stand-up`, body: 'Still in it? Click to end it, or carry on.' };
+    case 'time-away':
+      return {
+        title: `Away ${reminder.minutes} min. Was it on ${reminder.taskKey}?`,
+        body: 'It kept timing. Click to give the time to something else, or leave it.'
+      };
   }
 }
 
@@ -130,6 +147,9 @@ export class ReminderService {
   private _current: ReminderDTO | null = null;
   /** When nothing started running, as this service saw it; null while something runs. */
   private _idleSinceMs: number | null;
+  /** Time away to ask about, until answered or the task it was timed on stops running. */
+  private _away: ReminderDTO | null = null;
+  private _awaySessionId: string | null = null;
   private readonly _unsubscribe: () => void;
 
   constructor(deps: ReminderDeps) {
@@ -144,15 +164,50 @@ export class ReminderService {
     return this._current;
   }
 
-  /** Not now, Still paused, Still on it, Still in it: final for this occurrence. */
+  /** Not now, Still paused, Still on it, Still in it, Keep it: final for this occurrence. */
   public dismiss(id: string): boolean {
     if (this._current?.id !== id) return false;
+    if (this._away?.id === id) this._away = null;
     this.close();
     return true;
   }
 
-  /** Every 30 s, from the schedule's check. */
+  /**
+   * Back at the computer after time away with a task timing (2026-11-17).
+   * Locking never pauses the task: a coffee is work. From `timeAway`
+   * minutes on, the user is asked -- once -- whether the time was on it;
+   * nothing moves unless they say so. Not across a change of day, which
+   * the forgotten-session check asks about itself.
+   */
+  public noteAway(span: AwaySpan): void {
+    if (!span) throw new ArgumentNullException('span');
+    const fromMs = Date.parse(span.fromUtc);
+    const toMs = Date.parse(span.toUtc);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return;
+    if (localDateKey(new Date(fromMs)) !== localDateKey(new Date(toMs))) return;
+    const delays = readPromptDelays(this._deps.getSetting<unknown>(FlowSettingKey.PROMPT_DELAYS, null));
+    const minutes = Math.floor((toMs - fromMs) / MS_PER_MINUTE);
+    if (minutes < delays.timeAway) return;
+    this._away = {
+      id: `time-away:${span.sessionId}:${span.fromUtc}`,
+      kind: 'time-away',
+      sinceUtc: span.fromUtc,
+      untilUtc: span.toUtc,
+      minutes,
+      taskKey: span.taskKey
+    };
+    this._awaySessionId = span.sessionId;
+    this.evaluate();
+  }
+
+  /** Every 30 s, from the schedule's check, and when the user comes back. */
   public evaluate(): void {
+    // Time away is asked whatever the hours: the time is timed either way.
+    const away = this.awayStillAsked(this._deps.getSession());
+    if (away) {
+      this.ask(away);
+      return;
+    }
     const nowMs = this.now();
     const now = new Date(nowMs);
     const schedule = this._deps.getSetting<ScheduleSettingsDTO>('schedule_settings', {});
@@ -170,6 +225,15 @@ export class ReminderService {
     const due = dueReminder(this._deps.getSession(), this._idleSinceMs, dayStartMs, nowMs, delays,
       this._deps.isStandupSession, resume !== null);
 
+    this.ask(due);
+  }
+
+  public dispose(): void {
+    this._unsubscribe();
+  }
+
+  /** `due` becomes the question asked, once per occurrence; null closes the one asked. */
+  private ask(due: ReminderDTO | null): void {
     if (this._current && this._current.id !== due?.id) this.close();
     if (!due || this._asked.has(due.id)) return;
     this._asked.add(due.id);
@@ -179,8 +243,16 @@ export class ReminderService {
     this._deps.outlet()?.announce(announcementOf(due));
   }
 
-  public dispose(): void {
-    this._unsubscribe();
+  /**
+   * The time away, while there is still something to ask: the task it was
+   * timed on still runs. Stopped, paused or switched, the user has moved on
+   * -- and History still moves the time.
+   */
+  private awayStillAsked(session: ActiveSessionDTO | null): ReminderDTO | null {
+    if (!this._away) return null;
+    if (session?.sessionId === this._awaySessionId && session.status === 'TRACKING' && !session.interruption) return this._away;
+    this._away = null;
+    return null;
   }
 
   /** The state a reminder is about may have ended: it goes at once, not at the next tick. */
@@ -188,6 +260,10 @@ export class ReminderService {
     if (session && this._idleSinceMs !== null) this._idleSinceMs = null;
     if (!session && this._idleSinceMs === null) this._idleSinceMs = this.now();
     if (!this._current) return;
+    if (this._current.kind === 'time-away') {
+      if (!this.awayStillAsked(session)) this.close();
+      return;
+    }
     const still = dueReminder(session, this._idleSinceMs, 0, this.now(), ZERO_DELAYS, this._deps.isStandupSession, false);
     if (still?.id !== this._current.id) this.close();
   }
@@ -219,4 +295,4 @@ export class ReminderService {
 }
 
 /** Matches the state alone, whatever the delays: whether the occurrence still holds. */
-const ZERO_DELAYS: PromptDelaysSetting = { nothingTiming: 0, longPause: 0, standupRunning: 0, interruptionRunning: 0 };
+const ZERO_DELAYS: PromptDelaysSetting = { nothingTiming: 0, longPause: 0, standupRunning: 0, interruptionRunning: 0, timeAway: 0 };

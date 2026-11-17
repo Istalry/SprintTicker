@@ -154,6 +154,7 @@ export enum IPCChannel {
   GET_CEREMONY_PROMPT = 'schedule:get-ceremony-prompt',
   GET_REMINDER = 'reminders:get',
   DISMISS_REMINDER = 'reminders:dismiss',
+  GIVE_AWAY_TIME = 'reminders:give-away-time',
   ON_REMINDER = 'reminders:on-changed',
   GET_MORNING = 'morning:get',
   MORNING_SEEN = 'morning:seen',

@@ -90,6 +90,17 @@ export function reminderView(reminder: ReminderDTO, openPicker: () => void, onAn
           act('End stand-up', () => api.completeSession(undefined, false), 'Stop the stand-up; the task before it starts again')
         ]
       };
+    case 'time-away':
+      // The task kept timing (2026-11-17): keeping it is the quiet answer,
+      // and only the user gives the time to something else.
+      return {
+        heading: `Away ${reminder.minutes} min`,
+        question: `Was it on ${reminder.taskKey ?? 'your task'}?`,
+        actions: [
+          dismiss(`Keep it on ${reminder.taskKey ?? 'the task'}`),
+          act('⚡ Something else…', () => api.giveAwayTime(reminder.id), 'Make the time away an interruption, then place it on a task or keep it off')
+        ]
+      };
   }
 }
 

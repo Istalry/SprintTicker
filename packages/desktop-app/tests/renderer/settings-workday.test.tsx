@@ -37,7 +37,7 @@ describe('Settings · My workday', () => {
       .filter(Boolean);
     expect(titles).toEqual([
       'Working days', 'Stand-up', 'Lunch', 'End my day', 'Shut down the PC when I end my day', 'My week closes',
-      'Nothing timing in working hours', 'A pause that runs long', 'A stand-up still running', 'An interruption still running',
+      'Nothing timing in working hours', 'A pause that runs long', 'A stand-up still running', 'An interruption still running', 'Back after time away',
       'A timer left running overnight', 'A long pause starts a new entry'
     ]);
     expect(screen.queryByText(/AGILE CEREMONIES/)).toBeNull();

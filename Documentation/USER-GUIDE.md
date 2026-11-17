@@ -385,8 +385,8 @@ minutes since on the task; **Not now** leaves it paused.
   and **Back at your desk?** offers it again when lunch ends. **Not now**
   keeps the call going, and lunch does not start again that day -- nor does
   it if you go **Back** to your task during lunch's hour. **Away** -- locking
-  Windows -- leaves an interruption running: a call goes on away from the
-  desk, and lunch asks when you are back.
+  Windows -- leaves an interruption running, as it leaves any task: a call
+  goes on away from the desk, and lunch asks when you are back.
 - **The stand-up during an interruption**: its card says *Join? It ends
   "Call with Marc"*; Join ends it, and it waits to be placed.
 - **End my day** ends an interruption and the task it held, without
@@ -927,6 +927,7 @@ in the mini timer, and by notification while the window is hidden:
 | A pause of 30 min | *Still paused?* | **Still paused** · **▶ Resume** |
 | An interruption of 20 min, not paused | *Still on it?* | **Still on it** · **↩ Back to MG-12** (or **■ Stop**) |
 | The stand-up at 25 min | *Still in it?* | **Still in it** · **End stand-up** |
+| Back after 15 min away, the task still timing | *Was it on MG-12?* | **Keep it on MG-12** · **⚡ Something else…** |
 
 On the bar, *Nothing timing* shows **NO TASK** beside an empty office chair,
 on amber, until you answer it there or in the app. The quiet answer is final for that time: the same
@@ -972,11 +973,26 @@ MG-12?** in the window, with **▶ Resume MG-12 anyway** and **Not now**, and
 click does not. **Not now**, or leaving the question alone, leaves the task
 stopped.
 
-🥪 **Lunch and Away pause the task you are tracking.** Neither is timed,
+☕ **Locking your computer keeps your task timing.** A coffee or a trip
+down the corridor is work: locking Windows, putting it to sleep or choosing
+**Away** shows Away on the bar and changes nothing else. Back after 15
+minutes or more (*Back after time away*, in **My workday**) with the same
+task still timing, Today and the mini timer ask once **Away 23 min -- Was it
+on MG-12?**:
+
+- **Keep it on MG-12** leaves the time where it is.
+- **⚡ Something else…** makes the time away an interruption that has
+  ended, and opens the place picker: put it on another task, or keep it off
+  your tasks. MG-12 keeps timing from now.
+
+Nothing moves unless you answer. Away across midnight is asked about by
+*A timer left running overnight* instead.
+
+🥪 **Lunch pauses the task you are tracking.** Lunch is not timed,
 and nothing is sent at the start of the break: when you stop the task, its
 time goes in as two entries either side of a break of 15 minutes or more
 (*A long pause starts a new entry*, in **My workday**), to the second. When
-the break ends -- lunch's hour is over, or you unlock Windows -- Today and
+lunch's hour is over, Today and
 the mini timer ask **Back at your desk?**, naming the task, and the bar shows
 its key over **RESUME?** -- Pause resumes, a wheel click is Not now:
 
@@ -985,10 +1001,11 @@ its key over **RESUME?** -- Pause resumes, a wheel click is Not now:
   paused: the time counts as work, in one entry.
 - **Not now** leaves the task paused.
 
-During the break, Today has a **Lunch until 13:30** or **Away since 10:42**
-card saying the task is paused and nothing is sent, with **Resume KEY** --
-resuming during lunch is working through it; for Away it also leaves Away.
-Away with nothing paused offers **I'm back**.
+During lunch, Today has a **Lunch until 13:30** card saying the task is
+paused and nothing is sent, with **Resume KEY** -- resuming during lunch is
+working through it. Away has an **Away** card saying your task keeps timing,
+with **I'm back**; a task you had paused before stays paused, and **Resume
+KEY** also leaves Away.
 
 The paused session is kept in the database: closing the app over lunch, or
 leaving Windows locked until after it ends, does not lose it -- the question
@@ -1004,8 +1021,8 @@ comes when you are back, that day. Lunch never undoes what you do:
   click leaves it paused. Starting another task answers no. Resuming it tracks your time
   and nothing else: the task stays out of your lists, is not moved to In
   Progress on the provider, and marking it done still asks first.
-- **Locked when lunch begins.** The bar stays on Away; your task, paused
-  when you locked, stays paused for lunch. Unlock during lunch and the bar
+- **Locked when lunch begins.** The bar stays on Away; your task, timing
+  while you were away, is paused when lunch begins. Unlock during lunch and the bar
   goes straight to Lunch; unlock after it and **Back at your desk?** asks
   about your task.
 

@@ -816,28 +816,44 @@ row; the wrap-up still opens its dialog, without coming forward. Lunch
 starting over a running task, and every resume question, are announced the
 same way.
 
-Lunch and Away pause a running session (`pauseSession('lunch' | 'away')`,
-the reason on its `paused_intervals` row), before the mode switches so the
+Lunch pauses a running session (`pauseSession('lunch')`,
+the reason on its `paused_intervals` row; `away` only on rows from before
+2026-11-17), before the mode switches so the
 scene lands over the paused frame. Nothing is logged then: at the task's
 stop `splitWork` cuts the worklog at the break, which files the time as two
 worklogs either side of it. The paused session is the `lunch_resume` setting,
 with the day it was stored, the session id (`heldSessionId`) and the break
 (`pausedFor`). When lunch ends, or at the first check in WORK after the end
 -- the app was closed, or Windows stayed locked, since Away never leaves for
-Lunch's end -- or when Away ends, the service asks "Back at your desk?" in
+Lunch's end -- the service asks "Back at your desk?" in
 the window (`schedule:on-resume-prompt`, `held: true`) and on the bar under
 `resumePromptPriority`, while that session is still open and paused; an
 entry of another day, or one whose session was resumed, stopped or replaced,
 is dropped. The answer (`schedule:answer-resume-prompt`) resumes the session,
 or with `workedThrough` withdraws the pause -- its row deleted, so nothing
-splits there -- or leaves it paused. Lunch beginning under Away relabels the
-entry as lunch's. Lunch's hour finding an interruption running asks first
+splits there -- or leaves it paused. Lunch beginning under Away pauses the
+task Away left timing, for lunch. Lunch's hour finding an interruption running asks first
 (S25): a `LUNCH` ceremony prompt naming it (`endsInterruption`), in WORK and
 under Away, closed when lunch's hour or the interruption ends;
 `answerLunchQuestion(true)` enters Lunch, which ends the interruption and
 gives its held task Lunch's pause (`relabelPause`), and `false` stores
 `lunch_skipped_date`. `exitAwayMode` in lunch's hour with an interruption
-running goes to WORK and asks. Away leaves an interruption running.
+running goes to WORK and asks.
+
+Away -- a lock, a sleep, or the mode chip -- changes the mode and the bar and
+nothing else: the task keeps timing (2026-11-17), and an interruption keeps
+running. `enterAwayMode` notes when Away began and the task timing then,
+once per absence (a lock and a sleep after it are one). When the user is
+back in WORK -- `exitAwayMode`, or `exitLunchMode` from the chip -- with that
+same session still timing, `onAwayEnded` tells `ReminderService.noteAway`
+the span, which asks "Away 23 min. Was it on MG-12?" from
+`prompt_delays.timeAway` minutes on (a `time-away` reminder, in or out of
+working hours, never across midnight). Keeping it dismisses it;
+`reminders:give-away-time` calls `TimeTrackingEngine.interruptionBetween`,
+which closes a pause of reason `interruption` over the span on the session,
+still TRACKING, and records an ended fragment over it, then opens the picker
+window in `place-ended` mode on it. The question goes when the task stops,
+pauses or changes.
 
 An entry with no session id is a task to start again: the stand-up's, ended
 by lunch, or one stored by a version whose Lunch stopped the task. It is

@@ -266,6 +266,12 @@ export interface IElectronAPI {
   getReminder: () => Promise<ReminderDTO | null>;
   /** Not now, Still paused, Still on it, Still in it: final for that occurrence. */
   dismissReminder: (id: string) => Promise<boolean>;
+  /**
+   * "Something else…" on "Away 23 min. Was it on MG-12?": the time away
+   * becomes an interruption to place, and the place picker opens. False
+   * when that question is no longer asked.
+   */
+  giveAwayTime: (id: string) => Promise<boolean>;
   onReminder: (callback: (reminder: ReminderDTO | null) => void) => () => void;
   /** The morning card (S4b): null once the day has begun, on a day off, or once seen. */
   getMorning: () => Promise<MorningDTO | null>;

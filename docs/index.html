@@ -924,8 +924,8 @@
       and <strong>Back at your desk?</strong> offers it again when lunch ends. <strong>Not now</strong>
       keeps the call going, and lunch does not start again that day -- nor does
       it if you go <strong>Back</strong> to your task during lunch&#39;s hour. <strong>Away</strong> -- locking
-      Windows -- leaves an interruption running: a call goes on away from the
-      desk, and lunch asks when you are back.</p>
+      Windows -- leaves an interruption running, as it leaves any task: a call
+      goes on away from the desk, and lunch asks when you are back.</p>
       </li>
       <li><p><strong>The stand-up during an interruption</strong>: its card says <em>Join? It ends
       &quot;Call with Marc&quot;</em>; Join ends it, and it waits to be placed.</p>
@@ -1470,6 +1470,11 @@
       <td align="left"><em>Still in it?</em></td>
       <td align="left"><strong>Still in it</strong> · <strong>End stand-up</strong></td>
       </tr>
+      <tr>
+      <td align="left">Back after 15 min away, the task still timing</td>
+      <td align="left"><em>Was it on MG-12?</em></td>
+      <td align="left"><strong>Keep it on MG-12</strong> · <strong>⚡ Something else…</strong></td>
+      </tr>
       </tbody></table></div>
       <p>On the bar, <em>Nothing timing</em> shows <strong>NO TASK</strong> beside an empty office chair,
       on amber, until you answer it there or in the app. The quiet answer is final for that time: the same
@@ -1535,11 +1540,25 @@
       <strong>NOT YOURS / RESUME IT?</strong> on the bar, where Pause resumes it and a wheel
       click does not. <strong>Not now</strong>, or leaving the question alone, leaves the task
       stopped.</p>
-      <p>🥪 <strong>Lunch and Away pause the task you are tracking.</strong> Neither is timed,
+      <p>☕ <strong>Locking your computer keeps your task timing.</strong> A coffee or a trip
+      down the corridor is work: locking Windows, putting it to sleep or choosing
+      <strong>Away</strong> shows Away on the bar and changes nothing else. Back after 15
+      minutes or more (<em>Back after time away</em>, in <strong>My workday</strong>) with the same
+      task still timing, Today and the mini timer ask once <strong>Away 23 min -- Was it
+      on MG-12?</strong>:</p>
+      <ul>
+      <li><strong>Keep it on MG-12</strong> leaves the time where it is.</li>
+      <li><strong>⚡ Something else…</strong> makes the time away an interruption that has
+      ended, and opens the place picker: put it on another task, or keep it off
+      your tasks. MG-12 keeps timing from now.</li>
+      </ul>
+      <p>Nothing moves unless you answer. Away across midnight is asked about by
+      <em>A timer left running overnight</em> instead.</p>
+      <p>🥪 <strong>Lunch pauses the task you are tracking.</strong> Lunch is not timed,
       and nothing is sent at the start of the break: when you stop the task, its
       time goes in as two entries either side of a break of 15 minutes or more
       (<em>A long pause starts a new entry</em>, in <strong>My workday</strong>), to the second. When
-      the break ends -- lunch&#39;s hour is over, or you unlock Windows -- Today and
+      lunch&#39;s hour is over, Today and
       the mini timer ask <strong>Back at your desk?</strong>, naming the task, and the bar shows
       its key over <strong>RESUME?</strong> -- Pause resumes, a wheel click is Not now:</p>
       <ul>
@@ -1548,10 +1567,11 @@
       paused: the time counts as work, in one entry.</li>
       <li><strong>Not now</strong> leaves the task paused.</li>
       </ul>
-      <p>During the break, Today has a <strong>Lunch until 13:30</strong> or <strong>Away since 10:42</strong>
-      card saying the task is paused and nothing is sent, with <strong>Resume KEY</strong> --
-      resuming during lunch is working through it; for Away it also leaves Away.
-      Away with nothing paused offers <strong>I&#39;m back</strong>.</p>
+      <p>During lunch, Today has a <strong>Lunch until 13:30</strong> card saying the task is
+      paused and nothing is sent, with <strong>Resume KEY</strong> -- resuming during lunch is
+      working through it. Away has an <strong>Away</strong> card saying your task keeps timing,
+      with <strong>I&#39;m back</strong>; a task you had paused before stays paused, and <strong>Resume
+      KEY</strong> also leaves Away.</p>
       <p>The paused session is kept in the database: closing the app over lunch, or
       leaving Windows locked until after it ends, does not lose it -- the question
       comes when you are back, that day. Lunch never undoes what you do:</p>
@@ -1566,8 +1586,8 @@
       click leaves it paused. Starting another task answers no. Resuming it tracks your time
       and nothing else: the task stays out of your lists, is not moved to In
       Progress on the provider, and marking it done still asks first.</li>
-      <li><strong>Locked when lunch begins.</strong> The bar stays on Away; your task, paused
-      when you locked, stays paused for lunch. Unlock during lunch and the bar
+      <li><strong>Locked when lunch begins.</strong> The bar stays on Away; your task, timing
+      while you were away, is paused when lunch begins. Unlock during lunch and the bar
       goes straight to Lunch; unlock after it and <strong>Back at your desk?</strong> asks
       about your task.</li>
       </ul>
@@ -3237,28 +3257,43 @@
       row; the wrap-up still opens its dialog, without coming forward. Lunch
       starting over a running task, and every resume question, are announced the
       same way.</p>
-      <p>Lunch and Away pause a running session (<code>pauseSession(&#39;lunch&#39; | &#39;away&#39;)</code>,
-      the reason on its <code>paused_intervals</code> row), before the mode switches so the
+      <p>Lunch pauses a running session (<code>pauseSession(&#39;lunch&#39;)</code>,
+      the reason on its <code>paused_intervals</code> row; <code>away</code> only on rows from before
+      2026-11-17), before the mode switches so the
       scene lands over the paused frame. Nothing is logged then: at the task&#39;s
       stop <code>splitWork</code> cuts the worklog at the break, which files the time as two
       worklogs either side of it. The paused session is the <code>lunch_resume</code> setting,
       with the day it was stored, the session id (<code>heldSessionId</code>) and the break
       (<code>pausedFor</code>). When lunch ends, or at the first check in WORK after the end
       -- the app was closed, or Windows stayed locked, since Away never leaves for
-      Lunch&#39;s end -- or when Away ends, the service asks &quot;Back at your desk?&quot; in
+      Lunch&#39;s end -- the service asks &quot;Back at your desk?&quot; in
       the window (<code>schedule:on-resume-prompt</code>, <code>held: true</code>) and on the bar under
       <code>resumePromptPriority</code>, while that session is still open and paused; an
       entry of another day, or one whose session was resumed, stopped or replaced,
       is dropped. The answer (<code>schedule:answer-resume-prompt</code>) resumes the session,
       or with <code>workedThrough</code> withdraws the pause -- its row deleted, so nothing
-      splits there -- or leaves it paused. Lunch beginning under Away relabels the
-      entry as lunch&#39;s. Lunch&#39;s hour finding an interruption running asks first
+      splits there -- or leaves it paused. Lunch beginning under Away pauses the
+      task Away left timing, for lunch. Lunch&#39;s hour finding an interruption running asks first
       (S25): a <code>LUNCH</code> ceremony prompt naming it (<code>endsInterruption</code>), in WORK and
       under Away, closed when lunch&#39;s hour or the interruption ends;
       <code>answerLunchQuestion(true)</code> enters Lunch, which ends the interruption and
       gives its held task Lunch&#39;s pause (<code>relabelPause</code>), and <code>false</code> stores
       <code>lunch_skipped_date</code>. <code>exitAwayMode</code> in lunch&#39;s hour with an interruption
-      running goes to WORK and asks. Away leaves an interruption running.</p>
+      running goes to WORK and asks.</p>
+      <p>Away -- a lock, a sleep, or the mode chip -- changes the mode and the bar and
+      nothing else: the task keeps timing (2026-11-17), and an interruption keeps
+      running. <code>enterAwayMode</code> notes when Away began and the task timing then,
+      once per absence (a lock and a sleep after it are one). When the user is
+      back in WORK -- <code>exitAwayMode</code>, or <code>exitLunchMode</code> from the chip -- with that
+      same session still timing, <code>onAwayEnded</code> tells <code>ReminderService.noteAway</code>
+      the span, which asks &quot;Away 23 min. Was it on MG-12?&quot; from
+      <code>prompt_delays.timeAway</code> minutes on (a <code>time-away</code> reminder, in or out of
+      working hours, never across midnight). Keeping it dismisses it;
+      <code>reminders:give-away-time</code> calls <code>TimeTrackingEngine.interruptionBetween</code>,
+      which closes a pause of reason <code>interruption</code> over the span on the session,
+      still TRACKING, and records an ended fragment over it, then opens the picker
+      window in <code>place-ended</code> mode on it. The question goes when the task stops,
+      pauses or changes.</p>
       <p>An entry with no session id is a task to start again: the stand-up&#39;s, ended
       by lunch, or one stored by a version whose Lunch stopped the task. It is
       restarted at the same moments unless anything is open by then; a task no
@@ -4382,7 +4417,7 @@
       </tr>
       <tr>
       <td align="left">Reminders</td>
-      <td align="left"><code>reminders:get</code> answers the &quot;still...?&quot; reminder being asked (<code>{ id, kind, sinceUtc, minutes, taskKey?, name?, heldTaskKey? }</code>, <code>kind</code> one of <code>nothing-timing</code>, <code>long-pause</code>, <code>interruption-running</code>, <code>standup-running</code>), or null; <code>reminders:dismiss</code> takes its <code>id</code> and answers false when it is no longer asked; <code>reminders:on-changed</code> pushes it to every window, and null once answered or over</td>
+      <td align="left"><code>reminders:get</code> answers the &quot;still...?&quot; reminder being asked (<code>{ id, kind, sinceUtc, minutes, taskKey?, name?, heldTaskKey? }</code>, <code>kind</code> one of <code>nothing-timing</code>, <code>long-pause</code>, <code>interruption-running</code>, <code>standup-running</code>, <code>time-away</code> -- the last with <code>untilUtc</code>, the span the task kept timing while the user was away), or null; <code>reminders:dismiss</code> takes its <code>id</code> and answers false when it is no longer asked; <code>reminders:give-away-time</code> takes a <code>time-away</code> reminder&#39;s <code>id</code>, makes its span an ended interruption on the task still timing, opens the place picker on it and answers true -- false when that question is no longer asked; <code>reminders:on-changed</code> pushes it to every window, and null once answered or over</td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>

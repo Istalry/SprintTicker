@@ -1077,7 +1077,10 @@ channels), `PROVIDER-API.md` (fetch one task by key, **before** the client:
     priority-engine side (locks, `setUserMode`) does not change; only what
     happens to the session does.
 - **Away pauses** with reason `away` and shows its card (S6). Leaving Away
-  asks the same question.
+  asks the same question. *Changed on 2026-11-17, the user's rule: Away
+  pauses nothing -- a coffee is work. Back after `timeAway` minutes, a
+  reminder asks whether the time was on the task, and "Something else…"
+  makes it an interruption to place.*
 - **Presence still never pauses** (proposal §31). Away is the mode, entered
   by locking the PC or by the chip; being away from the PC is not.
 - **The stand-up**:

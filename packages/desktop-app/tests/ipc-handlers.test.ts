@@ -273,6 +273,42 @@ describe('IPC handlers', () => {
       await expect(invoke(IPCChannel.DISMISS_REMINDER, '')).rejects.toThrow(/Not a reminder/);
     });
 
+    it('GiveAwayTime_Asked_TheSpanBecomesAnInterruptionAndThePlacePickerOpens', async () => {
+      // "Something else…" on "Away 30 min. Was it on MG-12?" (2026-11-17).
+      const start = Date.now() - 40 * 60_000;
+      vi.useFakeTimers({ toFake: ['Date'], now: start });
+      engine.startTask('', true, 'Pairing');
+      vi.setSystemTime(start + 40 * 60_000);
+      const reminder = {
+        id: 'time-away:S:x', kind: 'time-away', minutes: 20, taskKey: 'MG-12',
+        sinceUtc: new Date(start + 10 * 60_000).toISOString(), untilUtc: new Date(start + 30 * 60_000).toISOString()
+      };
+      const dismiss = vi.fn().mockReturnValue(true);
+      const pickerWindow = { open: vi.fn().mockReturnValue(true) };
+      build({ reminders: { getReminder: vi.fn().mockReturnValue(reminder), dismiss }, pickerWindow });
+
+      expect(await invoke(IPCChannel.GIVE_AWAY_TIME, reminder.id)).toBe(true);
+
+      const waiting = engine.getInterruptionsToPlace();
+      expect(waiting.map(w => [w.startedAtUtc, w.endedAtUtc])).toEqual([[reminder.sinceUtc, reminder.untilUtc]]);
+      expect(engine.getCurrentSession()).toMatchObject({ status: 'TRACKING', elapsedSeconds: 20 * 60 });
+      expect(dismiss).toHaveBeenCalledWith(reminder.id);
+      expect(pickerWindow.open).toHaveBeenCalledWith('place-ended', { ids: [waiting[0].id] });
+      vi.useRealTimers();
+    });
+
+    it('GiveAwayTime_AnotherQuestionAsked_MovesNothing', async () => {
+      // Answered meanwhile, or never this question: no time moves.
+      const reminder = { id: 'long-pause:S1:x', kind: 'long-pause', sinceUtc: 'x', minutes: 30, taskKey: 'MG-12' };
+      const dismiss = vi.fn().mockReturnValue(true);
+      build({ reminders: { getReminder: vi.fn().mockReturnValue(reminder), dismiss } });
+
+      expect(await invoke(IPCChannel.GIVE_AWAY_TIME, reminder.id)).toBe(false);
+      expect(await invoke(IPCChannel.GIVE_AWAY_TIME, 'time-away:other')).toBe(false);
+      expect(dismiss).not.toHaveBeenCalled();
+      await expect(invoke(IPCChannel.GIVE_AWAY_TIME, '')).rejects.toThrow(/Not a reminder/);
+    });
+
     it('Reminders_NoService_NothingAsked', async () => {
       build({});
 
