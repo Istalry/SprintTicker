@@ -1476,6 +1476,9 @@
       <td align="left"><strong>Keep it on MG-12</strong> · <strong>⚡ Something else…</strong></td>
       </tr>
       </tbody></table></div>
+      <p>Click the interruption&#39;s name in <em>Still on it?</em> to name it there -- on Today
+      or in the mini timer -- with Enter; Escape keeps the name. Naming it answers
+      nothing: the question stays.</p>
       <p>On the bar, <em>Nothing timing</em> shows <strong>NO TASK</strong> beside an empty office chair,
       on amber, until you answer it there or in the app. The quiet answer is final for that time: the same
       pause is not asked about again, the next one is. Resuming, going back or starting a task answers it
@@ -4424,7 +4427,7 @@
       </tr>
       <tr>
       <td align="left">Reminders</td>
-      <td align="left"><code>reminders:get</code> answers the &quot;still...?&quot; reminder being asked (<code>{ id, kind, sinceUtc, minutes, taskKey?, name?, heldTaskKey? }</code>, <code>kind</code> one of <code>nothing-timing</code>, <code>long-pause</code>, <code>interruption-running</code>, <code>standup-running</code>, <code>time-away</code> -- the last with <code>untilUtc</code>, the span the task kept timing while the user was away), or null; <code>reminders:dismiss</code> takes its <code>id</code> and answers false when it is no longer asked; <code>reminders:give-away-time</code> takes a <code>time-away</code> reminder&#39;s <code>id</code>, makes its span an ended interruption on the task still timing, opens the place picker on it and answers true -- false when that question is no longer asked; <code>reminders:on-changed</code> pushes it to every window, and null once answered or over</td>
+      <td align="left"><code>reminders:get</code> answers the &quot;still...?&quot; reminder being asked (<code>{ id, kind, sinceUtc, minutes, taskKey?, name?, interruptionId?, heldTaskKey? }</code>, <code>kind</code> one of <code>nothing-timing</code>, <code>long-pause</code>, <code>interruption-running</code>, <code>standup-running</code>, <code>time-away</code> -- the last with <code>untilUtc</code>, the span the task kept timing while the user was away), or null; <code>reminders:dismiss</code> takes its <code>id</code> and answers false when it is no longer asked; <code>reminders:give-away-time</code> takes a <code>time-away</code> reminder&#39;s <code>id</code>, makes its span an ended interruption on the task still timing, opens the place picker on it and answers true -- false when that question is no longer asked; <code>reminders:on-changed</code> pushes it to every window, again when the interruption it names is renamed, and null once answered or over</td>
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>

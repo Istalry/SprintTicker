@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CeremonyPromptDTO, ForgottenSessionReviewDTO, ReminderDTO, ResumePromptDTO } from '../../shared/dtos';
 import { Verb } from '../../shared/words';
 import { formatHoursMinutes } from '../utils/formatters';
-import { reminderView } from './ReminderPrompt';
+import { ReminderHeading, reminderView } from './ReminderPrompt';
 import { askAgain, forgottenHeading, forgottenStanding } from './ForgottenSessionModal';
 import { useAnnounce } from './LiveAnnouncer';
 
@@ -53,6 +53,8 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
   };
 
   let heading: string;
+  /** Drawn in place of `heading` when it holds a control; `heading` is still what is announced. */
+  let headingNode: React.ReactNode = null;
   let question: string;
   let buttons: React.ReactNode;
   if (resume) {
@@ -126,6 +128,14 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
   } else if (reminder) {
     const view = reminderView(reminder, () => { api.openTaskPicker().catch(warn('Opening the picker')); }, onAnswered);
     heading = view.heading;
+    // The window drags by its background: the name and its field must not.
+    headingNode = (
+      <ReminderHeading
+        view={view}
+        className="[-webkit-app-region:no-drag]"
+        inputClassName="w-40 px-1 bg-dark-900 border border-border-field rounded text-[11px] font-bold text-white focus:outline-none focus:border-focus [-webkit-app-region:no-drag]"
+      />
+    );
     question = view.question;
     buttons = (
       <>
@@ -150,7 +160,7 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
     // (CLAUDE.md §5), and an alertdialog promises it does (REVIEW-2026-11 A4).
     <div role="group" aria-label={question} className="flex flex-1 min-w-0 items-center gap-2">
       <div className="flex-1 min-w-0 leading-tight">
-        <div className="text-[11px] font-bold text-accent-amber truncate">{heading}</div>
+        <div className="text-[11px] font-bold text-accent-amber truncate">{headingNode ?? heading}</div>
         <div className="text-[11px] text-text-primary truncate" title={question}>{question}</div>
       </div>
       <div className="flex items-center gap-1">{buttons}</div>

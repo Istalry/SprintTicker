@@ -90,6 +90,7 @@ export function dueReminder(
       sinceUtc: session.interruption.startedAtUtc,
       minutes,
       name: session.interruption.title,
+      interruptionId: session.interruption.id,
       heldTaskKey: session.interruption.interruptedSessionId ? session.interruption.interruptedTaskKey ?? undefined : undefined
     };
   }
@@ -265,7 +266,15 @@ export class ReminderService {
       return;
     }
     const still = dueReminder(session, this._idleSinceMs, 0, this.now(), ZERO_DELAYS, this._deps.isStandupSession, false);
-    if (still?.id !== this._current.id) this.close();
+    if (still?.id !== this._current.id) {
+      this.close();
+      return;
+    }
+    // Named from the question itself: the heading follows, not asked again.
+    if (still.name !== this._current.name) {
+      this._current = { ...this._current, name: still.name };
+      this._deps.outlet()?.send(IPCChannel.ON_REMINDER, this._current);
+    }
   }
 
   /** "Back to MG-12?" unanswered a while: a toast asks once more (S10). */

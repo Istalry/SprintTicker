@@ -67,6 +67,33 @@ describe('reminders', () => {
     expect(bridge.api.dismissReminder).not.toHaveBeenCalled();
   });
 
+  it('Interruption_ClickTheName_RenamesIt_TheQuestionStays', () => {
+    const bridge = installElectronApi();
+    const { onAnswered } = card({ ...CALL, name: 'Interruption 14:08', interruptionId: 'i1' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Interruption 14:08' }));
+    const field = screen.getByRole('textbox', { name: 'Name this work' });
+    fireEvent.change(field, { target: { value: '  Call with Marc ' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(bridge.api.renameInterruption).toHaveBeenCalledWith('i1', 'Call with Marc');
+    expect(onAnswered).not.toHaveBeenCalled();
+    expect(bridge.api.dismissReminder).not.toHaveBeenCalled();
+  });
+
+  it('Interruption_EscapeInTheName_KeepsIt', () => {
+    const bridge = installElectronApi();
+    card({ ...CALL, interruptionId: 'i1' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Call with Marc' }));
+    const field = screen.getByRole('textbox', { name: 'Name this work' });
+    fireEvent.change(field, { target: { value: 'Something else' } });
+    fireEvent.keyDown(field, { key: 'Escape' });
+
+    expect(bridge.api.renameInterruption).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Rename Call with Marc' })).toBeTruthy();
+  });
+
   it('Standup_End_StopsTheSessionAsStopDoes', () => {
     const bridge = installElectronApi();
     card(STANDUP);
@@ -112,6 +139,19 @@ describe('reminders', () => {
 
     expect(bridge.api.openTaskPicker).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Nothing timing for 10 min')).toBeNull();
+  });
+
+  it('MiniBar_InterruptionReminder_TheNameRenamesFromTheRow', async () => {
+    const bridge = installElectronApi({ getReminder: async () => ({ ...CALL, name: 'Interruption 14:08', interruptionId: 'i1' }) });
+    render(<MiniBar />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Rename Interruption 14:08' }));
+    const field = screen.getByRole('textbox', { name: 'Name this work' });
+    fireEvent.change(field, { target: { value: 'Call with Marc' } });
+    fireEvent.blur(field);
+
+    expect(bridge.api.renameInterruption).toHaveBeenCalledWith('i1', 'Call with Marc');
+    expect(screen.getByRole('button', { name: '↩ Back to MG-12' })).toBeTruthy();
   });
 
   it('MiniBar_AQuestionAndAReminder_TheQuestionFirst', async () => {

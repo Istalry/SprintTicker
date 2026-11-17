@@ -929,6 +929,10 @@ in the mini timer, and by notification while the window is hidden:
 | The stand-up at 25 min | *Still in it?* | **Still in it** · **End stand-up** |
 | Back after 15 min away, the task still timing | *Was it on MG-12?* | **Keep it on MG-12** · **⚡ Something else…** |
 
+Click the interruption's name in *Still on it?* to name it there -- on Today
+or in the mini timer -- with Enter; Escape keeps the name. Naming it answers
+nothing: the question stays.
+
 On the bar, *Nothing timing* shows **NO TASK** beside an empty office chair,
 on amber, until you answer it there or in the app. The quiet answer is final for that time: the same
 pause is not asked about again, the next one is. Resuming, going back or starting a task answers it

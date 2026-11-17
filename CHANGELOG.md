@@ -276,7 +276,9 @@ months of history: every screen answers within about a tenth of a second.
   worklog of a week already closed warns that its timesheet may be in, or
   approved, before anything changes.
 - **Name an interruption, or assign it to a task, while it runs.** Click its
-  title on the session card or in the mini timer to name it. **Assign to
+  title on the session card or in the mini timer to name it, or its name in
+  *Still on it?* -- twenty minutes in is when you know what it was; the
+  question stays until you answer it. **Assign to
   Task** moves the running session to a task you pick, keeping its start, so
   the whole interruption is logged on that task and sent to its provider.
 

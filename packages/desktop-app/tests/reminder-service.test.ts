@@ -232,6 +232,24 @@ describe('ReminderService', () => {
       expect(service.getReminder()).toMatchObject({ kind: 'interruption-running', minutes: 20, heldTaskKey: expect.any(String) });
     });
 
+    it('Interruption_RenamedWhileAsked_TheQuestionFollowsTheName_NotAskedAgain', () => {
+      at(9, 30);
+      engine.startTask('', true, 'Writing the spec');
+      at(10, 0);
+      engine.startInterruption(new Date());
+      tick(10, 20);
+      const asked = service.getReminder();
+      expect(asked).toMatchObject({ interruptionId: expect.any(String) });
+      const announced = outlet.announce.mock.calls.length;
+
+      engine.renameInterruption(asked!.interruptionId!, 'Call with Marc');
+
+      expect(service.getReminder()).toMatchObject({ id: asked!.id, name: 'Call with Marc' });
+      expect(sent().at(-1)).toMatchObject({ id: asked!.id, name: 'Call with Marc' });
+      expect(outlet.announce).toHaveBeenCalledTimes(announced);
+      expect(told.filter(r => r !== null)).toHaveLength(1);
+    });
+
     it('Interruption_Paused_AskedAsAPause_NotStillOnIt', () => {
       // An interruption pauses as a task does (2026-11-16); paused, it is
       // not still being worked on.

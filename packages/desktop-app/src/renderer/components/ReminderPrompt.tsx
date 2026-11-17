@@ -2,6 +2,7 @@ import React from 'react';
 import { BellRing } from 'lucide-react';
 import { ReminderDTO } from '../../shared/dtos';
 import { useAnnounce } from './LiveAnnouncer';
+import { InlineRename } from './InlineRename';
 
 const warn = (what: string) => (err: unknown) => console.warn(`[ReminderPrompt] ${what} failed:`, err);
 
@@ -17,6 +18,12 @@ export interface ReminderView {
   heading: string;
   question: string;
   actions: ReminderAction[];
+  /**
+   * The interruption's name in the heading, which a click renames (the
+   * user's idea, 2026-11-17): "Interruption 14:08" is the name it has until
+   * someone gives it one, and twenty minutes in is when they know what it is.
+   */
+  naming?: { before: string; name: string; ownerId: string; rename: (name: string) => Promise<unknown> };
 }
 
 /**
@@ -70,9 +77,13 @@ export function reminderView(reminder: ReminderDTO, openPicker: () => void, onAn
         question: 'Still paused?',
         actions: [dismiss('Still paused'), act('▶ Resume', () => api.resumeSession(), `Resume ${reminder.taskKey ?? 'it'}`)]
       };
-    case 'interruption-running':
+    case 'interruption-running': {
+      const id = reminder.interruptionId;
       return {
         heading: `${reminder.minutes} min on "${reminder.name ?? 'the interruption'}"`,
+        naming: id && reminder.name
+          ? { before: `${reminder.minutes} min on`, name: reminder.name, ownerId: id, rename: name => api.renameInterruption(id, name) }
+          : undefined,
         question: 'Still on it?',
         actions: [
           dismiss('Still on it'),
@@ -81,6 +92,7 @@ export function reminderView(reminder: ReminderDTO, openPicker: () => void, onAn
             : act('■ Stop', () => api.stopInterruption(), 'End the interruption; place it on a task afterwards')
         ]
       };
+    }
     case 'standup-running':
       return {
         heading: `${reminder.minutes} min in the stand-up`,
@@ -104,6 +116,31 @@ export function reminderView(reminder: ReminderDTO, openPicker: () => void, onAn
   }
 }
 
+/**
+ * A reminder's heading, its interruption's name renamed in place. Naming it
+ * answers nothing: the question stays until Still on it or Back.
+ */
+export const ReminderHeading: React.FC<{ view: ReminderView; className?: string; inputClassName: string }> = ({
+  view,
+  className = '',
+  inputClassName
+}) => {
+  const naming = view.naming;
+  if (!naming) return <>{view.heading}</>;
+  return (
+    <span className="inline-flex items-center gap-1 max-w-full min-w-0">
+      <span className="shrink-0">{naming.before}</span>
+      <InlineRename
+        title={naming.name}
+        ownerId={naming.ownerId}
+        onRename={naming.rename}
+        className={`min-w-0 underline decoration-dotted underline-offset-2 ${className}`}
+        inputClassName={inputClassName}
+      />
+    </span>
+  );
+};
+
 const primaryClass = 'px-4 py-2 bg-primary hover:bg-primary/90 text-dark-900 text-xs font-semibold rounded-lg transition-all';
 const secondaryClass = 'px-3 py-2 bg-dark-700 hover:bg-dark-600 text-text-secondary hover:text-white text-xs font-semibold rounded-lg border border-border-dark transition-all';
 
@@ -119,7 +156,12 @@ export const ReminderCard: React.FC<{ reminder: ReminderDTO; openPicker: () => v
     <section aria-label={view.question} className="bg-dark-800 border border-accent-amber/50 rounded-xl p-5 space-y-3 select-none">
       <div className="flex items-center gap-2">
         <BellRing className="w-4 h-4 text-accent-amber" />
-        <h3 className="text-sm font-bold text-white">{view.heading}</h3>
+        <h3 className="text-sm font-bold text-white min-w-0">
+          <ReminderHeading
+            view={view}
+            inputClassName="w-64 px-2 py-0.5 bg-dark-900 border border-border-field rounded text-sm font-bold text-white focus:outline-none focus:border-focus"
+          />
+        </h3>
       </div>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-text-secondary">{view.question}</p>

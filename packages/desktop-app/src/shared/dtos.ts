@@ -320,6 +320,8 @@ export interface ReminderDTO {
   taskKey?: string;
   /** The interruption's name. */
   name?: string;
+  /** The interruption, which a click on its name renames. */
+  interruptionId?: string;
   /** The task an interruption holds, which Back returns to; absent when it holds none. */
   heldTaskKey?: string;
 }
