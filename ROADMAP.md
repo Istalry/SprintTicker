@@ -1624,6 +1624,9 @@ already measures.
   zod 3, which ships in the Stream Deck plugin through `@elgato/utils` and
   has no fixed 3.x, and minimatch, fixed only in 11 while its users ask for
   3, 5, 9 and 10.
+- [x] **minimatch** (2026-11-17): ESLint 10.15 moved to 11; an override
+  takes typescript-eslint 8.71 and electron-builder's `@electron/universal`
+  across from 10 and 9. 3 and 5 are outside the advisory's range.
 - [ ] **zod 3 in the Stream Deck plugin.** Leaves when `@elgato/utils` moves
   to zod 4; its input is the Stream Deck app on the same machine.
 - [ ] **Tailwind 3 -> 4.** It drops postcss-selector-parser and the

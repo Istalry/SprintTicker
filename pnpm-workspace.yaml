@@ -102,6 +102,19 @@ overrides:
   # GHSA-mrhx-c7xc-m3w5. Via eslint-plugin-react-hooks, so only in `pnpm lint`.
   zod@4: '^4.6.6'
 
+  # <11.0.1: globparts amplification, quadratic CPU on a crafted pattern,
+  # GHSA-g3hv-75wg-m249 -- fixed only in 11. ESLint 10.15 asks for 11 itself.
+  # Forced across a major for the rest (2026-11-17), every one passing only
+  # globs this repository writes:
+  #  - 10.x: typescript-eslint 8.71, whose 8.73 asks for ^11.0.1 with no other
+  #    change to how it calls it. Drop this line with that upgrade.
+  #  - 9.x: electron-builder 26's @electron/universal 2, which merges macOS
+  #    universal builds -- a path a Windows-only build never runs. It calls
+  #    only `minimatch(path, pattern, { matchBase: true })`, unchanged in 11.
+  # 3.x and 5.x are outside the advisory's range (>=7.0.0) and stay.
+  minimatch@10: '^11.0.5'
+  minimatch@9: '^11.0.5'
+
   # More advisories have no fixed release to pin, so they stay open on
   # purpose (2026-10-15). Each is reachable only at build time, unless said
   # otherwise, and none can be fed input from outside this repository:
@@ -121,7 +134,3 @@ overrides:
   #    inside the Stream Deck plugin's bundle -- the one entry here that ships.
   #    What it validates there comes from the Stream Deck app on the same
   #    machine. Drop it when @elgato/utils moves to zod 4.
-  #  - minimatch <11.0.1, GHSA-g3hv-75wg-m249, globparts amplification.
-  #    Fixed only in 11, released 2026-10-27, while eslint, electron-builder
-  #    and their kin ask for 3, 5, 9 and 10: four majors forced across, for
-  #    globs this repository writes itself (2026-11-02).

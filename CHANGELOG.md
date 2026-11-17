@@ -483,6 +483,10 @@ months of history: every screen answers within about a tenth of a second.
   nothing runs. Priority Rules says how its arrows and levels relate.
 - **The Ceremonies prompt timeout is gone.** It was saved but never read:
   its auto-dismiss and auto-execute never happened.
+- **The minimatch advisory is patched** (GHSA-g3hv-75wg-m249), in
+  development tools only: ESLint 10.15 asks for the fixed minimatch 11, and
+  an override gives it to typescript-eslint and to electron-builder's macOS
+  merge step. Nothing in the installed app used it.
 
 ### Removed
 
