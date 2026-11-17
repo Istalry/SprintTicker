@@ -1152,7 +1152,8 @@ Stream Deck Mobile closed on 2026-11-16 (P15d in
 `Documentation/REDESIGN-PLAN.md`), and its fixes are in; the user now uses
 the candidate for real work. Also in 2.0: a SprintTicker server as a
 provider (`PROVIDER-API.md`). Left: the user's 2.0.0 tag, and P15e, the
-motion video.
+motion video. CI is off until 2026-12-01, so 2.0.0 is checked and released
+by hand (CLAUDE.md §2); every gate CI runs passed locally on 2026-11-17.
 
 A new face and new flows for every surface: the window, the mini timer,
 the tray, the bar and the Stream Deck. The target is drawn in

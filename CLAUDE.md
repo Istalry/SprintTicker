@@ -46,6 +46,26 @@ pnpm provider:check --fake    # the Provider API's 16 checks against its fake --
 pnpm mock:provider    # a fake SprintTicker server on :8097, token fake-provider-token
 ```
 
+**CI is off until 2026-12-01** (2026-11-17: the account's Actions credit
+ran out; the user has a reminder to turn it back on). Nothing checks a push
+meanwhile, and a `v*` tag builds nothing. Until it is back:
+- **Before a push, run what `quality.yml` runs**: `pnpm lint`, `typecheck`,
+  `preflight`, `docs:check`, `fonts:check`, `provider:check --fake`,
+  `test:coverage` (the app's suite under the floor), `test:studio`,
+  `test:deck` and `deck:validate`.
+- **A release is `build-windows.yml` by hand.** The version in both
+  `package.json` files (the user's, and `preflight` holds them equal);
+  `pnpm package:win` from the tagged commit, with LFS objects present;
+  `node scripts/check-deck-release.js <previous> <new>` on the unzipped
+  plugin packs of the previous release and of this build; `pnpm
+  verify:packed`; and the pack copied from
+  `dist/io.github.istalry.sprintticker.streamDeckPlugin` to
+  `SprintTicker-StreamDeck-<plugin version>.streamDeckPlugin`, the name a
+  release carries. The user then drafts the release on GitHub with the
+  setup and portable `.exe`, `latest.yml` and
+  `SprintTicker-StreamDeck-*.streamDeckPlugin`, and publishes it.
+Delete this paragraph when CI is back.
+
 **better-sqlite3 needs no rebuild, for either runtime.** Version 13 is an
 N-API addon (`NAPI_VERSION=10`) and ships one binary per platform in
 `prebuilds/`; `lib/win32-x64.js` loads `prebuilds/win32-x64.node`
