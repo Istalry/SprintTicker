@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 — not yet released
+## 2.0.0 — 2026-11-17
 
 SprintTicker, redesigned. The window has four places -- Today, Tasks,
 History, Settings -- and in greys, colour means one thing: green is running,

@@ -2744,7 +2744,9 @@ user's to try; before it, what REVIEW §8 left for P15d:
 - `verify:packed` runs the app on a throwaway profile. On the default one,
   from the agent's shell, it opened the redirected copy of the database
   (CLAUDE.md §7), read it as malformed and failed a sound build.
-- The candidate's files read 1.4.0: the version is the user's to raise.
+- The candidates' files read 1.4.0: the version is the user's to raise.
+  Raised to 2.0.0 and tagged on 2026-11-17, built by hand while CI was off
+  (CLAUDE.md §2).
 
 **From the user's first hour on the candidate (2026-11-13).**
 
