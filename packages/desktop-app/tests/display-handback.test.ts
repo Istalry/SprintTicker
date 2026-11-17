@@ -559,6 +559,15 @@ describe('Display hand-back: the screen that ends gives the display to the right
    * LOGGED: scenes and frames in turn, which is where the panel rules bite.
    */
   describe('the stand-up', () => {
+    it('DoneThenStartThenJoin_InOneTick_TheMeetingSceneDoesNotStayUnderTheSession', async () => {
+      // Stress seed 2226: DONE!, a task started and Join, in the same
+      // millisecond under the stand-up's prompt, left the meeting table
+      // playing under the stand-up's session screen.
+      await play('startTask', 1000, 'standupPrompt', 4000, 'finish', 'startTask', 'joinStandup', SETTLE_MS);
+
+      expectSettledScreen(desk);
+    });
+
     it('JoinStandup_FromThePrompt_TheSessionScreenThenTheTaskBack', async () => {
       await play('startTask', SETTLE_MS, 'standupPrompt', SETTLE_MS);
       expect(lock()).toBe('standupPromptPriority');

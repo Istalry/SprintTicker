@@ -670,7 +670,11 @@ probe talks to `BUSYBAR_IP` if it is set, so a proxied bar is
     one in flight leaves `pendingFrameArgs` for a 35 ms throttle timer, and
     a payload or clear in those 35 ms used to miss it: sent anyway, it took
     the newer `displayVersion` and covered the scene just drawn (stress seed
-    1112). The timer checks the version it was scheduled under.
+    1112). The timer checks the version it was scheduled under. **And its
+    landing is told** (`frameSent`): its caller was answered `queued`, so
+    nothing put the scene under it to rest, and the stand-up's meeting
+    table played under the stand-up's session screen (stress seed 2226).
+    The renderer retires the scene on that event as on a frame `sent`.
   - **An outage forgets the scene's file, not the scene.** `AnimationPlayer`
     keeps "which `.anim` the device holds" (`sceneOnDevice`, forgotten on
     `reconnected`, so the next scene uploads again) apart from "a scene may

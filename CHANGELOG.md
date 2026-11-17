@@ -499,6 +499,9 @@ months of history: every screen answers within about a tenth of a second.
   previous version, and the bar's refusal to take the empty animation again
   left the ⚡ playing. On firmware 1.3.1 the same leftovers made the app read
   the bar as dropping out every 3 seconds after start, redrawing each time.
+- **The stand-up's meeting table no longer stays under the stand-up's
+  timer.** Joining the stand-up in the same instant as another press left
+  the table playing behind the timer's screen.
 - **A window opened from the bar or the Stream Deck could stay behind**,
   its taskbar button flashing: the helper that brings it forward was
   stopped after 5 s, and it can take longer to start. It now has 15 s.

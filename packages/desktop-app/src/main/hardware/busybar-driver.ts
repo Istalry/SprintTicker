@@ -1507,6 +1507,24 @@ export class BusyBarDriver extends EventEmitter {
     this.blankAnimationStored = false;
   }
 
+  /**
+   * Sends the frame that waited behind one in flight. Nobody awaits it --
+   * its caller was told `queued` -- so its failure is reported here, and its
+   * landing is told (`frameSent`): the renderer puts a finished scene to rest
+   * only once a frame is known to cover it, and a queued frame used to cover
+   * it unseen, leaving the stand-up's meeting table under the stand-up's
+   * session screen for good (stress seed 2226).
+   */
+  private async sendDeferredFrame(args: Parameters<BusyBarDriver['sendPixelFrame']>): Promise<void> {
+    try {
+      const outcome = await this.sendPixelFrame(...args);
+      if (outcome === 'sent') this.emit('frameSent');
+    } catch (err) {
+      // The next render sends a fresh frame anyway.
+      console.warn(`[BusyBarDriver] Throttled frame dropped: ${describeError(err)}`);
+    }
+  }
+
   private checkPendingFrame() {
     if (this.pendingFrameArgs) {
       const args = this.pendingFrameArgs;
@@ -1520,11 +1538,7 @@ export class BusyBarDriver extends EventEmitter {
         // the payload had just put down -- the session's frame over the
         // stand-up's meeting table (stress seed 1112).
         if (this.displayVersion !== version) return;
-        // Nobody awaits a deferred frame, so this is where its failure is
-        // reported. The next render sends a fresh one anyway.
-        this.sendPixelFrame(...args).catch(err => {
-          console.warn(`[BusyBarDriver] Throttled frame dropped: ${err}`);
-        });
+        void this.sendDeferredFrame(args);
       }, BusyBarDriver.NETWORK_THROTTLE_MS);
     }
   }

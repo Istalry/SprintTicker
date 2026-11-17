@@ -279,7 +279,16 @@ export class DisplayRenderer {
         onPreviewFrame: frame => this.onIconPreviewFrame(frame)
       });
     // Optional: test doubles of the driver are often not emitters.
-    if (typeof driver.on === 'function') driver.on('reconnected', () => this.redrawAfterReconnect());
+    if (typeof driver.on === 'function') {
+      driver.on('reconnected', () => this.redrawAfterReconnect());
+      // A frame that waited behind another landed: as for one sent at once,
+      // a finished scene under it can go now.
+      driver.on('frameSent', () => {
+        if (this.animationPlayer.isHardwareAnimationActive()) return;
+        this.animationPlayer.retireScene().catch(err =>
+          console.error('[DisplayRenderer] Retiring the scene under a deferred frame failed:', err));
+      });
+    }
   }
 
   /**
