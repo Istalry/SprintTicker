@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { formatHoursMinutes } from '../../src/renderer/utils/formatters';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MiniBar } from '../../src/renderer/components/MiniBar';
 import { App } from '../../src/renderer/App';
@@ -357,6 +358,16 @@ describe('mini timer: the screen icon', () => {
       fireEvent.click(await screen.findByRole('button', { name: '▶ Resume' }));
 
       expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, undefined, undefined);
+    });
+
+    it('BackAtYourDesk_TheHeadingSaysWhenLunchEnded', async () => {
+      const ended = new Date(2026, 10, 17, 13, 30).toISOString();
+      installElectronApi({ getResumePrompt: async () => ({ ...HELD, breakEndedAtUtc: ended }) });
+      render(<MiniBar />);
+      const clock = formatHoursMinutes(new Date(ended));
+
+      expect(await screen.findByText(`Lunch over at ${clock} · SPR-142`)).toBeTruthy();
+      expect(screen.getByRole('button', { name: '▶ Resume' }).getAttribute('title')).toBe(`Resume SPR-142, timed from ${clock}`);
     });
 
     it('Standup_JoinFromTheRow', async () => {

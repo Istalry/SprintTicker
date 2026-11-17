@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { formatHoursMinutes } from '../../src/renderer/utils/formatters';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ResumeAfterLunchPrompt } from '../../src/renderer/components/ResumeAfterLunchPrompt';
 import { installElectronApi } from './electron-api-mock';
@@ -127,6 +128,19 @@ describe('resume after lunch', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'I worked through it' }));
 
       expect(bridge.api.answerResumePrompt).toHaveBeenCalledWith(true, undefined, true);
+    });
+
+    it('AfterLunch_ResumeSaysItTimesFromLunchsEnd', async () => {
+      // The user's choice (2026-11-17): the minutes the card waited are work.
+      const ended = new Date(2026, 10, 17, 13, 30).toISOString();
+      installElectronApi({ getResumePrompt: async () => ({ ...HELD, breakEndedAtUtc: ended }) });
+      render(<ResumeAfterLunchPrompt />);
+      const clock = formatHoursMinutes(new Date(ended));
+
+      const dialog = await screen.findByRole('region', { name: 'Back at your desk?' });
+
+      expect(dialog.textContent).toContain(`Lunch ended at ${clock}; Resume times it from then.`);
+      expect(screen.getByRole('button', { name: `▶ Resume ${QUESTION.taskKey} from ${clock}` })).toBeTruthy();
     });
 
     it('AfterAway_SaysAway', async () => {

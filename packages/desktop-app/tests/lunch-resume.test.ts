@@ -108,8 +108,10 @@ describe('Lunch pauses the task; Away keeps it timing', () => {
 
   const open = () => engine.getCurrentSession();
   const worklogs = () => new WorklogRepository(dbConn).getWorklogsByDate('2026-10-14');
-  /** A paused session, waiting on "Back at your desk?". */
-  const heldPrompt = (after: 'lunch' | 'away' = 'lunch') => ({ taskKey: A.key, taskTitle: A.title, after, held: true });
+  /** A paused session, waiting on "Back at your desk?" since the break ended. */
+  const heldPrompt = (after: 'lunch' | 'away' = 'lunch', breakEndedAtUtc: unknown = expect.any(String)) =>
+    ({ taskKey: A.key, taskTitle: A.title, after, held: true, breakEndedAtUtc });
+  const iso = (hours: number, minutes: number) => new Date(2026, 9, 14, hours, minutes, 0).toISOString();
 
   describe('the plain day', () => {
     it('EvaluateSchedule_LunchStarts_PausesTheTask_LogsNothing', () => {
@@ -131,9 +133,57 @@ describe('Lunch pauses the task; Away keeps it timing', () => {
 
       expect(priority.getUserMode()).toBe('WORK');
       expect(open()).toMatchObject({ taskId: A.id, status: 'PAUSED' });
-      expect(service.getResumePrompt()).toEqual(heldPrompt());
-      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, heldPrompt());
+      expect(service.getResumePrompt()).toEqual(heldPrompt('lunch', iso(13, 31)));
+      expect(send).toHaveBeenCalledWith(IPCChannel.ON_RESUME_PROMPT, heldPrompt('lunch', iso(13, 31)));
       expect(renderer.renderResumePrompt).toHaveBeenCalledWith('lunch', A.key, true);
+    });
+
+    it('Resume_AnsweredLate_TimesFromLunchsEnd_NotFromTheAnswer', () => {
+      // The user's choice (2026-11-17): back at 13:30, answering at 13:50,
+      // the twenty minutes the question waited are work.
+      startA();
+      check(12, 30);
+      check(13, 30);
+
+      at(13, 50);
+      service.answerResumePrompt(true);
+      at(15, 0);
+      engine.stopSession('Done for today');
+
+      const pieces = worklogs().map(w => w.durationSeconds).sort((a, b) => b - a);
+      expect(pieces).toEqual([3.5 * 3600, 1.5 * 3600]);
+    });
+
+    it('Resume_AfterARestartBeforeTheAnswer_StillTimesFromLunchsEnd', () => {
+      startA();
+      check(12, 30);
+      check(13, 30);
+      at(13, 40);
+      restart();
+
+      check(13, 41);
+      expect(service.getResumePrompt()).toEqual(heldPrompt('lunch', iso(13, 30)));
+      service.answerResumePrompt(true);
+      at(15, 0);
+      engine.stopSession('Done for today');
+
+      const pieces = worklogs().map(w => w.durationSeconds).sort((a, b) => b - a);
+      expect(pieces).toEqual([3.5 * 3600, 1.5 * 3600]);
+    });
+
+    it('ResumeSession_FromAnInstant_NeverInTheFutureNorBeforeThePause', () => {
+      startA();
+      check(12, 30);
+
+      at(13, 0);
+      expect(() => engine.resumeSession(iso(13, 5))).toThrow(/up to now/);
+      expect(() => engine.resumeSession('not a time')).toThrow(/up to now/);
+      engine.resumeSession(iso(12, 0));
+      at(14, 0);
+      engine.stopSession('Done');
+
+      // Resumed "at noon" during a pause begun at 12:30: no pause at all.
+      expect(worklogs().map(w => w.durationSeconds)).toEqual([5 * 3600]);
     });
 
     it('Resume_TheMorningAndTheAfternoon_TwoEntries_TheLunchHourNotWork', () => {
@@ -355,7 +405,9 @@ describe('Lunch pauses the task; Away keeps it timing', () => {
       expect(priority.getUserMode()).toBe('AWAY');
       at(13, 40);
       service.exitAwayMode();
-      expect(service.getResumePrompt()).toEqual(heldPrompt('lunch'));
+      // Back at 13:40, past lunch's end: the break ends at the return, and
+      // the locked ten minutes after lunch are not the task's.
+      expect(service.getResumePrompt()).toEqual(heldPrompt('lunch', iso(13, 40)));
     });
 
     it('ExitAwayMode_DuringLunch_ShowsLunchStraightAway', () => {

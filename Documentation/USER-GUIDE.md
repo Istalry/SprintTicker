@@ -996,7 +996,10 @@ lunch's hour is over, Today and
 the mini timer ask **Back at your desk?**, naming the task, and the bar shows
 its key over **RESUME?** -- Pause resumes, a wheel click is Not now:
 
-- **Resume KEY** starts timing again.
+- **Resume KEY from 13:30** starts timing again -- from the time the break
+  ended, not from your answer, so the minutes the question waited count as
+  work. That time is lunch's end, or your return when the computer stayed
+  locked or the app closed past it: time away after lunch is not counted.
 - **I worked through it** takes the break back as though you had never
   paused: the time counts as work, in one entry.
 - **Not now** leaves the task paused.

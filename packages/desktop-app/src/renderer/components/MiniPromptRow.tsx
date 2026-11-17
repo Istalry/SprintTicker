@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CeremonyPromptDTO, ForgottenSessionReviewDTO, ReminderDTO, ResumePromptDTO } from '../../shared/dtos';
 import { Verb } from '../../shared/words';
+import { formatHoursMinutes } from '../utils/formatters';
 import { reminderView } from './ReminderPrompt';
 import { askAgain, forgottenHeading, forgottenStanding } from './ForgottenSessionModal';
 import { useAnnounce } from './LiveAnnouncer';
@@ -58,7 +59,9 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
     const key = resume.taskKey;
     if (resume.held) {
       // One row: the key goes in the heading, so the buttons fit beside it.
-      heading = `${resume.after === 'away' ? 'Away' : 'Lunch'} over · ${key}`;
+      // Resume counts from the break's end, which the heading names.
+      const breakEnded = resume.breakEndedAtUtc ? formatHoursMinutes(new Date(resume.breakEndedAtUtc)) : null;
+      heading = `${resume.after === 'away' ? 'Away' : 'Lunch'} over${breakEnded ? ` at ${breakEnded}` : ''} · ${key}`;
       question = 'Back at your desk?';
       buttons = (
         <>
@@ -66,7 +69,7 @@ export const MiniPromptRow: React.FC<MiniPromptRowProps> = ({
           <button type="button" className={quiet} title="Count the break as work: the pause is taken back" onClick={answer(true, undefined, true)}>
             I worked through it
           </button>
-          <button type="button" className={main} title={`Resume ${key}`} onClick={answer(true)}>▶ Resume</button>
+          <button type="button" className={main} title={`Resume ${key}${breakEnded ? `, timed from ${breakEnded}` : ''}`} onClick={answer(true)}>▶ Resume</button>
         </>
       );
     } else if (resume.after === 'interruption') {

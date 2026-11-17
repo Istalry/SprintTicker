@@ -1562,7 +1562,10 @@
       the mini timer ask <strong>Back at your desk?</strong>, naming the task, and the bar shows
       its key over <strong>RESUME?</strong> -- Pause resumes, a wheel click is Not now:</p>
       <ul>
-      <li><strong>Resume KEY</strong> starts timing again.</li>
+      <li><strong>Resume KEY from 13:30</strong> starts timing again -- from the time the break
+      ended, not from your answer, so the minutes the question waited count as
+      work. That time is lunch&#39;s end, or your return when the computer stayed
+      locked or the app closed past it: time away after lunch is not counted.</li>
       <li><strong>I worked through it</strong> takes the break back as though you had never
       paused: the time counts as work, in one entry.</li>
       <li><strong>Not now</strong> leaves the task paused.</li>
@@ -3270,7 +3273,11 @@
       the window (<code>schedule:on-resume-prompt</code>, <code>held: true</code>) and on the bar under
       <code>resumePromptPriority</code>, while that session is still open and paused; an
       entry of another day, or one whose session was resumed, stopped or replaced,
-      is dropped. The answer (<code>schedule:answer-resume-prompt</code>) resumes the session,
+      is dropped. The first asking stores when the break ended
+      (<code>breakEndedAtUtc</code>, kept across a restart): lunch&#39;s end, or the return from a
+      lock or a closed app that outlasted it. The answer
+      (<code>schedule:answer-resume-prompt</code>) resumes the session as of that instant
+      (<code>resumeSession(fromUtc)</code>), so the minutes the question waited are work,
       or with <code>workedThrough</code> withdraws the pause -- its row deleted, so nothing
       splits there -- or leaves it paused. Lunch beginning under Away pauses the
       task Away left timing, for lunch. Lunch&#39;s hour finding an interruption running asks first
@@ -4421,7 +4428,7 @@
       </tr>
       <tr>
       <td align="left">Resume after lunch</td>
-      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it), and after an interruption the minutes to count as work since it ended (<code>addGapMinutes</code>), and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code>, <code>standup</code> or <code>interruption</code>: what stopped the task -- or, after an interruption, what it waited paused through, with <code>interruptionEndedAtUtc</code>. Lunch and the stand-up ask only about a task that left the user&#39;s lists; an interruption asks every time, and adds <code>unlisted: true</code> when the task has left them as well</td>
+      <td align="left"><code>schedule:get-resume-prompt</code> answers the question being asked, or null; <code>schedule:answer-resume-prompt</code> takes <code>true</code> (resume) or <code>false</code> (leave it), and after an interruption the minutes to count as work since it ended (<code>addGapMinutes</code>), and answers <code>false</code> when nothing was asked; <code>schedule:on-resume-prompt</code> pushes the question, <code>{ taskKey, taskTitle, after }</code>, and null once it is answered, from the window or the bar. <code>after</code> is <code>lunch</code>, <code>standup</code> or <code>interruption</code>: what stopped the task -- or, after an interruption, what it waited paused through, with <code>interruptionEndedAtUtc</code>. After a break (<code>held: true</code>), <code>breakEndedAtUtc</code> is when it ended, which Resume times the task from. Lunch and the stand-up ask only about a task that left the user&#39;s lists; an interruption asks every time, and adds <code>unlisted: true</code> when the task has left them as well</td>
       </tr>
       <tr>
       <td align="left">Notifications</td>

@@ -1497,9 +1497,17 @@ export class TimeTrackingEngine extends EventEmitter {
   }
 
   /// <summary>
-  /// Resumes a paused session.
+  /// Resumes a paused session -- as of `fromUtc` when given, so the time
+  /// since is work: "Back at your desk?" counts from the break's end. Never
+  /// before the pause began.
   /// </summary>
-  public resumeSession(): ActiveSessionDTO {
+  /// <exception cref="ArgumentException">`fromUtc` unreadable or in the future.</exception>
+  public resumeSession(fromUtc?: string): ActiveSessionDTO {
+    const nowMs = Date.now();
+    const fromMs = fromUtc === undefined ? nowMs : Date.parse(fromUtc);
+    if (!Number.isFinite(fromMs) || fromMs > nowMs) {
+      throw new ArgumentException(`A session resumes at an instant up to now, not at ${String(fromUtc)}.`, 'fromUtc');
+    }
     const fragment = this._interruptions.getRunning();
     if (fragment) {
       if (!fragment.pausedAtUtc) throw new Error('No paused session available to resume');
@@ -1515,13 +1523,19 @@ export class TimeTrackingEngine extends EventEmitter {
 
     // active.totalPausedSeconds already includes the live duration of the current pause
     // (calculated inside SessionRepository.getActiveSession), so we don't need to add it again.
-    this._sessionRepo.updateStatus(active.sessionId, 'TRACKING', active.totalPausedSeconds, undefined);
+    // Resumed earlier, the pause is the stored total and this pause up to then.
+    const pauseStartMs = Date.parse(active.lastPauseStartUtc);
+    const resumedAtMs = fromUtc === undefined ? nowMs : Math.max(pauseStartMs, fromMs);
+    const pausedSeconds = fromUtc === undefined
+      ? active.totalPausedSeconds
+      : this._sessionRepo.getStoredPausedSeconds(active.sessionId) + Math.floor((resumedAtMs - pauseStartMs) / 1000);
+    this._sessionRepo.updateStatus(active.sessionId, 'TRACKING', pausedSeconds, undefined);
 
     // When each pause ended, so a session can be stopped at a time in the
     // past (`stopSessionAt`). It was never written, so only the total said
     // how long the pauses were, not where they fell. A pause with no row is
     // the retroactive one (`pauseSessionAt`): it gets its row now.
-    const resumedAtUtc = new Date().toISOString();
+    const resumedAtUtc = new Date(resumedAtMs).toISOString();
     if (!this._sessionRepo.closeLatestPause(active.sessionId, resumedAtUtc)) {
       this._sessionRepo.recordPauseInterval(active.sessionId, active.lastPauseStartUtc, resumedAtUtc);
     }

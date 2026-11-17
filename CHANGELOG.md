@@ -29,7 +29,9 @@ months of history: every screen answers within about a tenth of a second.
   workday. Choosing Away from the mode chip or the tray works the same way.
 - **Lunch pauses your task; it no longer stops it.** At the break's
   end the window and the bar ask *Back at your desk?* -- Resume, **I worked
-  through it**, or Not now; nothing restarts on its own. The morning still
+  through it**, or Not now; nothing restarts on its own. Resume times the
+  task from the break's end, which the button names, so the minutes before
+  you answer are not lost. The morning still
   goes to Jira or OpenProject as its own entry, cut at the break, when you
   stop the task. If *A long pause starts a new entry* is set to **never**
   (Settings › My workday), it is one entry spanning lunch, with lunch left

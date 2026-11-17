@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useState } from 'react';
 import { Verb } from '../../shared/words';
+import { formatHoursMinutes } from '../utils/formatters';
 import { useResumePrompt } from '../hooks/usePrompts';
 import { useAnnounce } from './LiveAnnouncer';
 
@@ -71,8 +72,15 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
   let message: React.ReactNode;
   let buttons: React.ReactNode;
   if (held) {
+    // Resume counts from the break's end: the minutes this card waited are work.
+    const breakEnded = prompt.breakEndedAtUtc ? formatHoursMinutes(new Date(prompt.breakEndedAtUtc)) : null;
     title = 'Back at your desk?';
-    message = <>{task} is paused, as it was: {breakName} is not timed, and nothing was sent.{unlisted}</>;
+    message = (
+      <>
+        {task} is paused, as it was: {breakName} is not timed, and nothing was sent.
+        {breakEnded && <> {breakName} ended at {breakEnded}; Resume times it from then.</>}{unlisted}
+      </>
+    );
     buttons = (
       <>
         <button type="button" className={quiet} onClick={() => answer(false)}>{Verb.NOT_NOW}</button>
@@ -80,7 +88,9 @@ export const ResumeAfterLunchPrompt: React.FC = () => {
           title={`Resume it, and count the ${breakName.toLowerCase()} as work on it: the pause is taken back`}>
           I worked through it
         </button>
-        <button type="button" className={primary} onClick={() => answer(true)}>▶ {Verb.RESUME} {key}</button>
+        <button type="button" className={primary} onClick={() => answer(true)}>
+          ▶ {Verb.RESUME} {key}{breakEnded && <> from {breakEnded}</>}
+        </button>
       </>
     );
   } else if (prompt.after === 'interruption') {

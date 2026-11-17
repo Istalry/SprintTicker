@@ -916,7 +916,11 @@ changing it:
   ends, "Back at your desk?" asks about that session (Resume / I worked
   through it / Not now); nothing restarts. "I worked through it" is
   `withdrawPause`, which deletes the open pause *row* too, or the split
-  would still cut there. Pause before the mode switch: the paused frame is
+  would still cut there. **Resume counts from the break's end**
+  (`breakEndedAtUtc`, the user's choice, 2026-11-17), stored at the first
+  asking so a restart keeps it: lunch's end, or the return when a lock or
+  a closed app outlasted it -- never earlier, or time away after lunch
+  would be work nobody confirmed. Pause before the mode switch: the paused frame is
   what the scene covers. **Lunch's hour asks before it ends an
   interruption** (S25, P8c2): "Start lunch? It ends 'Call with Marc'" -- a
   `LUNCH` ceremony prompt, in WORK and under Away alike, and unlocking into

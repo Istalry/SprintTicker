@@ -829,7 +829,11 @@ Lunch's end -- the service asks "Back at your desk?" in
 the window (`schedule:on-resume-prompt`, `held: true`) and on the bar under
 `resumePromptPriority`, while that session is still open and paused; an
 entry of another day, or one whose session was resumed, stopped or replaced,
-is dropped. The answer (`schedule:answer-resume-prompt`) resumes the session,
+is dropped. The first asking stores when the break ended
+(`breakEndedAtUtc`, kept across a restart): lunch's end, or the return from a
+lock or a closed app that outlasted it. The answer
+(`schedule:answer-resume-prompt`) resumes the session as of that instant
+(`resumeSession(fromUtc)`), so the minutes the question waited are work,
 or with `workedThrough` withdraws the pause -- its row deleted, so nothing
 splits there -- or leaves it paused. Lunch beginning under Away pauses the
 task Away left timing, for lunch. Lunch's hour finding an interruption running asks first

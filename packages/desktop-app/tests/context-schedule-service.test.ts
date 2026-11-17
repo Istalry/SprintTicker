@@ -102,7 +102,7 @@ describe('ContextScheduleService Unit Tests', () => {
 
     expect(mockPriorityEngine.setUserMode).toHaveBeenCalledWith('WORK');
     expect(mockEngine.startTask).not.toHaveBeenCalled();
-    expect(service.getResumePrompt()).toEqual({ taskKey: 'P1-123', taskTitle: 'Test', after: 'lunch', held: true });
+    expect(service.getResumePrompt()).toEqual({ taskKey: 'P1-123', taskTitle: 'Test', after: 'lunch', held: true, breakEndedAtUtc: expect.any(String) });
   });
 
   it('ExitLunchMode_WasNotAutoStoppedForLunch_RendersActiveSession', () => {

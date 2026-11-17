@@ -378,6 +378,12 @@ export interface ResumePromptDTO {
    */
   interruptionEndedAtUtc?: string;
   /**
+   * After Lunch or Away: when the break ended, which Resume counts from --
+   * the time until the answer is work on the task (the user's choice,
+   * 2026-11-17), and the buttons say so.
+   */
+  breakEndedAtUtc?: string;
+  /**
    * After Lunch or Away (P8b): the task is paused, not stopped -- "Back at
    * your desk?". Resume ends the pause; "I worked through it" takes it back,
    * so the break counts as work.

@@ -36,6 +36,12 @@ interface LunchResume {
   dateKey: string;
   heldSessionId?: string;
   pausedFor?: 'lunch' | 'away';
+  /**
+   * When the break ended for the app: written the first time "Back at your
+   * desk?" is asked, so a restart before the answer keeps it. Resume counts
+   * from it.
+   */
+  breakEndedAtUtc?: string;
 }
 
 function isLunchResume(value: unknown): value is LunchResume {
@@ -754,7 +760,7 @@ export class ContextScheduleService {
     // lunch's now: the question after it is lunch's.
     const stored = this._settingsRepo.getSetting<unknown>(ContextScheduleService.LUNCH_RESUME_KEY, null);
     if (session && isLunchResume(stored) && stored.heldSessionId === session.sessionId) {
-      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, { ...stored, pausedFor: 'lunch' });
+      this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, { ...stored, pausedFor: 'lunch', breakEndedAtUtc: undefined });
     }
   }
 
@@ -808,7 +814,9 @@ export class ContextScheduleService {
           // "I worked through it": the break's pause is taken back whole.
           this._engine.withdrawPause();
         } else {
-          this._engine.resumeSession();
+          // From the break's end, not the answer: the minutes the question
+          // waited are work (the user's choice, 2026-11-17).
+          this._engine.resumeSession(data.breakEndedAtUtc);
         }
         return;
       }
@@ -945,7 +953,13 @@ export class ContextScheduleService {
       // The open session's task is kept listed by the sync; the session says
       // whether it left the user's list.
       const unlisted = open.taskUnlisted === true;
-      this._resumePrompt = { ...stored, after: stored.pausedFor ?? 'lunch', unlisted, heldSessionId: stored.heldSessionId };
+      // The break ends now -- at lunch's end, or at the return from a lock or
+      // a closed app that outlasted it, whose time is not the task's.
+      const breakEndedAtUtc = stored.breakEndedAtUtc ?? new Date().toISOString();
+      if (!stored.breakEndedAtUtc) {
+        this._settingsRepo.setSetting(ContextScheduleService.LUNCH_RESUME_KEY, { ...stored, breakEndedAtUtc });
+      }
+      this._resumePrompt = { ...stored, breakEndedAtUtc, after: stored.pausedFor ?? 'lunch', unlisted, heldSessionId: stored.heldSessionId };
       const prompt = ContextScheduleService.toPromptDto(this._resumePrompt);
       this._renderer.renderResumePrompt(prompt.after, prompt.taskKey, true);
       this.sendResumePrompt(prompt);
@@ -1286,6 +1300,7 @@ export class ContextScheduleService {
     if ((data.after === 'interruption' || data.heldSessionId) && data.unlisted) prompt.unlisted = true;
     if (data.heldSessionId && data.after !== 'interruption') prompt.held = true;
     if (data.interruptionEndedAtUtc) prompt.interruptionEndedAtUtc = data.interruptionEndedAtUtc;
+    if (prompt.held && data.breakEndedAtUtc) prompt.breakEndedAtUtc = data.breakEndedAtUtc;
     return prompt;
   }
 
