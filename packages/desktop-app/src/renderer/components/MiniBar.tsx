@@ -135,6 +135,9 @@ export const MiniBar: React.FC = () => {
   const standup = useStandupRunning(sessionId);
   const workingNow = useWorkingNow(session === null);
   const [tourSeen, putTourAway] = useTourSeen();
+  // The tour takes the title's line, and an interruption's name is renamed
+  // there: it waits for a task (rc14, the user could not name one).
+  const touring = tourSeen === false && !interruption;
   const api = window.electronAPI;
   // A question main is asking takes the row until it is answered (P8c).
   const ceremony = useCeremonyPrompt();
@@ -284,7 +287,7 @@ export const MiniBar: React.FC = () => {
             <span className="text-text-secondary">
               {standup.returnsToKey ? `then back to ${standup.returnsToKey}, as it was` : 'nothing to go back to after it'}
             </span>
-          ) : tourSeen === false ? (
+          ) : touring ? (
             <span className="flex items-center gap-2 text-[11px] text-text-secondary">
               <span className="truncate">pause · stop · interrupt · switch · previous · hide →</span>
               <button type="button" className="shrink-0 underline hover:text-white" onClick={putTourAway}>Got it</button>
@@ -496,7 +499,7 @@ export const MiniBar: React.FC = () => {
           <div className="flex-1 min-w-0 leading-tight">{describe()}</div>
 
           {/* The tour takes the timer's room for the one first open: the words need it. */}
-          {session && !choosing && tourSeen !== false && (
+          {session && !choosing && !touring && (
             <div
               role="timer"
               className={`text-lg font-bold font-mono tabular-nums ${tracking ? 'text-white' : 'text-text-secondary'}`}

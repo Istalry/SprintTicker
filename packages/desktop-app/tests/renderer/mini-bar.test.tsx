@@ -521,6 +521,23 @@ describe('mini timer: the states of S25', () => {
     expect(await screen.findByText('Rework the pause menu')).toBeTruthy();
   });
 
+  it('Tour_DuringAnInterruption_Waits_TheNameStaysRenamable', async () => {
+    const bridge = installElectronApi({
+      getCurrentSession: async () => ({ ...INTERRUPTION, interruption: { ...INTERRUPTION.interruption, index: 2 } }),
+      getFlowSetting: vi.fn().mockResolvedValue(false)
+    });
+    render(<MiniBar />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Rename Interruption 10:30' }));
+    const field = screen.getByRole('textbox', { name: 'Name this work' });
+    fireEvent.change(field, { target: { value: 'Call with Marc' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(screen.queryByText(/pause · stop · interrupt/)).toBeNull();
+    expect(bridge.api.renameSession).toHaveBeenCalledWith('Call with Marc');
+    expect(screen.getByRole('timer')).toBeTruthy();
+  });
+
   it('BackQuestion_SaysTheMinutesUntracked_AndBacksThemIn', () => {
     installElectronApi();
     const ended = new Date(Date.now() - 6 * 60_000).toISOString();

@@ -502,6 +502,8 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Fixed
 
+- **The mini timer's first tip no longer hides an interruption's name.**
+  The tip waits for a task, so the name stays there to click and rename.
 - **The bar no longer shows the interruption's ⚡ over Away's coffee cup.**
   After an update, the bar could still be playing animations left by the
   previous version, and the bar's refusal to take the empty animation again
