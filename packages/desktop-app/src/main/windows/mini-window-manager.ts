@@ -1,5 +1,12 @@
 import { ArgumentNullException } from '../../shared/dtos';
-import { MINI_WINDOW_MARGIN, MINI_WINDOW_SETTING_KEY, MINI_WINDOW_SIZE } from './window-constants';
+import {
+  MINI_WINDOW_MARGIN,
+  MINI_WINDOW_RECLAIM_AFTER_SYSTEM_MS,
+  MINI_WINDOW_RECLAIM_DELAY_MS,
+  MINI_WINDOW_SETTING_KEY,
+  MINI_WINDOW_SIZE,
+  MINI_WINDOW_TOP_LEVEL
+} from './window-constants';
 
 export interface Rectangle {
   x: number;
@@ -18,7 +25,10 @@ export interface MiniWindowLike {
   close(): void;
   destroy(): void;
   getBounds(): Rectangle;
-  on(event: 'moved' | 'closed', listener: () => void): unknown;
+  setAlwaysOnTop(flag: boolean, level?: typeof MINI_WINDOW_TOP_LEVEL): void;
+  /** To the top of the z-order without the focus. */
+  moveTop(): void;
+  on(event: 'moved' | 'closed' | 'blur', listener: () => void): unknown;
 }
 
 /** The slice of Electron's `screen` the manager reads. */
@@ -48,6 +58,8 @@ export interface MiniWindowDeps {
   createWindow: (bounds: Rectangle, options?: { inactive?: boolean }) => MiniWindowLike;
   screen: ScreenLike;
   settings: SettingsStore;
+  /** Whether a window of the app's own has the focus: that one keeps the front. */
+  appHasFocus?: () => boolean;
 }
 
 /** What the IPC layer and the tray need of the mini window. */
@@ -69,6 +81,7 @@ export interface MiniWindowController {
 export class MiniWindowManager implements MiniWindowController {
   private window: MiniWindowLike | null = null;
   private disposing = false;
+  private reclaimTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly listeners = new Set<(open: boolean) => void>();
 
   constructor(private readonly deps: MiniWindowDeps) {
@@ -115,6 +128,11 @@ export class MiniWindowManager implements MiniWindowController {
       this.save({ ...this.state(), x, y });
     });
 
+    // Windows keeps one band of always-on-top windows, the last one raised
+    // in front, and can drop the flag altogether: set once at creation, the
+    // mini timer ended up behind ordinary windows (2.0.0, 2026-11-18).
+    win.on('blur', () => this.reclaimTopSoon(MINI_WINDOW_RECLAIM_DELAY_MS));
+
     win.on('closed', () => {
       if (this.window === win) this.window = null;
       // Closed with the app, it stays "open" so the next launch brings it
@@ -148,6 +166,22 @@ export class MiniWindowManager implements MiniWindowController {
     if (this.state().open) this.open();
   }
 
+  /**
+   * Puts it back on top after `delayMs`, without taking the focus -- unless
+   * a window of the app's own has it then. For a lost focus, and for a wake,
+   * an unlock or a display change, over which Windows can drop the flag.
+   */
+  public reclaimTopSoon(delayMs: number = MINI_WINDOW_RECLAIM_AFTER_SYSTEM_MS): void {
+    if (!this.isOpen()) return;
+    if (this.reclaimTimer) clearTimeout(this.reclaimTimer);
+    this.reclaimTimer = setTimeout(() => {
+      this.reclaimTimer = null;
+      if (!this.isOpen() || this.deps.appHasFocus?.()) return;
+      this.window!.setAlwaysOnTop(true, MINI_WINDOW_TOP_LEVEL);
+      this.window!.moveTop();
+    }, delayMs);
+  }
+
   public subscribe(listener: (open: boolean) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -163,6 +197,8 @@ export class MiniWindowManager implements MiniWindowController {
    */
   public dispose(): void {
     this.disposing = true;
+    if (this.reclaimTimer) clearTimeout(this.reclaimTimer);
+    this.reclaimTimer = null;
     if (this.window && !this.window.isDestroyed()) this.window.destroy();
     this.window = null;
   }

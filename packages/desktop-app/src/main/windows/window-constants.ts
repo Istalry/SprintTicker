@@ -14,6 +14,23 @@ export const MINI_WINDOW_MARGIN = 16;
 /** Settings key for the mini timer's position and whether it was open. */
 export const MINI_WINDOW_SETTING_KEY = 'mini_window';
 
+/**
+ * The mini timer's always-on-top level. On Windows every level is the one
+ * topmost band; 'floating' matters only on macOS, where it stays under
+ * system UI such as the menu bar.
+ */
+export const MINI_WINDOW_TOP_LEVEL = 'floating';
+
+/**
+ * How long after the mini timer loses the focus it takes the top back: time
+ * for the focus to land, so a window of the app's own -- the picker, on top
+ * too -- is left in front.
+ */
+export const MINI_WINDOW_RECLAIM_DELAY_MS = 150;
+
+/** After a wake, an unlock or a display change: time for Windows to settle the desktop. */
+export const MINI_WINDOW_RECLAIM_AFTER_SYSTEM_MS = 1000;
+
 
 /**
  * The picker window's size: the window's picker (S7) at its own width, tall

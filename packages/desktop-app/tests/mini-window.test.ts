@@ -18,7 +18,13 @@ import {
   MiniWindowState,
   Rectangle
 } from '../src/main/windows/mini-window-manager';
-import { MINI_WINDOW_MARGIN, MINI_WINDOW_SETTING_KEY, MINI_WINDOW_SIZE } from '../src/main/windows/window-constants';
+import {
+  MINI_WINDOW_MARGIN,
+  MINI_WINDOW_RECLAIM_AFTER_SYSTEM_MS,
+  MINI_WINDOW_RECLAIM_DELAY_MS,
+  MINI_WINDOW_SETTING_KEY,
+  MINI_WINDOW_SIZE
+} from '../src/main/windows/window-constants';
 import { IPCChannel } from '../src/shared/ipc-channels';
 import { ArgumentNullException } from '../src/shared/dtos';
 
@@ -41,6 +47,8 @@ class FakeMiniWindow implements MiniWindowLike {
   public readonly shown = vi.fn();
   public readonly focused = vi.fn();
   public readonly shownInactive = vi.fn();
+  public readonly onTop = vi.fn();
+  public readonly movedTop = vi.fn();
   public inactive = false;
   private readonly handlers = new Map<string, Array<() => void>>();
 
@@ -53,7 +61,9 @@ class FakeMiniWindow implements MiniWindowLike {
   showInactive(): void { this.shownInactive(); }
   focus(): void { this.focused(); }
   getBounds(): Rectangle { return this.bounds; }
-  on(event: 'moved' | 'closed', listener: () => void): this {
+  setAlwaysOnTop(flag: boolean, level?: string): void { this.onTop(flag, level); }
+  moveTop(): void { this.movedTop(); }
+  on(event: 'moved' | 'closed' | 'blur', listener: () => void): this {
     this.handlers.set(event, [...(this.handlers.get(event) ?? []), listener]);
     return this;
   }
@@ -68,6 +78,7 @@ class FakeMiniWindow implements MiniWindowLike {
     this.bounds = { ...this.bounds, x, y };
     this.fire('moved');
   }
+  blur(): void { this.fire('blur'); }
   private fire(event: string): void {
     for (const listener of this.handlers.get(event) ?? []) listener();
   }
@@ -92,8 +103,10 @@ describe('MiniWindowManager', () => {
   let displays: Rectangle[];
   let created: FakeMiniWindow[];
   let manager: MiniWindowManager;
+  let appFocused: boolean;
 
   beforeEach(() => {
+    appFocused = false;
     settings = new MemorySettings();
     displays = [PRIMARY];
     created = [];
@@ -108,7 +121,64 @@ describe('MiniWindowManager', () => {
         getAllDisplays: () => displays.map(workArea => ({ workArea })),
         getPrimaryDisplay: () => ({ workArea: displays[0] })
       },
-      settings
+      settings,
+      appHasFocus: () => appFocused
+    });
+  });
+
+  describe('staying on top', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('Blur_FocusGoesToAnotherApp_TakesTheTopBackWithoutTheFocus', () => {
+      // Set once at creation, it ended up behind ordinary windows (2026-11-18).
+      manager.open();
+      const win = created[0];
+      win.focused.mockClear();
+
+      win.blur();
+      vi.advanceTimersByTime(MINI_WINDOW_RECLAIM_DELAY_MS - 1);
+      expect(win.movedTop).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(1);
+
+      expect(win.onTop).toHaveBeenCalledWith(true, 'floating');
+      expect(win.movedTop).toHaveBeenCalledTimes(1);
+      expect(win.focused).not.toHaveBeenCalled();
+      expect(win.shown).not.toHaveBeenCalled();
+    });
+
+    it('Blur_FocusGoesToTheAppsOwnWindow_LeavesItInFront', () => {
+      manager.open();
+      appFocused = true;
+
+      created[0].blur();
+      vi.advanceTimersByTime(MINI_WINDOW_RECLAIM_DELAY_MS);
+
+      expect(created[0].movedTop).not.toHaveBeenCalled();
+    });
+
+    it('ReclaimTopSoon_AfterAWake_WaitsForTheDesktopToSettle', () => {
+      manager.open();
+
+      manager.reclaimTopSoon();
+      manager.reclaimTopSoon();
+      vi.advanceTimersByTime(MINI_WINDOW_RECLAIM_AFTER_SYSTEM_MS);
+
+      expect(created[0].movedTop).toHaveBeenCalledTimes(1);
+    });
+
+    it('ReclaimTopSoon_ClosedOrDisposedMeanwhile_TouchesNothing', () => {
+      manager.reclaimTopSoon();
+      vi.advanceTimersByTime(MINI_WINDOW_RECLAIM_AFTER_SYSTEM_MS);
+      expect(created).toHaveLength(0);
+
+      manager.open();
+      const win = created[0];
+      win.blur();
+      manager.dispose();
+      vi.advanceTimersByTime(MINI_WINDOW_RECLAIM_DELAY_MS);
+
+      expect(win.movedTop).not.toHaveBeenCalled();
     });
   });
 

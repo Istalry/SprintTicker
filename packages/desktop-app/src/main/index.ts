@@ -61,6 +61,7 @@ import { MiniWindowManager, Rectangle } from './windows/mini-window-manager';
 import { PickerWindowManager } from './windows/picker-window-manager';
 import { enableZoom } from './windows/window-zoom';
 import { MINI_WINDOW_HASH } from '../shared/mini-window';
+import { MINI_WINDOW_TOP_LEVEL } from './windows/window-constants';
 import { PickerWindowMode, pickerWindowHash } from '../shared/picker-window';
 import { IPCChannel } from '../shared/ipc-channels';
 import { DEVICE_APPLICATION_NAME, DEVICE_CONFIG_SETTING_KEY, DEFAULT_DEVICE_CONFIG } from '../shared/device-constants';
@@ -182,9 +183,8 @@ function createMiniWindow(bounds: Rectangle, options: { inactive?: boolean } = {
     backgroundColor: '#0F172A',
     webPreferences: WINDOW_WEB_PREFERENCES
   });
-  // 'floating' rather than the default level, so it stays above ordinary
-  // windows without covering system UI such as the Start menu.
-  win.setAlwaysOnTop(true, 'floating');
+  // Kept there by MiniWindowManager, which sets it again when it may be lost.
+  win.setAlwaysOnTop(true, MINI_WINDOW_TOP_LEVEL);
   win.setMenu(null);
   // Opened by a device's interruption, it must not take the focus (P12d).
   win.once('ready-to-show', () => (options.inactive ? win.showInactive() : win.show()));
@@ -513,7 +513,21 @@ async function startApplication(): Promise<void> {
     console.warn('[Main] Could not bring the startup entry up to date:', err);
   }
 
-  miniWindowManager = new MiniWindowManager({ createWindow: createMiniWindow, screen, settings: settingsRepo });
+  miniWindowManager = new MiniWindowManager({
+    createWindow: createMiniWindow,
+    screen,
+    settings: settingsRepo,
+    appHasFocus: () => BrowserWindow.getFocusedWindow() !== null
+  });
+  // Windows can drop the mini timer's always-on-top over a sleep, a lock or
+  // a display change; it takes the top back once the desktop has settled.
+  const miniTop = miniWindowManager;
+  const reclaimMiniTop = (): void => miniTop.reclaimTopSoon();
+  powerMonitor.on('resume', reclaimMiniTop);
+  powerMonitor.on('unlock-screen', reclaimMiniTop);
+  screen.on('display-added', reclaimMiniTop);
+  screen.on('display-removed', reclaimMiniTop);
+  screen.on('display-metrics-changed', reclaimMiniTop);
 
   // A press on a Stream Deck key reaches Stream Deck, not this app, so
   // Windows would keep a window it opens behind whatever is in front: the

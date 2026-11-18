@@ -125,7 +125,12 @@ cannot end up laxer than the first. `MiniWindowManager` owns the mini timer: it
 builds it through an injected factory, remembers its position and whether it
 was open under the `mini_window` setting, and checks a saved position against
 the displays that exist now -- a monitor unplugged since would leave an
-always-on-top window off-screen. `openQuietly` opens or shows it without the
+always-on-top window off-screen. It also keeps it on top: Windows has one
+band of always-on-top windows, the last raised in front, and can drop the
+flag over a sleep, a lock or a display change, so `reclaimTopSoon` sets it
+again and moves the window to the top without the focus -- shortly after it
+loses the focus, unless a window of the app's own has it, and a second
+after a wake, an unlock or a display change. `openQuietly` opens or shows it without the
 focus (`showInactive`): `MiniOnInterruption` (`windows/mini-on-interruption.ts`)
 calls it once per interruption started from the bar, the deck or the
 shortcut while the dashboard is not on screen, so the name field and

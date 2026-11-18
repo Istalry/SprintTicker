@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The mini timer stays on top.** Another always-on-top window, or a
+  sleep, a lock or a monitor change, could leave it behind ordinary windows;
+  it now takes the top back on its own, without taking the focus.
+
 ## 2.0.0 — 2026-11-17
 
 SprintTicker, redesigned. The window has four places -- Today, Tasks,

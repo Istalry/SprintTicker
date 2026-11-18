@@ -1177,7 +1177,16 @@ shortcut that declares another AUMID. Two more things about it:
 - **Async Electron lifecycle handlers do not work.** Electron does not await
   `will-quit`, so an `async` handler's teardown after the first `await` never
   runs. Use `preventDefault()` + `app.exit(0)`.
-- **Every global shortcut is let go of while a chord is recorded.**
+- **The mini timer is always on top only while it keeps saying so.** Set
+once at creation, it ended up behind ordinary windows (2.0.0, 2026-11-18):
+Windows keeps one band of topmost windows, the last raised in front, and
+can drop the flag over a sleep, a lock or a display change. Electron's
+levels (`'floating'`) mean nothing there. `MiniWindowManager.reclaimTopSoon`
+sets it again and calls `moveTop`, never `focus` -- after a blur, unless a
+window of the app's own has the focus (the picker is on top too), and
+after a wake, an unlock or a display change.
+
+**Every global shortcut is let go of while a chord is recorded.**
   Windows hands a registered chord to its owner and never to the focused
   window, so recording a chord already in use would run its action instead
   (`ShortcutService.setRecording`, all four chords, P12e). `register`
