@@ -2746,7 +2746,8 @@ user's to try; before it, what REVIEW §8 left for P15d:
   (CLAUDE.md §7), read it as malformed and failed a sound build.
 - The candidates' files read 1.4.0: the version is the user's to raise.
   Raised to 2.0.0 and tagged on 2026-11-17, built by hand while CI was off
-  (CLAUDE.md §2).
+  (CLAUDE.md §2); re-tagged and rebuilt on 2026-11-19, replacing that
+  release before anyone had installed it.
 
 **From the user's first hour on the candidate (2026-11-13).**
 

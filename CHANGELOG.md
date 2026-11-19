@@ -1,14 +1,6 @@
 # Changelog
 
-## Unreleased
-
-### Fixed
-
-- **The mini timer stays on top.** Another always-on-top window, or a
-  sleep, a lock or a monitor change, could leave it behind ordinary windows;
-  it now takes the top back on its own, without taking the focus.
-
-## 2.0.0 — 2026-11-17
+## 2.0.0 — 2026-11-19
 
 SprintTicker, redesigned. The window has four places -- Today, Tasks,
 History, Settings -- and in greys, colour means one thing: green is running,
@@ -510,6 +502,9 @@ months of history: every screen answers within about a tenth of a second.
 
 ### Fixed
 
+- **The mini timer stays on top.** Another always-on-top window, or a
+  sleep, a lock or a monitor change, could leave it behind ordinary windows;
+  it now takes the top back on its own, without taking the focus.
 - **The mini timer's first tip no longer hides an interruption's name.**
   The tip waits for a task, so the name stays there to click and rename.
 - **The bar no longer shows the interruption's ⚡ over Away's coffee cup.**
