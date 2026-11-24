@@ -193,7 +193,11 @@ before. The note is the session's (`active_sessions.note`, migration 18)
 and becomes the entry's comment when it ends, over the words the app writes
 for how it ended (a switch, the bar, lunch); a comment given at Stop wins.
 The picker reads the one line as it is typed and puts *Start "Task" in
-Project* first, with *Change project or note…* for the fields; the pick
+Project* first when the project is one of the user's own; a project not
+made yet comes second, under the line as typed with no project, so Enter
+never makes one from a colon in a name. *Add a project or note…* opens the
+fields, and the rows of the user's own work stay in view under the results
+(a sticky footer of the list, with the syntax as a tip); the pick
 carries `ownProject` and `ownNote`, and `pickTask` starts it through
 `session:start-own-work`. Add time, Split and Move send `ownProject` in
 their target; `WorklogCorrectionService` makes the task there, and the

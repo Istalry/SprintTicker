@@ -326,20 +326,33 @@ describe('TaskPicker', () => {
     const DASH_TASK = task('DASH-3', DASH_ONLINE, 'Backup the build server');
     const WITH_DASH = { ...DATA, tasks: [...DATA.tasks, DASH_TASK], projects: [...DATA.projects, DASH_ONLINE] };
 
-    it('OneLine_ProjectTaskNote_StartsFirst_ANewProjectSaidSo', async () => {
+    it('OneLine_ANewProject_IsTheSecondRow_SaidSo', async () => {
       const { onPick } = open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue(WITH_DASH) });
       await screen.findByText('Recent');
 
       search('Dash: Backup: before v2');
-      const first = within(screen.getByRole('listbox', { name: 'Tasks' })).getAllByRole('option')[0];
-      expect(first.textContent).toContain('Start "Backup" in Dash');
-      expect(first.textContent).toContain('new project · note: before v2');
+      const [first, second] = within(screen.getByRole('listbox', { name: 'Tasks' })).getAllByRole('option');
+      expect(first.textContent).toContain('A task of my own named "Dash: Backup: before v2"');
+      expect(second.textContent).toContain('Start "Backup" in Dash');
+      expect(second.textContent).toContain('new project · note: before v2');
       // The online project of that name is found too, under its heading.
       expect(screen.getByText('DASH-3')).toBeTruthy();
 
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown' });
       fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter' });
 
       expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Backup', ownProject: 'Dash', ownNote: 'before v2', takeAlong: false });
+    });
+
+    it('OneLine_AColonForAnotherReason_EnterMakesNoProject', async () => {
+      // 2.0.2 rc1: "Review: login page" made a project Review on Enter (F4).
+      const { onPick } = open({ mode: 'start' });
+      await screen.findByText('Recent');
+
+      search('Review: login page');
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter' });
+
+      expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Review: login page', takeAlong: false });
     });
 
     it('OneLine_AProjectOfYours_IsNotNew_AndTheNamesGetTheirMarks', async () => {
@@ -349,6 +362,7 @@ describe('TaskPicker', () => {
       search('dash: Backup');
 
       const first = within(screen.getByRole('listbox', { name: 'Tasks' })).getAllByRole('option')[0];
+      expect(first.textContent).toContain('Start "Backup" in dash');
       expect(first.textContent).not.toContain('new project');
       expect(screen.getByText('Jira')).toBeTruthy();
     });
@@ -402,6 +416,44 @@ describe('TaskPicker', () => {
       search('code review');
 
       expect(screen.getByRole('option', { name: /A task of my own named "code review"/ }).textContent).toContain('already yours');
+    });
+
+    it('Typed_TheSyntaxIsShown_WithTheNameTyped', async () => {
+      open({ mode: 'start' });
+      await screen.findByText('Recent');
+
+      search('Backup files');
+
+      expect(screen.getByText('Project: Backup files: note').parentElement!.textContent)
+        .toBe('Tip: Project: Backup files: note puts it in a project, with a note.');
+      expect(screen.getByRole('option', { name: 'Add a project or note…' })).toBeTruthy();
+
+      search('Dash: Backup files');
+
+      expect(screen.queryByText(/^Tip:/)).toBeNull();
+      expect(screen.getByRole('option', { name: 'Change project or note…' })).toBeTruthy();
+    });
+
+    it('Typed_InAMove_TheSyntaxHasNoNote', async () => {
+      open({ mode: 'move', ownWork: true });
+      await screen.findByText('Recent');
+
+      search('Backup files');
+
+      expect(screen.getByText('Project: Backup files').parentElement!.textContent).toBe('Tip: Project: Backup files puts it in a project.');
+      expect(screen.getByRole('option', { name: 'Add a project…' })).toBeTruthy();
+    });
+
+    it('Search_ResultsAbove_YourOwnRowsStayInViewUnderThem', async () => {
+      open({ mode: 'start' });
+      await screen.findByText('Recent');
+
+      search('PF');
+
+      // jsdom draws nothing: the class is what keeps them in view.
+      const own = screen.getByRole('option', { name: /A task of my own named "PF"/ });
+      expect(own.parentElement!.className).toContain('sticky');
+      expect(screen.getByLabelText('Search tasks').getAttribute('placeholder')).toBe('Search 6 tasks, or type a new one');
     });
 
     it('NoColon_AsBefore_ATaskOfYourOwn', async () => {

@@ -337,14 +337,21 @@ Arrow keys and Enter pick from the keyboard; Escape closes.
   starts. **A task is missing? Refresh from Jira**, at the bottom, fetches
   everything again.
 - **A task of my own…** starts work that stays in SprintTicker and is never
-  sent; with something typed, it is named after it.
+  sent; with something typed, it is named after it. The field says so:
+  *Search 42 tasks, or type a new one*. Those rows stay in view under the
+  results, however many there are.
 - **In one line, with its project and a note**: type `Dash: Backup files:
-  before v2` and the first row is **Start "Backup files" in Dash**, with
-  the note -- Enter starts it. One colon is *Project: Task*; with none it is
-  a task of your own with no project. A project of yours named Dash, in any
-  case, takes the task (DASH-1, then DASH-2); if you have none, it is made,
-  kept on this computer, and the row says *new project*. **Change project or
-  note…** opens the same three fields to fill in. The note shows under the
+  before v2`. One colon is *Project: Task*, a second adds the note; with
+  none it is a task of your own with no project, and a tip under it shows
+  the syntax with what you typed. A project of yours named Dash, in any
+  case, takes the task (DASH-1, then DASH-2): **Start "Backup files" in
+  Dash** is the first row and Enter starts it. If you have none, the first
+  row is the line as you typed it, with no project, and **Start "Backup
+  files" in Dash** under it says *new project*: choose it and the project is
+  made, kept on this computer. So a colon in a name, *Review: login page*,
+  never makes a project by itself. **Add a project or note…** opens the
+  same three fields to fill in (**Change project or note…** once the line
+  names one). The note shows under the
   task while it runs and becomes the entry's comment when you stop.
   Add time, Split and Move take a project the same way; there the note stays
   in the task's name.

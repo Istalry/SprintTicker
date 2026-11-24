@@ -879,13 +879,20 @@
       starts. <strong>A task is missing? Refresh from Jira</strong>, at the bottom, fetches
       everything again.</li>
       <li><strong>A task of my own…</strong> starts work that stays in SprintTicker and is never
-      sent; with something typed, it is named after it.</li>
-      <li><strong>In one line, with its project and a note</strong>: type <code>Dash: Backup files: before v2</code> and the first row is <strong>Start &quot;Backup files&quot; in Dash</strong>, with
-      the note -- Enter starts it. One colon is <em>Project: Task</em>; with none it is
-      a task of your own with no project. A project of yours named Dash, in any
-      case, takes the task (DASH-1, then DASH-2); if you have none, it is made,
-      kept on this computer, and the row says <em>new project</em>. <strong>Change project or
-      note…</strong> opens the same three fields to fill in. The note shows under the
+      sent; with something typed, it is named after it. The field says so:
+      <em>Search 42 tasks, or type a new one</em>. Those rows stay in view under the
+      results, however many there are.</li>
+      <li><strong>In one line, with its project and a note</strong>: type <code>Dash: Backup files: before v2</code>. One colon is <em>Project: Task</em>, a second adds the note; with
+      none it is a task of your own with no project, and a tip under it shows
+      the syntax with what you typed. A project of yours named Dash, in any
+      case, takes the task (DASH-1, then DASH-2): <strong>Start &quot;Backup files&quot; in
+      Dash</strong> is the first row and Enter starts it. If you have none, the first
+      row is the line as you typed it, with no project, and <strong>Start &quot;Backup
+      files&quot; in Dash</strong> under it says <em>new project</em>: choose it and the project is
+      made, kept on this computer. So a colon in a name, <em>Review: login page</em>,
+      never makes a project by itself. <strong>Add a project or note…</strong> opens the
+      same three fields to fill in (<strong>Change project or note…</strong> once the line
+      names one). The note shows under the
       task while it runs and becomes the entry&#39;s comment when you stop.
       Add time, Split and Move take a project the same way; there the note stays
       in the task&#39;s name.</li>
@@ -2637,7 +2644,11 @@
       and becomes the entry&#39;s comment when it ends, over the words the app writes
       for how it ended (a switch, the bar, lunch); a comment given at Stop wins.
       The picker reads the one line as it is typed and puts <em>Start &quot;Task&quot; in
-      Project</em> first, with <em>Change project or note…</em> for the fields; the pick
+      Project</em> first when the project is one of the user&#39;s own; a project not
+      made yet comes second, under the line as typed with no project, so Enter
+      never makes one from a colon in a name. <em>Add a project or note…</em> opens the
+      fields, and the rows of the user&#39;s own work stay in view under the results
+      (a sticky footer of the list, with the syntax as a tip); the pick
       carries <code>ownProject</code> and <code>ownNote</code>, and <code>pickTask</code> starts it through
       <code>session:start-own-work</code>. Add time, Split and Move send <code>ownProject</code> in
       their target; <code>WorklogCorrectionService</code> makes the task there, and the

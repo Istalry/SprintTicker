@@ -226,6 +226,11 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     const named = line.project;
     // A project of the user's own is named as it was made, whatever the case typed.
     const existing = ownProjects.find(p => sameOwnName(p.name, named));
+    // A colon typed for another reason -- "Review: login page" -- must not
+    // make a project on Enter: with no project of that name yet, the line as
+    // typed comes first and the new project is the row under it (2.0.2 rc1's
+    // walkthrough, F4). A project of the user's own takes the task at once.
+    if (!existing) rows.push({ kind: 'own', title: trimmed });
     rows.push({ kind: 'own', title: line.title, project: existing?.name ?? named, ...(line.note ? { note: line.note } : {}) });
     rows.push({ kind: 'own-form' });
     for (const p of projects.filter(candidate => sameOwnName(candidate.name, named))) {
@@ -458,7 +463,125 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     ? `Filter my ${myOpenTasks(tasks).length} tasks`
     : project
     ? `Search in ${project.name}`
+    : offersOwn
+    ? `Search ${tasks.length} tasks, or type a new one`
     : `Search all ${tasks.length} tasks — key, title or project`;
+
+  // The rows of the user's own work that end the list stay in view under the
+  // results: after every match, below the fold of a real list, nobody found
+  // them (F2).
+  let tailStart = rows.length;
+  while (tailStart > 0 && (rows[tailStart - 1].kind === 'own' || rows[tailStart - 1].kind === 'own-form')) tailStart--;
+  // The one line's syntax, shown where it is used rather than only in the
+  // guide (F1): with the name typed, so it reads as what to type next.
+  const syntaxTip = offersOwn && trimmed && !line?.project ? trimmed : null;
+
+  const renderRow = (row: Row, i: number): React.ReactNode => {
+    if (row.kind === 'heading') {
+      return (
+        <div key={`h-${i}`} role="presentation" className="px-2 pt-3 pb-1 text-[11px] text-text-secondary">
+          <div className="flex items-baseline gap-2 font-bold">
+            <span>{row.label}</span>
+            {row.project && <ProjectMark project={row.project} projects={snapshot.projects} />}
+            {row.count !== undefined && <span className="font-normal">{row.count}</span>}
+            {row.note && <span className="font-normal">{row.note}</span>}
+          </div>
+          {row.hint && <div className="mt-0.5">{row.hint}</div>}
+        </div>
+      );
+    }
+    const index = actionable.indexOf(row);
+    const active = index === current;
+    const base = `w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-sm ${active ? 'bg-select text-white' : 'text-text-primary hover:bg-dark-700'}`;
+    const focus = () => setSelected(index);
+    switch (row.kind) {
+      case 'task': {
+        const t = row.task;
+        const starred = starredIds.has(t.id);
+        const p = projectOf.get(t.projectId);
+        const free = (t.ownership ?? TaskOwnership.MINE) === TaskOwnership.UNASSIGNED && capabilities?.canAssign && (mode === 'start' || mode === 'switch');
+        return (
+          <div key={`t-${t.id}-${i}`} role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`group ${base}`} onMouseEnter={focus}>
+            <button type="button" tabIndex={-1} className="flex-1 min-w-0 flex items-baseline gap-2 text-left" onClick={() => pick({ task: t })}>
+              <span className="font-mono font-bold shrink-0">{t.key}</span>
+              <span className="truncate">{t.title}</span>
+              <span className="ml-auto pl-2 text-[11px] text-text-secondary shrink-0 truncate">
+                {row.note ?? p?.name}
+                {t.status !== 'todo' && ` · ${STATUS_WORD[t.status]}`}
+                {free && ' · starting it makes it yours'}
+              </span>
+            </button>
+            <TaskOwnerBadge task={t} />
+            {t.projectId !== ADHOC_PROJECT_ID && (
+              <button
+                type="button"
+                aria-label={`${starred ? 'Unstar' : 'Star'} ${t.key}`}
+                tabIndex={-1}
+                onClick={() => toggleStar(t)}
+                className={`p-0.5 rounded ${starred ? 'text-accent-amber' : 'text-text-secondary opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
+              >
+                <Star className="w-3.5 h-3.5" fill={starred ? 'currentColor' : 'none'} />
+              </button>
+            )}
+          </div>
+        );
+      }
+      case 'project':
+        return (
+          <button key={`p-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
+            <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
+            <span className="truncate">{row.project.name}</span>
+            <ProjectMark project={row.project} projects={snapshot.projects} />
+            <span className="ml-auto text-[11px] text-text-secondary">{row.note}</span>
+          </button>
+        );
+      case 'more':
+        return (
+          <button key={`m-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span>{row.count} more in {row.project.name}</span>
+          </button>
+        );
+      case 'mine':
+        return (
+          <button key="mine" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
+            <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
+            <span>all {row.count} of my open tasks</span>
+          </button>
+        );
+      case 'own':
+        return (
+          <button key={`own-${i}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
+            <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">
+              {row.project
+                ? <>{takesNote ? 'Start' : 'A task of my own:'} &quot;{row.title}&quot; in {row.project}</>
+                : row.title ? <>A task of my own named &quot;{row.title}&quot;</> : 'A task of my own…'}
+            </span>
+            <span className="ml-auto shrink-0 text-[11px] text-text-secondary">{ownRowNote(row)}</span>
+          </button>
+        );
+      case 'own-form':
+        return (
+          <button key="own-form" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span>{line?.project
+              ? (takesNote ? 'Change project or note…' : 'Change its project…')
+              : (takesNote ? 'Add a project or note…' : 'Add a project…')}</span>
+          </button>
+        );
+      case 'fetch':
+        return (
+          <button key="fetch" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} disabled={busy === 'fetch'} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
+            <Download className="w-3.5 h-3.5 text-text-secondary" />
+            <span>Fetch <span className="font-mono">{row.key}</span> from {providerName}</span>
+            <span className="ml-auto text-[11px] text-text-secondary">{busy === 'fetch' ? 'reading…' : 'not fetched yet'}</span>
+          </button>
+        );
+      default:
+        return null;
+    }
+  };
 
   // As its own window it is frameless: the border is its only edge against
   // a dark desktop or a dark app behind it.
@@ -595,110 +718,20 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             ) : rows.length === 0 ? (
               <p className="px-2 py-6 text-center text-xs text-text-secondary">Nothing matches.</p>
             ) : (
-              rows.map((row, i) => {
-                if (row.kind === 'heading') {
-                  return (
-                    <div key={`h-${i}`} role="presentation" className="px-2 pt-3 pb-1 text-[11px] text-text-secondary">
-                      <div className="flex items-baseline gap-2 font-bold">
-                        <span>{row.label}</span>
-                        {row.project && <ProjectMark project={row.project} projects={snapshot.projects} />}
-                        {row.count !== undefined && <span className="font-normal">{row.count}</span>}
-                        {row.note && <span className="font-normal">{row.note}</span>}
-                      </div>
-                      {row.hint && <div className="mt-0.5">{row.hint}</div>}
-                    </div>
-                  );
-                }
-                const index = actionable.indexOf(row);
-                const active = index === current;
-                const base = `w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-sm ${active ? 'bg-select text-white' : 'text-text-primary hover:bg-dark-700'}`;
-                const focus = () => setSelected(index);
-                switch (row.kind) {
-                  case 'task': {
-                    const t = row.task;
-                    const starred = starredIds.has(t.id);
-                    const p = projectOf.get(t.projectId);
-                    const free = (t.ownership ?? TaskOwnership.MINE) === TaskOwnership.UNASSIGNED && capabilities?.canAssign && (mode === 'start' || mode === 'switch');
-                    return (
-                      <div key={`t-${t.id}-${i}`} role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`group ${base}`} onMouseEnter={focus}>
-                        <button type="button" tabIndex={-1} className="flex-1 min-w-0 flex items-baseline gap-2 text-left" onClick={() => pick({ task: t })}>
-                          <span className="font-mono font-bold shrink-0">{t.key}</span>
-                          <span className="truncate">{t.title}</span>
-                          <span className="ml-auto pl-2 text-[11px] text-text-secondary shrink-0 truncate">
-                            {row.note ?? p?.name}
-                            {t.status !== 'todo' && ` · ${STATUS_WORD[t.status]}`}
-                            {free && ' · starting it makes it yours'}
-                          </span>
-                        </button>
-                        <TaskOwnerBadge task={t} />
-                        {t.projectId !== ADHOC_PROJECT_ID && (
-                          <button
-                            type="button"
-                            aria-label={`${starred ? 'Unstar' : 'Star'} ${t.key}`}
-                            tabIndex={-1}
-                            onClick={() => toggleStar(t)}
-                            className={`p-0.5 rounded ${starred ? 'text-accent-amber' : 'text-text-secondary opacity-0 group-hover:opacity-100 focus:opacity-100'}`}
-                          >
-                            <Star className="w-3.5 h-3.5" fill={starred ? 'currentColor' : 'none'} />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  }
-                  case 'project':
-                    return (
-                      <button key={`p-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
-                        <span className="truncate">{row.project.name}</span>
-                        <ProjectMark project={row.project} projects={snapshot.projects} />
-                        <span className="ml-auto text-[11px] text-text-secondary">{row.note}</span>
-                      </button>
-                    );
-                  case 'more':
-                    return (
-                      <button key={`m-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                        <span>{row.count} more in {row.project.name}</span>
-                      </button>
-                    );
-                  case 'mine':
-                    return (
-                      <button key="mine" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
-                        <span>all {row.count} of my open tasks</span>
-                      </button>
-                    );
-                  case 'own':
-                    return (
-                      <button key="own" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <PlusCircle className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">
-                          {row.project
-                            ? <>{takesNote ? 'Start' : 'A task of my own:'} &quot;{row.title}&quot; in {row.project}</>
-                            : row.title ? <>A task of my own named &quot;{row.title}&quot;</> : 'A task of my own…'}
-                        </span>
-                        <span className="ml-auto shrink-0 text-[11px] text-text-secondary">{ownRowNote(row)}</span>
-                      </button>
-                    );
-                  case 'own-form':
-                    return (
-                      <button key="own-form" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                        <span>{takesNote ? 'Change project or note…' : 'Choose its project…'}</span>
-                      </button>
-                    );
-                  case 'fetch':
-                    return (
-                      <button key="fetch" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} disabled={busy === 'fetch'} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <Download className="w-3.5 h-3.5 text-text-secondary" />
-                        <span>Fetch <span className="font-mono">{row.key}</span> from {providerName}</span>
-                        <span className="ml-auto text-[11px] text-text-secondary">{busy === 'fetch' ? 'reading…' : 'not fetched yet'}</span>
-                      </button>
-                    );
-                  default:
-                    return null;
-                }
-              })
+              <>
+                {rows.slice(0, tailStart).map((row, i) => renderRow(row, i))}
+                {tailStart < rows.length && (
+                  <div role="presentation" className={tailStart > 0 ? 'sticky bottom-0 -mx-3 px-3 pt-1 bg-dark-800 border-t border-border-dark' : ''}>
+                    {rows.slice(tailStart).map((row, i) => renderRow(row, tailStart + i))}
+                    {syntaxTip && (
+                      <p className="px-2 pt-1 pb-0.5 text-[11px] text-text-secondary">
+                        Tip: <span className="font-mono text-text-primary">Project: {syntaxTip}{takesNote ? ': note' : ''}</span>
+                        {takesNote ? ' puts it in a project, with a note.' : ' puts it in a project.'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 

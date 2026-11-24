@@ -6,9 +6,13 @@
 
 - **Work of your own in a project, in one line.** Type `Dash: Backup files:
   before v2` in the picker and *Start "Backup files" in Dash* starts it,
-  with the note; *Change project or note…* opens the fields. A project of
-  yours of that name takes the task, keyed DASH-1, DASH-2; one you do not
-  have is made, kept on this computer. Add time, Split and Move take a
+  with the note; *Add a project or note…* opens the fields. The picker
+  shows the syntax under what you type (*Tip: Project: Backup files: note*)
+  and says *or type a new one* in its field. A project of yours of that
+  name takes the task, keyed DASH-1, DASH-2, on Enter; one you do not have
+  is the second row, under the line as typed, so a colon in a name
+  (*Review: login page*) never makes a project by itself, and is made,
+  kept on this computer, when you choose it. Add time, Split and Move take a
   project too, and Undo takes away what they made. The note shows under the
   running task and becomes the entry's comment. A project of yours and an
   online one of the same name are told apart by a mark.

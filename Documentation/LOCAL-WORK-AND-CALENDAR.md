@@ -28,8 +28,9 @@ takes the held task back up; they do not stack further.
 - **One line in the picker's search:** `Dash: Backup files: before v2`
   offers *Start Backup files in Dash*, with the note. One colon is
   *Project: Task*; none is a task in *Your own work*, as today. Enter starts
-  the first row.
-- **Or the form**, *Change project or note…*: Project (a combobox of the
+  the first row -- which, for a project not made yet, is the line as typed
+  (2.0.2 rc1's walkthrough: a colon in a name made a project).
+- **Or the form**, *Add a project or note…*: Project (a combobox of the
   user's own projects, *Your own work*, and *New "…"*), Task, Note
   (optional). The one line prefills it.
 - **A project named in it that does not exist is made**, as one made in
