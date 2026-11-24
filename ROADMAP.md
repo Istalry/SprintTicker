@@ -1285,8 +1285,8 @@ Ordered; each says what has to be true first.
     Mobile against the same app: registration, faces, an alert on Yes with
     nothing asked, and every key OFFLINE once the app quit.
 
-  **Done: the user checked it works (2026-11-24)**, with the profile the
-  plugin ships (P13c) and the deck reconnecting after either app restarts.
+  **Done: the user checked it works on a physical Stream Deck Mini
+  (2026-11-24)**, with the profile the plugin ships (P13c).
 - **Start with Windows, as a setting** (asked 2026-10-22). **Built
   2026-10-22** (`LaunchAtLoginService`). The tray's old *Start with Windows
   Startup* item wrote the login item and read it back from `openAtLogin`,
@@ -1332,7 +1332,7 @@ Ordered; each says what has to be true first.
   Upload median 33 ms, nothing skipped, no hang. The LOGGED scene at the
   stand-up's end is covered at once by the task it resumes; the user
   kept it so.
-  **Done: the user approved the faces (2026-11-24).** Two different things
+  **Done: the user approved the faces on a physical Mini (2026-11-24).** Two different things
   answer to "animated icons", and only the first is ours to draw:
   - **The plugin's own keys.** Their images are what `setImage` sends, so an
     animation is the plugin's to play. Elgato's guidance for animated icons

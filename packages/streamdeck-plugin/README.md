@@ -123,7 +123,8 @@ It imports from the desktop app's `src/shared/` and nowhere else -- the
 protocol is `shared/deck-protocol.ts`, one file for both sides.
 
 What the tests cannot see is a real deck. The plugin has run on Stream Deck
-Mobile against the packaged app (2026-10-22), not yet on a physical deck.
+Mobile against the packaged app (2026-10-22), and the user checked it on a
+physical Stream Deck Mini (2026-11-24).
 `setImage` never plays an animated image there -- GIF, WebP and animated SVG
 all show their first frame -- so anything that moves is frames this plugin
 sends.
