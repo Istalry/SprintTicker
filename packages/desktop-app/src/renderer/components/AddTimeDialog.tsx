@@ -71,6 +71,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
   const [task, setTask] = useState<TaskDTO | null>(null);
   // Or new work of the user's own, by its name: made with the entry, kept here.
   const [ownTitle, setOwnTitle] = useState<string | null>(null);
+  const [ownProject, setOwnProject] = useState<string | null>(null);
   const chosen = task !== null || ownTitle !== null;
   const keptHere = ownTitle !== null || task?.projectId === ADHOC_PROJECT_ID;
   const [picking, setPicking] = useState(false);
@@ -113,7 +114,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
   const durationSeconds = fieldsValid ? h * 3600 + m * 60 : 0;
   const entry: ManualWorklogDTO = {
     taskId: task?.id ?? '',
-    ...(ownTitle !== null ? { ownTitle } : {}),
+    ...(ownTitle !== null ? { ownTitle, ...(ownProject ? { ownProject } : {}) } : {}),
     durationSeconds,
     startedAtUtc: startValid ? startDate.toISOString() : '',
     comment: note
@@ -203,7 +204,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
             {task
               ? <><span className="font-mono font-bold">{task.key}</span> <span className="text-text-secondary">{task.title}</span></>
               : ownTitle !== null
-              ? <>{ownTitle} <span className="text-text-secondary">(new, your own)</span></>
+              ? <>{ownTitle} <span className="text-text-secondary">({ownProject ? `new, in ${ownProject}` : 'new, your own'})</span></>
               : <span className="text-text-secondary"><span aria-hidden="true">⌕</span> Search, or pick a recent task</span>}
             </span>
           </button>
@@ -274,6 +275,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
           } else if (picked.ownTitle) {
             setTask(null);
             setOwnTitle(picked.ownTitle);
+            setOwnProject(picked.ownProject ?? null);
           }
         }}
       />

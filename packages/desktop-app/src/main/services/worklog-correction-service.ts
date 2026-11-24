@@ -26,7 +26,7 @@ export interface WorklogMoveTargets {
   /** Null for a project made in SprintTicker, whose time stays here. */
   destinationOf(taskId: string): SendDestination | null;
   /** New work of the user's own under this id, for a move, added time or a split's rest: its time stays here. */
-  createOwnTask?(title: string, taskId: string): TaskDTO;
+  createOwnTask?(title: string, taskId: string, projectName?: string): TaskDTO;
   /** Retires an ad-hoc task once nothing is logged on it, as an assigned interruption's is. */
   retireAdHocIfUnused(taskId: string): void;
 }
@@ -188,7 +188,7 @@ export class WorklogCorrectionService {
     if (!this._targets) throw new Error('Moving a worklog is unavailable.');
     const worklog = this._worklogs.getWorklogById(worklogId);
     if (!worklog) throw new ArgumentException(`No worklog ${worklogId}.`, 'worklogId');
-    const { taskId, ownTitle } = this.targetOf(typeof target === 'string' ? { taskId: target } : target, ownTaskId);
+    const { taskId, ownTitle, ownProject } = this.targetOf(typeof target === 'string' ? { taskId: target } : target, ownTaskId);
     if (worklog.taskId === taskId) throw new ArgumentException('The worklog is on that task already.', 'taskId');
 
     const destination = this.destinationFor(taskId, ownTitle);
@@ -210,7 +210,7 @@ export class WorklogCorrectionService {
     const comment = worklog.adHoc && worklog.taskTitle && destination ? worklog.taskTitle : worklog.comment;
 
     const queued = this.transaction(() => {
-      if (ownTitle) this._targets!.createOwnTask!(ownTitle, taskId);
+      if (ownTitle) this._targets!.createOwnTask!(ownTitle, taskId, ownProject);
       this._worklogs.retargetWorklog(worklogId, taskId, comment);
       if (send) {
         for (const stale of this._worklogs.getUnsentCorrectionsOf(worklogId, send.id)) this._worklogs.dropUnsentSyncItem(stale.id);
@@ -303,7 +303,7 @@ export class WorklogCorrectionService {
     if (!this._targets) throw new Error('Adding time is unavailable.');
     const refusal = checkManualWorklog(entry, this._now(), 1);
     if (refusal) throw new ArgumentException(refusal);
-    const { taskId, ownTitle } = this.targetOf(entry, ownTaskId);
+    const { taskId, ownTitle, ownProject } = this.targetOf(entry, ownTaskId);
     const destination = this.destinationFor(taskId, ownTitle);
     const floorRefusal = destination ? checkManualWorklog(entry, this._now(), destination.minimumSeconds) : null;
     if (floorRefusal) throw new ArgumentException(floorRefusal);
@@ -311,7 +311,7 @@ export class WorklogCorrectionService {
     const comment = entry.comment.trim() || WORKLOG_COMMENTS.ADDED;
     const written = { taskId, durationSeconds: entry.durationSeconds, startedAtUtc: entry.startedAtUtc, comment };
     this.transaction(() => {
-      if (ownTitle) this._targets!.createOwnTask!(ownTitle, taskId);
+      if (ownTitle) this._targets!.createOwnTask!(ownTitle, taskId, ownProject);
       this.writeEntry(written, worklogId, createId(IdPrefix.MANUAL_SESSION), destination, null);
     });
 
@@ -350,7 +350,7 @@ export class WorklogCorrectionService {
     if (!worklog) throw new ArgumentException(`No worklog ${worklogId}.`, 'worklogId');
     const pieces = splitPieces(worklog, split.atUtc);
     if (typeof pieces === 'string') throw new ArgumentException(pieces, 'atUtc');
-    const { taskId: targetId, ownTitle } = this.targetOf(split, ownTaskId);
+    const { taskId: targetId, ownTitle, ownProject } = this.targetOf(split, ownTaskId);
 
     const comment = worklog.adHoc && worklog.taskTitle ? worklog.taskTitle : worklog.comment;
     const second: ManualWorklogDTO = {
@@ -365,7 +365,7 @@ export class WorklogCorrectionService {
     if (refusal) throw new ArgumentException(refusal);
 
     this.transaction(() => {
-      if (ownTitle) this._targets!.createOwnTask!(ownTitle, targetId);
+      if (ownTitle) this._targets!.createOwnTask!(ownTitle, targetId, ownProject);
       this.correct(worklogId, { durationSeconds: pieces.firstSeconds, startedAtUtc: worklog.startedAtUtc, comment: worklog.comment });
       // The row the provider must have before the second piece: the
       // shortening, when the entry was sent and an UPDATE now carries it.
@@ -387,11 +387,15 @@ export class WorklogCorrectionService {
    * new own work is made in the caller's transaction, under an id its undo
    * covers.
    */
-  private targetOf(target: { taskId?: string; ownTitle?: string }, ownTaskId: string): { taskId: string; ownTitle: string | null } {
+  private targetOf(
+    target: { taskId?: string; ownTitle?: string; ownProject?: string },
+    ownTaskId: string
+  ): { taskId: string; ownTitle: string | null; ownProject?: string } {
     const ownTitle = target.ownTitle?.trim();
     if (ownTitle) {
       if (!this._targets?.createOwnTask) throw new Error('New work of your own is unavailable here.');
-      return { taskId: ownTaskId, ownTitle };
+      const ownProject = target.ownProject?.trim();
+      return { taskId: ownTaskId, ownTitle, ...(ownProject ? { ownProject } : {}) };
     }
     if (!target.taskId || !this._targets?.getTask(target.taskId)) throw new ArgumentException(`No task ${target.taskId}.`, 'taskId');
     return { taskId: target.taskId, ownTitle: null };

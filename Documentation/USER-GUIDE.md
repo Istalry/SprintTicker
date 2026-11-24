@@ -333,6 +333,19 @@ Arrow keys and Enter pick from the keyboard; Escape closes.
   everything again.
 - **A task of my own…** starts work that stays in SprintTicker and is never
   sent; with something typed, it is named after it.
+- **In one line, with its project and a note**: type `Dash: Backup files:
+  before v2` and the first row is **Start "Backup files" in Dash**, with
+  the note -- Enter starts it. One colon is *Project: Task*; with none it is
+  a task of your own with no project. A project of yours named Dash, in any
+  case, takes the task (DASH-1, then DASH-2); if you have none, it is made,
+  kept on this computer, and the row says *new project*. **Change project or
+  note…** opens the same three fields to fill in. The note shows under the
+  task while it runs and becomes the entry's comment when you stop.
+  Add time, Split and Move take a project the same way; there the note stays
+  in the task's name.
+- **A project of yours and an online one of the same name** are both
+  listed, apart: the one on this computer shows a small computer beside its
+  name, the online one your provider's name. Its time is never sent.
 - **During an interruption, no task can be chosen**: the tray, the mini
   timer, Ctrl+K, the shortcut and the Stream Deck offer no Switch, and Tasks'
   Start is greyed. End it first -- Back, Stop or Discard.

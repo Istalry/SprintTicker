@@ -51,6 +51,21 @@ function heldScopes(heldSessionId: string | null | undefined): RowScope[] {
 }
 
 /** The rows a change to one worklog touches: it, its sends, and the tasks it moves between. */
+/**
+ * New work of the user's own, named before it exists so the restore point
+ * covers what it adds: the task's id -- `own_` in a project of theirs, ad-hoc
+ * without -- and the project, which the action may make too.
+ */
+function ownWorkTarget(deps: WorklogEditDeps, target: { ownTitle?: string; ownProject?: string }): { taskId: string; scopes: RowScope[] } {
+  const project = target.ownTitle?.trim() ? target.ownProject?.trim() : undefined;
+  if (!project) return { taskId: createId(IdPrefix.ADHOC_TASK), scopes: [] };
+  const projectId = deps.ownProjectIdFor?.(project);
+  return {
+    taskId: createId(IdPrefix.OWN_TASK),
+    scopes: projectId ? [{ table: 'projects', where: 'id = ?', params: [projectId] }] : []
+  };
+}
+
 function worklogScopes(worklogId: string, taskIds: readonly string[]): RowScope[] {
   return [
     { table: 'tasks', where: `id IN (${taskIds.map(() => '?').join(', ')})`, params: taskIds },
@@ -145,6 +160,8 @@ export function discardUndoably(deps: UndoableDeps): { success: boolean; discard
 export interface WorklogEditDeps extends Pick<UndoableDeps, 'db' | 'undo'> {
   worklogs: Pick<WorklogRepository, 'getWorklogById'>;
   corrections: Pick<WorklogCorrectionService, 'correct' | 'reassign' | 'remove' | 'add' | 'split' | 'keepOff'>;
+  /** The id the user's own project of this name has, or would be made under. */
+  ownProjectIdFor?: (name: string) => string;
   /** Called after an undo put rows back, so the window reads them again. */
   onRestored: () => void;
 }
@@ -187,9 +204,12 @@ export function correctUndoably(deps: WorklogEditDeps, worklogId: string, correc
 export function moveUndoably(deps: WorklogEditDeps, worklogId: string, target: WorklogTarget): WorklogRecord {
   const before = worklogOrThrow(deps, worklogId);
   // New own work is named before it exists, so Undo takes it away again.
-  const ownTaskId = createId(IdPrefix.ADHOC_TASK);
-  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [before.taskId, typeof target === 'string' ? target : ownTaskId]));
-  const moved = deps.corrections.reassign(worklogId, target, ownTaskId);
+  const own = ownWorkTarget(deps, typeof target === 'string' ? {} : target);
+  const point = RestorePoint.capture(deps.db, [
+    ...worklogScopes(worklogId, [before.taskId, typeof target === 'string' ? target : own.taskId]),
+    ...own.scopes
+  ]);
+  const moved = deps.corrections.reassign(worklogId, target, own.taskId);
   offerWorklogUndo(deps, point, 'move', undoLabel('move', moved.taskKey ?? moved.taskId, formatHoursAndMinutes(moved.durationSeconds)));
   return moved;
 }
@@ -207,9 +227,12 @@ export function keepOffUndoably(deps: WorklogEditDeps, worklogId: string): Workl
 export function addUndoably(deps: WorklogEditDeps, entry: ManualWorklogDTO): WorklogRecord {
   // Named before it exists, so the restore point covers the rows it adds.
   const worklogId = createId(IdPrefix.WORKLOG);
-  const ownTaskId = createId(IdPrefix.ADHOC_TASK);
-  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [entry.ownTitle?.trim() ? ownTaskId : entry.taskId]));
-  const added = deps.corrections.add(entry, worklogId, ownTaskId);
+  const own = ownWorkTarget(deps, entry);
+  const point = RestorePoint.capture(deps.db, [
+    ...worklogScopes(worklogId, [entry.ownTitle?.trim() ? own.taskId : entry.taskId]),
+    ...own.scopes
+  ]);
+  const added = deps.corrections.add(entry, worklogId, own.taskId);
   offerWorklogUndo(deps, point, 'add', undoLabel('add', added.taskKey ?? added.taskId, formatHoursAndMinutes(added.durationSeconds)));
   return added;
 }
@@ -220,13 +243,14 @@ export function splitUndoably(deps: WorklogEditDeps, worklogId: string, split: W
   // Named before they exist, so the restore point covers the rows they add:
   // the second entry, and the own work it may go on, which Undo takes away.
   const secondId = createId(IdPrefix.WORKLOG);
-  const ownTaskId = createId(IdPrefix.ADHOC_TASK);
-  const targetId = split.ownTitle?.trim() ? ownTaskId : split.taskId ?? ownTaskId;
+  const own = ownWorkTarget(deps, split);
+  const targetId = split.ownTitle?.trim() ? own.taskId : split.taskId ?? own.taskId;
   const point = RestorePoint.capture(deps.db, [
     ...worklogScopes(worklogId, [before.taskId, targetId]),
-    ...worklogScopes(secondId, [targetId]).slice(1)
+    ...worklogScopes(secondId, [targetId]).slice(1),
+    ...own.scopes
   ]);
-  const pieces = deps.corrections.split(worklogId, split, secondId, ownTaskId);
+  const pieces = deps.corrections.split(worklogId, split, secondId, own.taskId);
   offerWorklogUndo(deps, point, 'split', undoLabel('split', before.taskKey ?? before.taskId, formatHoursAndMinutes(before.durationSeconds)));
   return pieces;
 }

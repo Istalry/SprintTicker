@@ -113,6 +113,20 @@ describe('Split in two', () => {
     await waitFor(() => expect(bridge.api.splitWorklog).toHaveBeenCalledWith('w1', expect.any(String), { ownTitle: 'Team sync' }));
   });
 
+  it('NewWorkOfMyOwn_InAProject_SplitsOntoIt', async () => {
+    const bridge = await openSplit();
+    fireEvent.click(screen.getByRole('button', { name: 'Split in two…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Split in two' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Choose a task ▾' }));
+
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'Dash: Backup files' } });
+    fireEvent.click(await screen.findByText(/A task of my own: "Backup files" in Dash/));
+    expect(within(dialog).getByRole('button', { name: /Backup files \(new, in Dash\)/ })).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Split' }));
+
+    await waitFor(() => expect(bridge.api.splitWorklog).toHaveBeenCalledWith('w1', expect.any(String), { ownTitle: 'Backup files', ownProject: 'Dash' }));
+  });
+
   it('Refused_SaysWhy_AndStays', async () => {
     await openSplit(ENTRY, { splitWorklog: vi.fn().mockRejectedValue(new Error("Error invoking remote method 'worklog:split': Error: The provider records at least 1 minute(s).")) });
     fireEvent.click(screen.getByRole('button', { name: 'Split in two…' }));

@@ -66,7 +66,7 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
    * moved before it stay moved. New own work is made by the first move, and
    * the others follow it there rather than each making its own.
    */
-  const moveTo = async (worklogIds: string[], target: string | { ownTitle: string }) => {
+  const moveTo = async (worklogIds: string[], target: string | { ownTitle: string; ownProject?: string }) => {
     setMoving(null);
     setMoveError(null);
     let to = target;
@@ -117,7 +117,7 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
         onPick={picked => {
           if (!moving) return;
           if (picked.task) void moveTo(moving.worklogIds, picked.task.id);
-          else if (picked.ownTitle) void moveTo(moving.worklogIds, { ownTitle: picked.ownTitle });
+          else if (picked.ownTitle) void moveTo(moving.worklogIds, { ownTitle: picked.ownTitle, ...(picked.ownProject ? { ownProject: picked.ownProject } : {}) });
         }}
       />
 

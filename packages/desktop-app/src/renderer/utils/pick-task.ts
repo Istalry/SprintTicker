@@ -1,6 +1,7 @@
 import type { ActiveSessionDTO } from '../../shared/dtos';
 import type { PickedTask } from '../components/TaskPicker';
 import { END_THE_INTERRUPTION_FIRST } from '../../shared/interruption';
+import type { OwnWork } from '../../shared/own-work';
 
 /**
  * What the picker was opened for: a task to time, one to assign the ad-hoc
@@ -20,7 +21,8 @@ export async function pickTask(
   purpose: PickPurpose,
   session: ActiveSessionDTO | null,
   picked: PickedTask,
-  startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<unknown>
+  startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<unknown>,
+  startOwnWork: (work: OwnWork) => Promise<unknown> = work => window.electronAPI.startOwnWork(work)
 ): Promise<void> {
   const warn = (what: string) => (err: unknown) => console.warn(`[Picker] ${what} failed:`, err);
   if (purpose === 'place') {
@@ -33,8 +35,13 @@ export async function pickTask(
     return;
   }
   if (picked.ownTitle) {
-    // Empty id: main owns ad-hoc identity and makes the row.
-    await startTask('', true, picked.ownTitle).catch(warn('Starting own work'));
+    // Main makes the task, and the project when it is new: the renderer only names them.
+    const work: OwnWork = {
+      title: picked.ownTitle,
+      ...(picked.ownProject ? { project: picked.ownProject } : {}),
+      ...(picked.ownNote ? { note: picked.ownNote } : {})
+    };
+    await startOwnWork(work).catch(warn('Starting own work'));
     return;
   }
   const task = picked.task;

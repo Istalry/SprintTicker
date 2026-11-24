@@ -14,6 +14,14 @@
   yes. The installer carries the `sprintticker` command, run by SprintTicker
   itself, so nothing else needs installing. Off until you turn it on; *Make
   a new one* replaces the token and refuses every agent given the old one.
+- **Work of your own in a project, in one line.** Type `Dash: Backup files:
+  before v2` in the picker and *Start "Backup files" in Dash* starts it,
+  with the note; *Change project or note…* opens the fields. A project of
+  yours of that name takes the task, keyed DASH-1, DASH-2; one you do not
+  have is made, kept on this computer. Add time, Split and Move take a
+  project too, and Undo takes away what they made. The note shows under the
+  running task and becomes the entry's comment. A project of yours and an
+  online one of the same name are told apart by a mark.
 
 ### Fixed
 

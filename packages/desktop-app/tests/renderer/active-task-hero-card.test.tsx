@@ -52,6 +52,12 @@ describe('ActiveTaskHeroCard', () => {
     expect(screen.queryByText('Place…')).toBeNull();
   });
 
+  it('Render_StartedWithANote_ShowsIt', () => {
+    card({ ...TRACKING_SESSION, note: 'before v2' });
+
+    expect(screen.getByText('before v2')).toBeTruthy();
+  });
+
   it('Render_UnsortedInterruption_SaysWhatToDoWithIt', () => {
     card(INTERRUPTION);
 

@@ -47,7 +47,7 @@ export const App: React.FC = () => {
   // Check my week asked for by the week's notice: History remounts on each (`n`).
   const [weekCheck, setWeekCheck] = useState<{ monday: string; n: number } | null>(null);
 
-  const { session, pause, resume, complete, discard, startTask, interrupt, back, stopInterruption } = useSession();
+  const { session, pause, resume, complete, discard, startTask, startOwnWork, interrupt, back, stopInterruption } = useSession();
   const device = useDeviceStatus();
   const hasBar = device.enabled;
   const { worklogs } = useWorklogs();
@@ -189,7 +189,7 @@ export const App: React.FC = () => {
         onClose={modals.picker.close}
         mode={modals.picker.mode === 'assign' ? 'assign' : session ? 'switch' : 'start'}
         runningTaskId={session?.taskId ?? null}
-        onPick={picked => { void pickTask(modals.picker.mode, session, picked, startTask); }}
+        onPick={picked => { void pickTask(modals.picker.mode, session, picked, startTask, startOwnWork); }}
       />
 
       <CommandPalette

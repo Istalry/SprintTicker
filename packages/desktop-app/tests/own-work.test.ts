@@ -9,6 +9,7 @@ import type { ProviderManager } from '../src/main/providers/provider-manager';
 import { OWN_PROJECT_PROVIDER_ID } from '../src/shared/local-provider';
 import { ADHOC_PROJECT_ID } from '../src/shared/adhoc-project';
 import { WORKLOG_COMMENTS } from '../src/shared/worklog-comments';
+import { projectMarkOf } from '../src/shared/project-mark';
 import { checkOwnWork, nextOwnTaskKey, ownProjectKeyFor, parseOwnWorkLine, sameOwnName } from '../src/shared/own-work';
 
 /** Work of your own on the fly (LOCAL-WORK-AND-CALENDAR.md §2, phase T1). */
@@ -140,5 +141,19 @@ describe('work of your own on the fly', () => {
 
       expect(worklogs.getTodaysWorklogs()[0].comment).toBe(WORKLOG_COMMENTS.BAR_STOP);
     });
+  });
+});
+
+describe('the mark of a project of the same name', () => {
+  it('ProjectMarkOf_OnlyWhereAnOwnAndAnOnlineNameCollide', () => {
+    const online = { id: 'DASH', key: 'DASH', name: 'Dash', providerId: 'jira' };
+    const own = { id: 'DASH2', key: 'DASH2', name: 'dash ', providerId: 'sprintticker' };
+    const other = { id: 'OPS', key: 'OPS', name: 'Ops', providerId: 'jira' };
+    const ownToo = { id: 'OPS2', key: 'OPS2', name: 'Ops', providerId: 'jira' };
+
+    expect(projectMarkOf(own, [online, own, other])).toBe('computer');
+    expect(projectMarkOf(online, [online, own, other])).toBe('provider');
+    expect(projectMarkOf(other, [online, own, other, ownToo])).toBeNull();
+    expect(projectMarkOf(online, [online, other])).toBeNull();
   });
 });

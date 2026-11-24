@@ -28,11 +28,18 @@ import { useTaskVisibility } from '../hooks/useTaskVisibility';
 import { TaskOwnerBadge, TaskVisibilityToggle } from './TaskVisibilityToggle';
 import { formatHoursAndMinutes, ipcErrorMessage } from '../utils/formatters';
 import { KEEP_AS_OWN_ENTRY } from '../../shared/words';
+import { OwnWork, parseOwnWorkLine, sameOwnName } from '../../shared/own-work';
+import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
+import { ProjectMark } from './ProjectMark';
 
 /** What the user picked: a task, or work of their own named `ownTitle`. */
 export interface PickedTask {
   task?: TaskDTO;
   ownTitle?: string;
+  /** The user's own project it goes in, made when none has that name (LOCAL-WORK-AND-CALENDAR.md). */
+  ownProject?: string;
+  /** The note it starts with: Start and Switch only. */
+  ownNote?: string;
   /** From an interruption: its time goes to the task picked too (P6's `takeAlong`). */
   takeAlong: boolean;
 }
@@ -101,12 +108,13 @@ const EMPTY_DATA: PickerDataDTO = { previous: null, recent: [], starred: [], tas
 
 /** One line of the list: something to pick, or a heading between them. */
 type Row =
-  | { kind: 'heading'; label: string; count?: number; note?: string; hint?: string }
+  | { kind: 'heading'; label: string; count?: number; note?: string; hint?: string; project?: ProjectDTO }
   | { kind: 'task'; task: TaskDTO; note?: string }
   | { kind: 'project'; project: ProjectDTO; note: string }
   | { kind: 'mine' ; count: number }
   | { kind: 'more'; project: ProjectDTO; count: number }
-  | { kind: 'own'; title: string }
+  | { kind: 'own'; title: string; project?: string; note?: string }
+  | { kind: 'own-form' }
   | { kind: 'fetch'; key: string };
 
 const isActionable = (row: Row) => row.kind !== 'heading';
@@ -115,6 +123,20 @@ const isActionable = (row: Row) => row.kind !== 'heading';
 function read(): Promise<PickerDataDTO> {
   const api = window.electronAPI;
   return api?.getPickerData ? api.getPickerData() : Promise.resolve(EMPTY_DATA);
+}
+
+/**
+ * What the project field means as typed: Your own work, one of the user's
+ * own projects, or one it makes -- and, where an online project has the
+ * same name, that the two stay apart (LOCAL-WORK-AND-CALENDAR.md §3).
+ */
+function ownProjectHint(typed: string, own: readonly ProjectDTO[], all: readonly ProjectDTO[], providerName: string): string {
+  const name = typed.trim();
+  if (!name) return 'Empty: Your own work, with no project.';
+  const exists = own.find(p => sameOwnName(p.name, name));
+  const online = all.some(p => p.providerId !== OWN_PROJECT_PROVIDER_ID && sameOwnName(p.name, name));
+  const what = exists ? `In your project ${exists.name}.` : `A new project ${name}, kept on this computer.`;
+  return online ? `${what} ${providerName}'s project of that name stays apart.` : what;
 }
 
 const TaskPickerDialog: React.FC<TaskPickerProps> = ({
@@ -141,6 +163,9 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   const [view, setView] = useState<'groups' | 'mine'>('groups');
   const [naming, setNaming] = useState(false);
   const [ownTitle, setOwnTitle] = useState('');
+  const [ownProject, setOwnProject] = useState('');
+  const [ownNote, setOwnNote] = useState('');
+  const ownProjectsId = useId();
   const [takeAlong, setTakeAlong] = useState(false);
   const [selected, setSelected] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
@@ -168,6 +193,12 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   const project = projectId ? projectOf.get(projectId) ?? null : null;
   const starredIds = new Set(snapshot.starred.map(t => t.id));
   const trimmed = query.trim();
+  const ownProjects = snapshot.projects.filter(p => p.providerId === OWN_PROJECT_PROVIDER_ID);
+  // A note is the session's: a start takes one, a move or a split has
+  // nowhere to keep it, so there what follows the task stays in its name.
+  const takesNote = mode === 'start' || mode === 'switch';
+  const parsed = offersOwn && trimmed ? parseOwnWorkLine(trimmed) : null;
+  const line: OwnWork | null = parsed && parsed.note && !takesNote ? { ...parsed, title: `${parsed.title}: ${parsed.note}`, note: undefined } : parsed;
 
   const rows: Row[] = [];
   const pushTasks = (list: TaskDTO[], note?: (t: TaskDTO) => string | undefined) => {
@@ -191,11 +222,23 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     // (`task-order.ts`) -- as the bar's picker has it; the counts above say
     // how many of each status.
     pushTasks(orderTasksForSelection(tasks.filter(t => t.projectId === project.id && matchesSearch(t, trimmed, project))));
+  } else if (line?.project) {
+    const named = line.project;
+    // A project of the user's own is named as it was made, whatever the case typed.
+    const existing = ownProjects.find(p => sameOwnName(p.name, named));
+    rows.push({ kind: 'own', title: line.title, project: existing?.name ?? named, ...(line.note ? { note: line.note } : {}) });
+    rows.push({ kind: 'own-form' });
+    for (const p of projects.filter(candidate => sameOwnName(candidate.name, named))) {
+      const found = tasks.filter(t => t.projectId === p.id && matchesSearch(t, line.title, p));
+      if (found.length === 0) continue;
+      rows.push({ kind: 'heading', label: p.name, count: found.length, project: p });
+      pushTasks(found.slice(0, PICKER_SEARCH_PER_PROJECT));
+    }
   } else if (trimmed) {
     const groups = searchByProject(tasks, trimmed, projects);
     const many = groups.reduce((n, g) => n + g.tasks.length, 0) > PICKER_SEARCH_SHOWN;
     for (const group of groups) {
-      rows.push({ kind: 'heading', label: group.project.name, count: group.tasks.length });
+      rows.push({ kind: 'heading', label: group.project.name, count: group.tasks.length, project: group.project });
       pushTasks(many ? group.tasks.slice(0, PICKER_SEARCH_PER_PROJECT) : group.tasks);
       // The rest is one press away, in the project, with the search kept.
       if (many && group.tasks.length > PICKER_SEARCH_PER_PROJECT) {
@@ -210,7 +253,10 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     }
     const found = rows.some(r => r.kind === 'task');
     if (!found && looksLikeTaskKey(trimmed) && capabilities?.canFetchByKey) rows.push({ kind: 'fetch', key: trimmed.toUpperCase() });
-    if (offersOwn) rows.push({ kind: 'own', title: trimmed });
+    if (offersOwn) {
+      rows.push({ kind: 'own', title: line?.title ?? trimmed, ...(line?.note ? { note: line.note } : {}) });
+      rows.push({ kind: 'own-form' });
+    }
   } else {
     if (mode === 'switch' && snapshot.previous && usable(snapshot.previous)) {
       rows.push({ kind: 'task', task: snapshot.previous, note: 'previous task' });
@@ -262,6 +308,22 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   const pick = (picked: Omit<PickedTask, 'takeAlong'>) => {
     onPick({ ...picked, takeAlong: Boolean(takeAlongOf) && takeAlong });
     onClose();
+  };
+
+  const pickOwn = (work: OwnWork) => {
+    const project = work.project?.trim();
+    const note = takesNote ? work.note?.trim() : undefined;
+    pick({ ownTitle: work.title.trim(), ...(project ? { ownProject: project } : {}), ...(note ? { ownNote: note } : {}) });
+  };
+
+  /** The form, filled with what the one line said. */
+  const openForm = (work: OwnWork | null) => {
+    if (work) {
+      setOwnTitle(work.title);
+      setOwnProject(work.project ?? '');
+      setOwnNote(work.note ?? '');
+    }
+    setNaming(true);
   };
 
   const fetchByKey = (key: string) => {
@@ -319,8 +381,11 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
         setSelected(0);
         return;
       case 'own':
-        if (row.title) pick({ ownTitle: row.title });
-        else setNaming(true);
+        if (row.title) pickOwn(row);
+        else openForm(null);
+        return;
+      case 'own-form':
+        openForm(line);
         return;
       case 'fetch':
         fetchByKey(row.key);
@@ -404,22 +469,53 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
 
       {naming ? (
         <div className="p-5 space-y-3">
-          <label className="block text-xs text-text-secondary" htmlFor="picker-own-title">What is it? It stays in SprintTicker, never sent to {providerName}.</label>
-          <input
-            id="picker-own-title"
-            autoFocus
-            value={ownTitle}
-            onChange={e => setOwnTitle(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pick({ ownTitle: ownTitle.trim() }); }}
-            placeholder="e.g. Code review with the lead"
-            className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
-          />
+          <p className="text-xs text-text-secondary">Work of your own stays in SprintTicker, never sent to {providerName}.</p>
+          <div className="space-y-1">
+            <label className="block text-xs text-text-secondary" htmlFor="picker-own-project">Project</label>
+            <input
+              id="picker-own-project"
+              list={ownProjectsId}
+              value={ownProject}
+              onChange={e => setOwnProject(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pickOwn({ title: ownTitle, project: ownProject, note: ownNote }); }}
+              placeholder="Your own work"
+              className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
+            />
+            <datalist id={ownProjectsId}>
+              {ownProjects.map(p => <option key={p.id} value={p.name} />)}
+            </datalist>
+            <p className="text-[11px] text-text-secondary">{ownProjectHint(ownProject, ownProjects, snapshot.projects, providerName)}</p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs text-text-secondary" htmlFor="picker-own-title">Task</label>
+            <input
+              id="picker-own-title"
+              autoFocus
+              value={ownTitle}
+              onChange={e => setOwnTitle(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pickOwn({ title: ownTitle, project: ownProject, note: ownNote }); }}
+              placeholder="e.g. Code review with the lead"
+              className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
+            />
+          </div>
+          {takesNote && (
+            <div className="space-y-1">
+              <label className="block text-xs text-text-secondary" htmlFor="picker-own-note">Note <span className="font-normal">(optional, the entry&apos;s comment)</span></label>
+              <input
+                id="picker-own-note"
+                value={ownNote}
+                onChange={e => setOwnNote(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pickOwn({ title: ownTitle, project: ownProject, note: ownNote }); }}
+                className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
+              />
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setNaming(false)} className="px-3 py-1.5 text-xs rounded-lg text-text-secondary hover:text-white">Cancel</button>
             <button
               type="button"
               disabled={!ownTitle.trim()}
-              onClick={() => pick({ ownTitle: ownTitle.trim() })}
+              onClick={() => pickOwn({ title: ownTitle, project: ownProject, note: ownNote })}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-green text-dark-900 disabled:bg-dark-700 disabled:text-text-secondary"
             >
               {mode === 'start' || mode === 'switch' ? 'Start it' : 'Choose it'}
@@ -484,6 +580,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                     <div key={`h-${i}`} role="presentation" className="px-2 pt-3 pb-1 text-[11px] text-text-secondary">
                       <div className="flex items-baseline gap-2 font-bold">
                         <span>{row.label}</span>
+                        {row.project && <ProjectMark project={row.project} projects={snapshot.projects} />}
                         {row.count !== undefined && <span className="font-normal">{row.count}</span>}
                         {row.note && <span className="font-normal">{row.note}</span>}
                       </div>
@@ -532,6 +629,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                       <button key={`p-${row.project.id}`} type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={base} onMouseEnter={focus} onClick={() => activate(row)}>
                         <ChevronRight className="w-3.5 h-3.5 text-text-secondary" />
                         <span className="truncate">{row.project.name}</span>
+                        <ProjectMark project={row.project} projects={snapshot.projects} />
                         <span className="ml-auto text-[11px] text-text-secondary">{row.note}</span>
                       </button>
                     );
@@ -552,8 +650,25 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                   case 'own':
                     return (
                       <button key="own" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
-                        <PlusCircle className="w-3.5 h-3.5" />
-                        <span>{row.title ? <>A task of my own named &quot;{row.title}&quot;</> : 'A task of my own…'}</span>
+                        <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">
+                          {row.project
+                            ? <>{takesNote ? 'Start' : 'A task of my own:'} &quot;{row.title}&quot; in {row.project}</>
+                            : row.title ? <>A task of my own named &quot;{row.title}&quot;</> : 'A task of my own…'}
+                        </span>
+                        <span className="ml-auto shrink-0 text-[11px] text-text-secondary">
+                          {[
+                            row.project && !ownProjects.some(p => sameOwnName(p.name, row.project!)) ? 'new project' : null,
+                            row.note ? `note: ${row.note}` : null
+                          ].filter(Boolean).join(' · ')}
+                        </span>
+                      </button>
+                    );
+                  case 'own-form':
+                    return (
+                      <button key="own-form" type="button" role="option" aria-selected={active} id={optionId(index)} tabIndex={-1} className={`${base} text-text-secondary`} onMouseEnter={focus} onClick={() => activate(row)}>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                        <span>{takesNote ? 'Change project or note…' : 'Choose its project…'}</span>
                       </button>
                     );
                   case 'fetch':

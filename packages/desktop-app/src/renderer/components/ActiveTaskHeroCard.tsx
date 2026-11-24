@@ -164,6 +164,11 @@ export const ActiveTaskHeroCard: React.FC<ActiveTaskHeroCardProps> = ({
             'What are you working on?'
           )}
         </h3>
+        {session?.note && (
+          <p className="mt-1 text-sm text-text-secondary truncate" title={session.note}>
+            <span className="sr-only">Note: </span>{session.note}
+          </p>
+        )}
         {session?.unsorted && (
           <div className="mt-1 text-xs text-accent-amber">
             Interruption: name it, or {Verb.PLACE.toLowerCase()} it on a task so {destination ?? 'your provider'} gets its time.

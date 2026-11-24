@@ -876,6 +876,18 @@
       everything again.</li>
       <li><strong>A task of my own…</strong> starts work that stays in SprintTicker and is never
       sent; with something typed, it is named after it.</li>
+      <li><strong>In one line, with its project and a note</strong>: type <code>Dash: Backup files: before v2</code> and the first row is <strong>Start &quot;Backup files&quot; in Dash</strong>, with
+      the note -- Enter starts it. One colon is <em>Project: Task</em>; with none it is
+      a task of your own with no project. A project of yours named Dash, in any
+      case, takes the task (DASH-1, then DASH-2); if you have none, it is made,
+      kept on this computer, and the row says <em>new project</em>. <strong>Change project or
+      note…</strong> opens the same three fields to fill in. The note shows under the
+      task while it runs and becomes the entry&#39;s comment when you stop.
+      Add time, Split and Move take a project the same way; there the note stays
+      in the task&#39;s name.</li>
+      <li><strong>A project of yours and an online one of the same name</strong> are both
+      listed, apart: the one on this computer shows a small computer beside its
+      name, the online one your provider&#39;s name. Its time is never sent.</li>
       <li><strong>During an interruption, no task can be chosen</strong>: the tray, the mini
       timer, Ctrl+K, the shortcut and the Stream Deck offer no Switch, and Tasks&#39;
       Start is greyed. End it first -- Back, Stop or Discard.</li>
@@ -2594,7 +2606,16 @@
       here, as any <code>sprintticker</code> project&#39;s. With no project it is ad-hoc work as
       before. The note is the session&#39;s (<code>active_sessions.note</code>, migration 18)
       and becomes the entry&#39;s comment when it ends, over the words the app writes
-      for how it ended (a switch, the bar, lunch); a comment given at Stop wins.</p>
+      for how it ended (a switch, the bar, lunch); a comment given at Stop wins.
+      The picker reads the one line as it is typed and puts <em>Start &quot;Task&quot; in
+      Project</em> first, with <em>Change project or note…</em> for the fields; the pick
+      carries <code>ownProject</code> and <code>ownNote</code>, and <code>pickTask</code> starts it through
+      <code>session:start-own-work</code>. Add time, Split and Move send <code>ownProject</code> in
+      their target; <code>WorklogCorrectionService</code> makes the task there, and the
+      restore point covers the project too (<code>ownProjectIdFor</code>), so Undo takes
+      away a project the action made. Two projects of one name, one of the
+      user&#39;s and one online, carry a mark (<code>shared/project-mark.ts</code>,
+      <code>ProjectMark</code>): a computer, or the provider&#39;s name.</p>
       <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
       (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
       quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
@@ -4411,15 +4432,15 @@
       </tr>
       <tr>
       <td align="left"><code>worklog:split</code></td>
-      <td align="left"><code>(worklogId, atUtc, target)</code>, <code>target</code> a task id or <code>{ ownTitle }</code>. Split in two (S16c, <code>WorklogCorrectionService.split</code>): the worklog shortened to end at <code>atUtc</code> -- a correction, through the queue -- and the rest a new worklog on the task, or on new work of the user&#39;s own made under that name (the engine&#39;s <code>createOwnTask</code>, in the same transaction, under an id the undo covers), from the same session and with the same note, whose first send waits for the shortening (<code>origin_sync_id</code> on its <code>CREATE</code>). Undo for ten seconds (<code>Split MG-12 · 2h 00m</code>) puts the entry back whole. Answers <code>{ first, second }</code> and resends <code>worklog:on-updated</code>. Rejects with the reason: a moment not inside the entry (<code>splitPieces</code>), an unknown task or neither a task nor a name, or a piece under its provider&#39;s floor. The rest on work of the user&#39;s own is never queued</td>
+      <td align="left"><code>(worklogId, atUtc, target)</code>, <code>target</code> a task id or <code>{ ownTitle, ownProject? }</code> -- <code>ownProject</code> the user&#39;s own project it goes in, made when none has that name. Split in two (S16c, <code>WorklogCorrectionService.split</code>): the worklog shortened to end at <code>atUtc</code> -- a correction, through the queue -- and the rest a new worklog on the task, or on new work of the user&#39;s own made under that name (the engine&#39;s <code>createOwnTask</code>, in the same transaction, under an id the undo covers), from the same session and with the same note, whose first send waits for the shortening (<code>origin_sync_id</code> on its <code>CREATE</code>). Undo for ten seconds (<code>Split MG-12 · 2h 00m</code>) puts the entry back whole. Answers <code>{ first, second }</code> and resends <code>worklog:on-updated</code>. Rejects with the reason: a moment not inside the entry (<code>splitPieces</code>), an unknown task or neither a task nor a name, or a piece under its provider&#39;s floor. The rest on work of the user&#39;s own is never queued</td>
       </tr>
       <tr>
       <td align="left"><code>worklog:create-manual</code></td>
-      <td align="left"><code>(ManualWorklogDTO: { taskId, ownTitle?, durationSeconds, startedAtUtc, comment })</code>, <code>taskId</code> empty when <code>ownTitle</code> names new work of the user&#39;s own, made with the entry and kept here. Adds time nobody timed (S16b, <code>WorklogCorrectionService.add</code>): a worklog here, under a session id of its own (<code>manual_…</code>), and a first send to the task&#39;s provider through the queue, held for the undo window with Undo (<code>Added to PF-31 · 30m</code>). A project made in SprintTicker keeps it here; an empty note is sent as <code>Added in SprintTicker</code>. Answers the worklog and resends <code>worklog:on-updated</code>. Rejects with the reason (<code>checkManualWorklog</code>): no task nor name, an unknown task, under the provider&#39;s floor, ending in the future, or across local midnight. An overlap or a closed week is never refused -- the window warns, and the queue holds the later entry</td>
+      <td align="left"><code>(ManualWorklogDTO: { taskId, ownTitle?, ownProject?, durationSeconds, startedAtUtc, comment })</code>, <code>taskId</code> empty when <code>ownTitle</code> names new work of the user&#39;s own, made with the entry -- in <code>ownProject</code>, made too when new -- and kept here. Adds time nobody timed (S16b, <code>WorklogCorrectionService.add</code>): a worklog here, under a session id of its own (<code>manual_…</code>), and a first send to the task&#39;s provider through the queue, held for the undo window with Undo (<code>Added to PF-31 · 30m</code>). A project made in SprintTicker keeps it here; an empty note is sent as <code>Added in SprintTicker</code>. Answers the worklog and resends <code>worklog:on-updated</code>. Rejects with the reason (<code>checkManualWorklog</code>): no task nor name, an unknown task, under the provider&#39;s floor, ending in the future, or across local midnight. An overlap or a closed week is never refused -- the window warns, and the queue holds the later entry</td>
       </tr>
       <tr>
       <td align="left"><code>worklogs:move</code></td>
-      <td align="left"><code>(worklogId, target)</code>, <code>target</code> a task id or <code>{ ownTitle }</code> for new work of the user&#39;s own, made with the move and taken away by its Undo. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted or was refused. An ad-hoc worklog moved to a provider&#39;s task takes its task&#39;s name as its comment. Moved to work of the user&#39;s own, nothing is created anywhere: the time stays here. Answers the worklog as it now stands. Rejects with the reason: an unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
+      <td align="left"><code>(worklogId, target)</code>, <code>target</code> a task id or <code>{ ownTitle, ownProject? }</code> for new work of the user&#39;s own, made with the move -- and its project, when new -- and taken away by its Undo. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted or was refused. An ad-hoc worklog moved to a provider&#39;s task takes its task&#39;s name as its comment. Moved to work of the user&#39;s own, nothing is created anywhere: the time stays here. Answers the worklog as it now stands. Rejects with the reason: an unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
       </tr>
       </tbody></table></div>
       <p>The rules are <code>checkWorklogCorrection</code> in <code>src/shared/worklog-correction.ts</code>,

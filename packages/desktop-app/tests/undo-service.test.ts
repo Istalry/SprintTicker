@@ -184,9 +184,9 @@ describe('undoable commands', () => {
       getTask: id => tasks.getTaskById(id),
       destinationOf: id => engine.sendDestinationOfTask(id),
       retireAdHocIfUnused: id => engine.retireAdHocTaskIfUnused(id),
-      createOwnTask: (title, id) => engine.createOwnTask(title, id)
+      createOwnTask: (title, id, project) => engine.createOwnTask(title, id, project)
     });
-    edits = { db: dbConn.getDb(), undo, worklogs, corrections, onRestored: vi.fn() };
+    edits = { db: dbConn.getDb(), undo, worklogs, corrections, ownProjectIdFor: name => engine.ownProjectFor(name).project.id, onRestored: vi.fn() };
   });
 
   afterEach(() => {
@@ -452,6 +452,36 @@ describe('undoable commands', () => {
 
       expect(worklogs.getWorklogById(added.id)).toBeNull();
       expect(tasks.getTaskById(added.taskId)).toBeNull();
+    });
+
+    it('AddInANewProjectOfYoursThenUndo_TheProjectGoneToo', () => {
+      const added = addUndoably(edits, {
+        taskId: '', ownTitle: 'Backup files', ownProject: 'Dash', durationSeconds: 1800,
+        startedAtUtc: new Date(Date.now() - 3 * 3600_000).toISOString(), comment: ''
+      });
+      const own = tasks.getTaskById(added.taskId);
+      expect(own).toMatchObject({ title: 'Backup files', projectId: 'DASH', key: 'DASH-1' });
+      expect(added.taskId.startsWith('own_')).toBe(true);
+      expect(engine.ownProjectFor('dash').exists).toBe(true);
+      expect(queueRows()).toEqual([]);
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(added.id)).toBeNull();
+      expect(tasks.getTaskById(added.taskId)).toBeNull();
+      expect(engine.ownProjectFor('Dash').exists).toBe(false);
+    });
+
+    it('MoveIntoAProjectOfYoursThenUndo_TheProjectStays', async () => {
+      const before = await sentWorklog();
+      engine.createOwnTask('Earlier', undefined, 'Dash');
+
+      const moved = moveUndoably(edits, before.id, { ownTitle: 'Backup files', ownProject: ' DASH ' });
+      expect(tasks.getTaskById(moved.taskId)).toMatchObject({ projectId: 'DASH', key: 'DASH-2' });
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(before.id)?.taskId).toBe(A.id);
+      expect(tasks.getTaskById(moved.taskId)).toBeNull();
+      expect(engine.ownProjectFor('Dash').exists).toBe(true);
     });
 
     it('SendDestinationOfTask_OwnWork_None_NeverTheActiveProvider', () => {

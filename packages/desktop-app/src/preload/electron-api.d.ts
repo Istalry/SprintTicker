@@ -182,7 +182,7 @@ export interface IElectronAPI {
   getWeekChanges: (day: string) => Promise<WeekChangeDTO[] | null>;
   /** Split in two (S16c): shortens the entry to end at `atUtc` and puts the rest on `taskId`, with Undo. */
   /** The rest goes on a task, or on new work of the user's own by its name. */
-  splitWorklog: (worklogId: string, atUtc: string, target: string | { ownTitle: string }) => Promise<{ first: WorklogDTO; second: WorklogDTO }>;
+  splitWorklog: (worklogId: string, atUtc: string, target: string | { ownTitle: string; ownProject?: string }) => Promise<{ first: WorklogDTO; second: WorklogDTO }>;
   /** Every worklog of an interruption still to sort, newest first. */
   getUnsortedWorklogs: () => Promise<WorklogDTO[]>;
   /** Stars a task; answers the starred tasks the lists hold. */
@@ -201,7 +201,7 @@ export interface IElectronAPI {
   renameAdHocTask: (taskId: string, title: string) => Promise<void>;
   /** Moves a worklog to another task, here and at the providers through the queue. Rejects with the reason when refused. */
   /** To a task, or to new work of the user's own by its name. */
-  moveWorklog: (worklogId: string, target: string | { ownTitle: string }) => Promise<WorklogDTO>;
+  moveWorklog: (worklogId: string, target: string | { ownTitle: string; ownProject?: string }) => Promise<WorklogDTO>;
   /** Adds time nobody timed (S16b), sent like any entry, with Undo. Rejects with the reason when refused. */
   addWorklog: (entry: ManualWorklogDTO) => Promise<WorklogDTO>;
   /** The time so far on the open session goes to `taskId`, which then runs (S5b). */

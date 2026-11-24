@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ProjectMark } from '../../components/ProjectMark';
 import { MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import { ProjectDTO, TaskDTO, ActiveSessionDTO } from '../../../shared/dtos';
 import { END_THE_INTERRUPTION_FIRST } from '../../../shared/interruption';
@@ -451,6 +452,8 @@ const ProjectColumn: React.FC<{
   nothingAssigned: boolean;
   onAddProject: () => void;
 }> = props => {
+  // Two projects of one name, one here and one online, are told apart by a mark (§3).
+  const all = [...props.starred, ...props.others];
   const item = (p: ProjectDTO) => {
     const count = openTasksShown(p, props.visibility);
     const selected = p.id === props.selectedId;
@@ -464,7 +467,10 @@ const ProjectColumn: React.FC<{
         </button>
         <button type="button" aria-current={selected ? 'true' : undefined} title={p.key} onClick={() => props.onSelect(p.id)}
           className="flex min-w-0 flex-1 items-center justify-between gap-2 py-1.5 pr-2 text-left text-xs">
-          <span className={`truncate ${selected ? 'text-text-primary' : 'text-text-secondary'}`}>{p.name}</span>
+          <span className="flex min-w-0 items-center gap-1">
+            <span className={`truncate ${selected ? 'text-text-primary' : 'text-text-secondary'}`}>{p.name}</span>
+            <ProjectMark project={p} projects={all} />
+          </span>
           {count !== null && <span className="font-mono text-text-muted">{count}</span>}
         </button>
       </li>

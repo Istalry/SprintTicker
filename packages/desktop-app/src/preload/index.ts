@@ -152,7 +152,7 @@ const electronAPI: IElectronAPI = {
   getWorklogsRange: (from: string, to: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_RANGE, from, to),
   exportWorklogsCsv: (from: string, to: string) => ipcRenderer.invoke(IPCChannel.EXPORT_WORKLOGS_CSV, from, to),
   getWeekChanges: (day: string) => ipcRenderer.invoke(IPCChannel.GET_WEEK_CHANGES, day),
-  splitWorklog: (worklogId: string, atUtc: string, target: string | { ownTitle: string }) =>
+  splitWorklog: (worklogId: string, atUtc: string, target: string | { ownTitle: string; ownProject?: string }) =>
     ipcRenderer.invoke(IPCChannel.SPLIT_WORKLOG, worklogId, atUtc, target),
   getUnsortedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_UNSORTED_WORKLOGS),
   starTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.STAR_TASK, taskId),
@@ -161,7 +161,7 @@ const electronAPI: IElectronAPI = {
   getRecentTasks: () => ipcRenderer.invoke(IPCChannel.GET_RECENT_TASKS),
   getPreviousTask: () => ipcRenderer.invoke(IPCChannel.GET_PREVIOUS_TASK),
   renameAdHocTask: (taskId: string, title: string) => ipcRenderer.invoke(IPCChannel.RENAME_AD_HOC_TASK, taskId, title),
-  moveWorklog: (worklogId: string, target: string | { ownTitle: string }) => ipcRenderer.invoke(IPCChannel.MOVE_WORKLOG, worklogId, target),
+  moveWorklog: (worklogId: string, target: string | { ownTitle: string; ownProject?: string }) => ipcRenderer.invoke(IPCChannel.MOVE_WORKLOG, worklogId, target),
   addWorklog: (entry: ManualWorklogDTO) => ipcRenderer.invoke(IPCChannel.CREATE_MANUAL_WORKLOG, entry),
   moveSessionTo: (taskId: string) => ipcRenderer.invoke(IPCChannel.MOVE_SESSION, taskId),
   updateWorklog: (worklogId: string, correction: WorklogCorrectionDTO) =>

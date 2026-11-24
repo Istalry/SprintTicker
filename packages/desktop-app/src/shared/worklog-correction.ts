@@ -58,20 +58,26 @@ export interface ManualWorklogDTO extends WorklogCorrectionDTO {
   taskId: string;
   /** New work of the user's own, by its name: its time stays here (2026-11-24). */
   ownTitle?: string;
+  /** The user's own project it goes in, made when none has that name; none is Your own work. */
+  ownProject?: string;
 }
 
 /**
  * Where a move, added time or a split's rest goes, as the bridge sends it:
  * a task's id -- a provider's, a project made here, or work of the user's
- * own -- or new work of the user's own by its name.
+ * own -- or new work of the user's own by its name, in a project of theirs
+ * when `ownProject` names one (LOCAL-WORK-AND-CALENDAR.md).
  */
-export type WorklogTarget = string | { ownTitle: string };
+export type WorklogTarget = string | { ownTitle: string; ownProject?: string };
 
 /** `value` as a target, or null when it is neither a task id nor a name. */
 export function readWorklogTarget(value: unknown): WorklogTarget | null {
   if (typeof value === 'string') return value ? value : null;
   const ownTitle = (value as { ownTitle?: unknown } | null)?.ownTitle;
-  return typeof ownTitle === 'string' && ownTitle.trim() ? { ownTitle } : null;
+  const ownProject = (value as { ownProject?: unknown } | null)?.ownProject;
+  if (typeof ownTitle !== 'string' || !ownTitle.trim()) return null;
+  if (ownProject !== undefined && typeof ownProject !== 'string') return null;
+  return ownProject?.trim() ? { ownTitle, ownProject: ownProject.trim() } : { ownTitle };
 }
 
 /**
@@ -127,6 +133,8 @@ export interface WorklogSplitDTO {
   taskId?: string;
   /** Or new work of the user's own, by its name: its time stays here (2026-11-24). */
   ownTitle?: string;
+  /** The user's own project that new work goes in; none is Your own work. */
+  ownProject?: string;
 }
 
 /**

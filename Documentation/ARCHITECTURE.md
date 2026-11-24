@@ -192,6 +192,15 @@ here, as any `sprintticker` project's. With no project it is ad-hoc work as
 before. The note is the session's (`active_sessions.note`, migration 18)
 and becomes the entry's comment when it ends, over the words the app writes
 for how it ended (a switch, the bar, lunch); a comment given at Stop wins.
+The picker reads the one line as it is typed and puts *Start "Task" in
+Project* first, with *Change project or note…* for the fields; the pick
+carries `ownProject` and `ownNote`, and `pickTask` starts it through
+`session:start-own-work`. Add time, Split and Move send `ownProject` in
+their target; `WorklogCorrectionService` makes the task there, and the
+restore point covers the project too (`ownProjectIdFor`), so Undo takes
+away a project the action made. Two projects of one name, one of the
+user's and one online, carry a mark (`shared/project-mark.ts`,
+`ProjectMark`): a computer, or the provider's name.
 
 **The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
 (`windows/main-window-close.ts`) takes the dashboard's `close`: unless a

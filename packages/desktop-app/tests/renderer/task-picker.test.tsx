@@ -268,7 +268,7 @@ describe('TaskPicker', () => {
     const { onPick } = open({ mode: 'start' });
     fireEvent.click(await screen.findByText('A task of my own…'));
 
-    fireEvent.change(screen.getByLabelText(/What is it\?/), { target: { value: 'Code review' } });
+    fireEvent.change(screen.getByLabelText('Task'), { target: { value: 'Code review' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start it' }));
 
     expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Code review', takeAlong: false });
@@ -318,5 +318,78 @@ describe('TaskPicker', () => {
 
     expect(onKeepOff).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe('work of your own on the fly (LOCAL-WORK-AND-CALENDAR.md)', () => {
+    const DASH_ONLINE: ProjectDTO = { id: 'p-dash', key: 'DASH', name: 'Dash', providerId: 'jira' };
+    const DASH_OWN: ProjectDTO = { id: 'DASH2', key: 'DASH2', name: 'dash', providerId: 'sprintticker' };
+    const DASH_TASK = task('DASH-3', DASH_ONLINE, 'Backup the build server');
+    const WITH_DASH = { ...DATA, tasks: [...DATA.tasks, DASH_TASK], projects: [...DATA.projects, DASH_ONLINE] };
+
+    it('OneLine_ProjectTaskNote_StartsFirst_ANewProjectSaidSo', async () => {
+      const { onPick } = open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue(WITH_DASH) });
+      await screen.findByText('Recent');
+
+      search('Dash: Backup: before v2');
+      const first = within(screen.getByRole('listbox', { name: 'Tasks' })).getAllByRole('option')[0];
+      expect(first.textContent).toContain('Start "Backup" in Dash');
+      expect(first.textContent).toContain('new project · note: before v2');
+      // The online project of that name is found too, under its heading.
+      expect(screen.getByText('DASH-3')).toBeTruthy();
+
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter' });
+
+      expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Backup', ownProject: 'Dash', ownNote: 'before v2', takeAlong: false });
+    });
+
+    it('OneLine_AProjectOfYours_IsNotNew_AndTheNamesGetTheirMarks', async () => {
+      open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue({ ...WITH_DASH, projects: [...WITH_DASH.projects, DASH_OWN] }) });
+      await screen.findByText('Recent');
+
+      search('dash: Backup');
+
+      const first = within(screen.getByRole('listbox', { name: 'Tasks' })).getAllByRole('option')[0];
+      expect(first.textContent).not.toContain('new project');
+      expect(screen.getByText('Jira')).toBeTruthy();
+    });
+
+    it('OneLine_InAMove_TheNoteStaysInTheName', async () => {
+      const { onPick } = open({ mode: 'move', ownWork: true });
+      await screen.findByText('Recent');
+
+      search('Dash: Backup: before v2');
+      fireEvent.click(screen.getByText(/A task of my own: "Backup: before v2" in Dash/));
+
+      expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Backup: before v2', ownProject: 'Dash', takeAlong: false });
+    });
+
+    it('TheForm_PrefilledFromTheLine_SaysWhatTheProjectIs', async () => {
+      const { onPick } = open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue(WITH_DASH) });
+      await screen.findByText('Recent');
+      search('Dash: Backup: before v2');
+
+      fireEvent.click(screen.getByText('Change project or note…'));
+
+      expect((screen.getByLabelText('Project') as HTMLInputElement).value).toBe('Dash');
+      expect((screen.getByLabelText('Task') as HTMLInputElement).value).toBe('Backup');
+      expect((screen.getByLabelText(/^Note/) as HTMLInputElement).value).toBe('before v2');
+      expect(screen.getByText(/A new project Dash, kept on this computer\. .*project of that name stays apart\./)).toBeTruthy();
+
+      fireEvent.change(screen.getByLabelText('Project'), { target: { value: '' } });
+      expect(screen.getByText('Empty: Your own work, with no project.')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Start it' }));
+
+      expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Backup', ownNote: 'before v2', takeAlong: false });
+    });
+
+    it('NoColon_AsBefore_ATaskOfYourOwn', async () => {
+      const { onPick } = open({ mode: 'start' });
+      await screen.findByText('Recent');
+
+      search('Sync at 10:30');
+      fireEvent.click(screen.getByText(/A task of my own named "Sync at 10:30"/));
+
+      expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Sync at 10:30', takeAlong: false });
+    });
   });
 });

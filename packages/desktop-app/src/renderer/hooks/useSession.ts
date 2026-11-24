@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ActiveSessionDTO } from '../../shared/dtos';
 import type { InterruptionSource } from '../../shared/interruption';
+import type { OwnWork } from '../../shared/own-work';
 
 /**
  * Custom React hook subscribing to active time-tracking session state and local stopwatch ticking.
@@ -90,6 +91,16 @@ export function useSession() {
     return null;
   };
 
+  /** Work of the user's own, named on the fly: in a project of theirs, with a note. */
+  const startOwnWork = async (work: OwnWork) => {
+    if (window.electronAPI) {
+      const res = await window.electronAPI.startOwnWork(work);
+      setSession(res);
+      return res;
+    }
+    return null;
+  };
+
   /**
    * Interrupt: a timer at once, placed on a task afterwards. The task running
    * waits, paused, until Back. During an interruption main makes it Another.
@@ -131,6 +142,7 @@ export function useSession() {
     complete,
     discard,
     startTask,
+    startOwnWork,
     interrupt,
     back,
     stopInterruption

@@ -39,6 +39,7 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
   const [firstSeconds, setFirstSeconds] = useState(() => Math.max(SPLIT_STEP_SECONDS, Math.round(total / 2 / SPLIT_STEP_SECONDS) * SPLIT_STEP_SECONDS));
   const [task, setTask] = useState<TaskDTO | null>(null);
   const [ownTitle, setOwnTitle] = useState<string | null>(null);
+  const [ownProject, setOwnProject] = useState<string | null>(null);
   const chosen = task !== null || ownTitle !== null;
   const restStaysHere = ownTitle !== null || task?.projectId === ADHOC_PROJECT_ID;
   const [picking, setPicking] = useState(false);
@@ -59,7 +60,7 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
     if (!chosen || refusal) return;
     setBusy(true);
     setError(null);
-    window.electronAPI.splitWorklog(worklog.id, atUtc, task ? task.id : { ownTitle: ownTitle! }).then(onDone, err => {
+    window.electronAPI.splitWorklog(worklog.id, atUtc, task ? task.id : { ownTitle: ownTitle!, ...(ownProject ? { ownProject } : {}) }).then(onDone, err => {
       setError(ipcErrorMessage(err));
       setBusy(false);
     });
@@ -125,7 +126,7 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
                   >
                     {task
                       ? <><span className="font-mono font-bold">{task.key}</span> {task.title} ▾</>
-                      : ownTitle !== null ? <>{ownTitle} <span className="text-text-secondary">(new, your own)</span> ▾</> : 'Choose a task ▾'}
+                      : ownTitle !== null ? <>{ownTitle} <span className="text-text-secondary">({ownProject ? `new, in ${ownProject}` : 'new, your own'})</span> ▾</> : 'Choose a task ▾'}
                   </button>
                 </td>
               </tr>
@@ -170,6 +171,7 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
           } else if (picked.ownTitle) {
             setTask(null);
             setOwnTitle(picked.ownTitle);
+            setOwnProject(picked.ownProject ?? null);
           }
           setPicking(false);
         }}

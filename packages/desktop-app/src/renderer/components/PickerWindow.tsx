@@ -72,7 +72,7 @@ export const PickerWindow: React.FC<PickerWindowProps> = ({ mode, ids = [] }) =>
 };
 
 const TaskPickerWindow: React.FC<{ mode: Exclude<PickerWindowMode, 'place-ended'> }> = ({ mode }) => {
-  const { session, loading, startTask } = useSession();
+  const { session, loading, startTask, startOwnWork } = useSession();
   // The picker closes itself right after a pick; the window waits for main
   // to have answered the pick instead.
   const picking = useRef(false);
@@ -93,7 +93,7 @@ const TaskPickerWindow: React.FC<{ mode: Exclude<PickerWindowMode, 'place-ended'
       subtitle={placing ? 'The timer keeps running; its time goes there when it ends.' : undefined}
       onPick={picked => {
         picking.current = true;
-        void pickTask(placing ? 'place' : mode === 'place' ? 'start' : mode, session, picked, startTask).finally(close);
+        void pickTask(placing ? 'place' : mode === 'place' ? 'start' : mode, session, picked, startTask, startOwnWork).finally(close);
       }}
     />
   );

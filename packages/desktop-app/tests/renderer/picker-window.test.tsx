@@ -74,6 +74,18 @@ describe('PickerWindow', () => {
     expect(bridge.startTask).toHaveBeenCalledWith(MG22.id, false, MG22.title);
   });
 
+  it('OneLine_StartsWorkOfYourOwn_MainMakesTheProject', async () => {
+    const bridge = openWith(null);
+    await screen.findByRole('dialog', { name: 'Start a task' });
+
+    fireEvent.change(screen.getByLabelText('Search tasks'), { target: { value: 'Dash: Backup files: before v2' } });
+    fireEvent.click(await screen.findByText(/Start "Backup files" in Dash/));
+
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    expect(bridge.startOwnWork).toHaveBeenCalledWith({ title: 'Backup files', project: 'Dash', note: 'before v2' });
+    expect(bridge.startTask).not.toHaveBeenCalled();
+  });
+
   it('WhileATaskRuns_IsSwitchTask', async () => {
     openWith(TRACKING_SESSION);
 

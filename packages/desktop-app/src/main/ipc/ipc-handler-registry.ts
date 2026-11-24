@@ -179,8 +179,10 @@ function isDateKey(value: unknown): value is string {
 
 function isManualWorklog(value: unknown): value is ManualWorklogDTO {
   const ownTitle = (value as Partial<ManualWorklogDTO> | null)?.ownTitle;
+  const ownProject = (value as Partial<ManualWorklogDTO> | null)?.ownProject;
   return isWorklogCorrection(value) && typeof (value as Partial<ManualWorklogDTO>).taskId === 'string'
-    && (ownTitle === undefined || typeof ownTitle === 'string');
+    && (ownTitle === undefined || typeof ownTitle === 'string')
+    && (ownProject === undefined || typeof ownProject === 'string');
 }
 
 export class IPCHandlerRegistry {
@@ -354,6 +356,7 @@ export class IPCHandlerRegistry {
       undo: this.undo,
       worklogs: this.worklogRepo,
       corrections: this.worklogCorrections,
+      ownProjectIdFor: name => this.engine.ownProjectFor(name).project.id,
       onRestored: () => this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs())
     };
   }
@@ -1769,9 +1772,9 @@ export class IPCHandlerRegistry {
   }
 }
 
-/** A split's rest, as the bridge sends it: a task id or `{ ownTitle }`. Null when neither. */
+/** A split's rest, as the bridge sends it: a task id or `{ ownTitle, ownProject? }`. Null when neither. */
 function splitTarget(atUtc: unknown, value: unknown): WorklogSplitDTO | null {
   const target = readWorklogTarget(value);
   if (typeof atUtc !== 'string' || !target) return null;
-  return typeof target === 'string' ? { atUtc, taskId: target } : { atUtc, ownTitle: target.ownTitle };
+  return typeof target === 'string' ? { atUtc, taskId: target } : { atUtc, ...target };
 }

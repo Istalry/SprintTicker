@@ -157,6 +157,18 @@ describe('Today entries', () => {
     await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w1', { ownTitle: 'Team sync' }));
   });
 
+  it('Menu_Move_ToWorkOfMyOwnInAProject', async () => {
+    const bridge = installElectronApi(withProjects);
+    render(<TodayEntries session={null} worklogs={[PF]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^More for PF-31 at / }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '↳ Move…' }));
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'Dash: Backup files' } });
+    fireEvent.click(await screen.findByText(/A task of my own: "Backup files" in Dash/));
+
+    await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w1', { ownTitle: 'Backup files', ownProject: 'Dash' }));
+  });
+
   it('Move_Refused_SaysWhy', async () => {
     installElectronApi({ ...withProjects, moveWorklog: vi.fn().mockRejectedValue(new Error('The provider records at least 1 minute(s).')) });
     render(<TodayEntries session={null} worklogs={[PF]} />);
