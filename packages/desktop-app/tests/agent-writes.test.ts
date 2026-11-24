@@ -192,6 +192,15 @@ describe('AgentService, the writes', () => {
     expect(engine.getCurrentSession()?.taskId).toBe(A.id);
   });
 
+  it('Done_WithoutConfirmed_WorkOfYourOwn_NamesNoProvider', () => {
+    engine.startOwnWork({ project: 'Dash', title: 'Backup files' });
+
+    expect(() => agent.run('mark_done', {})).toThrow(expect.objectContaining({
+      code: 'needs-confirmation',
+      message: 'Marking DASH-1 done finishes it; it is kept on this computer. Ask the user, then call again with confirmed.'
+    }));
+  });
+
   it('Done_Confirmed_LogsAndMarksDone_AfterTheUndo', async () => {
     runA();
 

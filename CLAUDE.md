@@ -1633,7 +1633,11 @@ closed or moved on the provider leaves the user's scope, and the prune used
 to retire it mid-session -- deleted, when nothing was logged on it yet -- so
 finishing it as done found no row and silently did nothing.
 `OfflineSyncWorker.protectTasks` keeps it, and its project, until the session
-ends, and `ActiveSessionDTO.taskUnlisted` says it has left the list. Marking
+ends, and `ActiveSessionDTO.taskUnlisted` says it has left the list.
+**Only a provider's task is "unlisted"**: ad-hoc work and a project of the
+user's own are never in a provider's list (`isNeverListed`). 2.0.2's rc1
+protected them as the provider's, and every sync read the running task of
+your own as gone from OpenProject. Marking
 such a task done asks the user first, in the window and on the bar: their
 completion transition would move a task that is no longer theirs. The sync
 then asks the provider why (`getTaskStanding`, `taskLeftBecause`) -- at every

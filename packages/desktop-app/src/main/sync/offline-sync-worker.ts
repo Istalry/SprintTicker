@@ -389,8 +389,11 @@ export class OfflineSyncWorker {
     // Phase 2: commit the complete, verified snapshot.
     try {
       // The tracked task survives the prune whatever the provider says, and so
-      // does its project. Ad-hoc tasks are never the provider's to list.
-      const protectedIds = this.getProtectedTaskIds().filter(id => id && !isAdHocTaskId(id));
+      // does its project. Ad-hoc tasks and a project of the user's own are
+      // never the provider's to list: protected as the provider's, a task of
+      // their own read as unlisted, and the provider asked about its local id
+      // answered 404 -- "no longer on OpenProject" at every sync (2.0.2 rc1).
+      const protectedIds = this.getProtectedTaskIds().filter(id => id && !this.isNeverListed(id));
       const listedIds = new Set([...tasksByProject.values()].flat().map(t => t.id));
       const protectedProjectIds = protectedIds
         .map(id => this.taskRepo.getTaskById(id)?.projectId)
@@ -483,9 +486,7 @@ export class OfflineSyncWorker {
    */
   public async checkStanding(taskId: string): Promise<boolean> {
     if (!taskId) throw new ArgumentNullException('taskId');
-    if (!this.isOnline || isAdHocTaskId(taskId)) return false;
-    const projectId = this.taskRepo.getTaskById(taskId)?.projectId;
-    if (projectId && this.projectRepo.getProviderIdOf(projectId) === OWN_PROJECT_PROVIDER_ID) return false;
+    if (!this.isOnline || this.isNeverListed(taskId)) return false;
     const provider = this.providerOfTask(taskId);
     if (!provider?.getTaskStanding) return false;
     let standing: TaskStanding;
@@ -502,6 +503,13 @@ export class OfflineSyncWorker {
       return true;
     }
     return standing.ownership ? this.taskRepo.setOwnership(taskId, standing.ownership, standing.assigneeName) : false;
+  }
+
+  /** Ad-hoc work or a task in a project of the user's own: no provider lists it. */
+  private isNeverListed(taskId: string): boolean {
+    if (isAdHocTaskId(taskId)) return true;
+    const projectId = this.taskRepo.getTaskById(taskId)?.projectId;
+    return Boolean(projectId) && this.projectRepo.getProviderIdOf(projectId!) === OWN_PROJECT_PROVIDER_ID;
   }
 
   /** The provider a task came from, by its project; the active one when that is not known. */

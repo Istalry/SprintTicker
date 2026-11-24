@@ -18,6 +18,7 @@ import { matchesSearch } from '../../shared/task-picker';
 import { END_THE_INTERRUPTION_FIRST, InterruptionToPlaceDTO } from '../../shared/interruption';
 import { finishNeedsConfirmation } from '../../shared/task-left';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
+import { OWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 
 /** An answer the agent cannot have: its code says why, its message what to do. */
 export class AgentRefusal extends Error {
@@ -341,6 +342,12 @@ export class AgentService {
     // Done moves the ticket at the provider: asked always, as the deck's
     // second press (S29). An agent's call is not the user's word.
     if (!confirmed) {
+      // Work of the user's own is at no provider: naming the active one
+      // told the agent a ticket would move that does not exist (2.0.2 rc1).
+      if (session.isAdHoc || session.providerId === OWN_PROJECT_PROVIDER_ID) {
+        throw new AgentRefusal('needs-confirmation',
+          `Marking ${session.taskKey} done finishes it; it is kept on this computer. Ask the user, then call again with confirmed.`);
+      }
       const notTheirs = finishNeedsConfirmation(session) ? ' It is no longer theirs at the provider.' : '';
       throw new AgentRefusal('needs-confirmation',
         `Marking ${session.taskKey} done changes it at ${this._sources.providerName()}.${notTheirs} Ask the user, then call again with confirmed.`);

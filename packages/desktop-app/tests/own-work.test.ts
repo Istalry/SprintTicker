@@ -171,6 +171,57 @@ describe('work of your own on the fly', () => {
   });
 });
 
+describe('a sync while work of your own is timed', () => {
+  let db: DatabaseConnection;
+  let engine: TimeTrackingEngine;
+  let projects: ProjectRepository;
+  const askedAbout: string[] = [];
+
+  beforeEach(async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    askedAbout.length = 0;
+    db = new DatabaseConnection(':memory:');
+    projects = new ProjectRepository(db);
+    const remote = {
+      providerId: 'openproject', providerName: 'OpenProject', minimumLoggableSeconds: 60,
+      // Asked about a local id, a provider answers 404: gone.
+      getTaskStanding: async (id: string) => { askedAbout.push(id); return { state: 'gone' }; }
+    };
+    const manager = {
+      getActiveProvider: () => remote,
+      getProvider: () => remote,
+      getProjects: async () => [{ id: '7', key: 'dash', name: 'Dash', providerId: 'openproject' }],
+      getTasks: async () => [{ id: '40', projectId: '7', key: 'OP-40', title: 'Backup the build server', status: 'todo' }],
+      getTaskStanding: remote.getTaskStanding,
+      logTimeForProvider: () => new Promise(() => undefined)
+    } as unknown as ProviderManager;
+    engine = new TimeTrackingEngine(new SessionRepository(db), new WorklogRepository(db), new TaskRepository(db), manager, projects);
+    await engine.getSyncWorker().syncTasksAndProjects();
+  });
+
+  afterEach(() => {
+    engine.dispose();
+    db.close();
+    vi.restoreAllMocks();
+  });
+
+  // rc1 of 2.0.2: the sync protected the running own task as a provider's,
+  // found it missing from the provider's list, asked the provider about a
+  // local id and read its 404 as gone -- "DASH2-1 is no longer on
+  // OpenProject", and Done asked first.
+  it('Sync_OwnWorkRunning_StaysListed_AndTheProviderIsNotAsked', async () => {
+    engine.startOwnWork({ project: 'Dash', title: 'Backup files' });
+
+    await engine.getSyncWorker().syncTasksAndProjects();
+
+    const session = engine.getCurrentSession()!;
+    expect(session.taskUnlisted).toBeUndefined();
+    expect(session.taskLeftBecause).toBeUndefined();
+    expect(askedAbout).toEqual([]);
+    expect(projects.getAllProjects().filter(p => p.providerId === OWN_PROJECT_PROVIDER_ID)).toHaveLength(1);
+  });
+});
+
 describe('the mark of a project of the same name', () => {
   it('ProjectMarkOf_OnlyWhereAnOwnAndAnOnlineNameCollide', () => {
     const online = { id: 'DASH', key: 'DASH', name: 'Dash', providerId: 'jira' };
