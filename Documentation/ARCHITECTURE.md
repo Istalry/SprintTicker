@@ -539,6 +539,18 @@ and never the same minutes on both. On a `CREATE` that column means only
 this wait; on a correction it names the send corrected.
 | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |
 
+History's calendar (T3, LOCAL-WORK-AND-CALENDAR.md §5) is
+`views/History/WeekCalendar.tsx` over the same range, the schedule and the
+session running. What a gesture writes is worked out in
+`shared/calendar.ts`, apart from the pointer: `placeDay` lays overlapping
+entries side by side, `movedEntry` and `resizedEntry` snap a drag to a
+quarter of an hour, `overlapFixes` gives the two shortenings an overlap
+offers. The change itself goes through `worklog:update` -- the same
+correction as Correct, with its Undo and its send -- after the
+closed-week question, and a click on an empty slot opens Add time, a
+selected block's menu the row's actions (`useEntryActions`). The untracked
+stretches are `dayGaps`, as on the day's timeline.
+
 History's week (S15) is `shared/week-sheet.ts` over `worklogs:get-range`:
 each task's time per day grouped by project, the Day row, and the provider's
 row, which sums `providerSeconds` -- the duration of the last `SYNCED` queue
@@ -1544,7 +1556,7 @@ It imports only from `desktop-app/src/shared/`, which is where the fonts and
 
 ## 8. Testing
 
-Vitest, 4088 tests across 203 files, in two projects: `main` in Node for
+Vitest, 4151 tests across 207 files, in two projects: `main` in Node for
 `src/main` and `src/shared`, and `renderer` in jsdom for React smoke tests
 (`tests/renderer/`). The renderer's tests mount every view against a mock
 bridge typed as the whole `IElectronAPI`, so bridge drift fails the typecheck.

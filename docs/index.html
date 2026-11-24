@@ -1214,6 +1214,26 @@
       <em>correction waiting</em>. The line under the sheet names each exception. Click
       a day&#39;s total, or a task&#39;s time, to open that day. Weekends show when they
       have time.</p>
+      <p>🗓️ <strong>The calendar</strong> (<strong>Calendar</strong>, beside <strong>Week</strong>): the same week as
+      columns, each entry a block over the hours, the time you did not track in
+      your working hours dashed, the task running green. Everything is changed on
+      it, as in a calendar:</p>
+      <ul>
+      <li><strong>Click an empty slot</strong> to add time there -- half an hour, in the Add
+      time dialog -- or <strong>drag over it</strong> to set its length.</li>
+      <li><strong>Click an entry</strong> to select it: handles appear at its top and bottom;
+      <strong>drag one</strong> to change its start or its end. <strong>Drag the entry</strong> to move
+      it to another hour or another day. Everything lands on a quarter of an
+      hour.</li>
+      <li><strong>Click the selected entry again</strong> for Correct, Split in two, Move and
+      Delete; <strong>Delete</strong> on the keyboard deletes it, after asking. Escape lets
+      go of it.</li>
+      <li><strong>Overlaps this week</strong> are listed under the calendar, each with its
+      fixes: <em>End PF-31 at 10:15</em>, <em>Start MG-12 at 10:30</em>, or <strong>Correct…</strong>.</li>
+      </ul>
+      <p>Each change is the same as from the rows: Undo on the bar for ten seconds,
+      the change sent to your provider, and a question first in a week already
+      closed. <strong>+ Add time</strong> is there too, for the keyboard.</p>
       <p><strong>Export CSV</strong> saves the week as a spreadsheet where you choose: one row per
       entry with its date, start and end in your local time, its length (also in
       decimal hours), project, task, note, and whether it was sent.</p>
@@ -2990,6 +3010,17 @@
       and never the same minutes on both. On a <code>CREATE</code> that column means only
       this wait; on a correction it names the send corrected.
       | At a provider with no remote (ad-hoc rows of an older build) | Here only | Here only |</p>
+      <p>History&#39;s calendar (T3, LOCAL-WORK-AND-CALENDAR.md §5) is
+      <code>views/History/WeekCalendar.tsx</code> over the same range, the schedule and the
+      session running. What a gesture writes is worked out in
+      <code>shared/calendar.ts</code>, apart from the pointer: <code>placeDay</code> lays overlapping
+      entries side by side, <code>movedEntry</code> and <code>resizedEntry</code> snap a drag to a
+      quarter of an hour, <code>overlapFixes</code> gives the two shortenings an overlap
+      offers. The change itself goes through <code>worklog:update</code> -- the same
+      correction as Correct, with its Undo and its send -- after the
+      closed-week question, and a click on an empty slot opens Add time, a
+      selected block&#39;s menu the row&#39;s actions (<code>useEntryActions</code>). The untracked
+      stretches are <code>dayGaps</code>, as on the day&#39;s timeline.</p>
       <p>History&#39;s week (S15) is <code>shared/week-sheet.ts</code> over <code>worklogs:get-range</code>:
       each task&#39;s time per day grouped by project, the Day row, and the provider&#39;s
       row, which sums <code>providerSeconds</code> -- the duration of the last <code>SYNCED</code> queue
@@ -4012,7 +4043,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 4088 tests across 203 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 4151 tests across 207 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.

@@ -28,6 +28,13 @@
 - **Today by task.** *Entries | By task* at the top right of Today shows one
   line per task with the day's sum, unfolding into its entries. Today still
   opens on the entries.
+- **History's calendar.** *Calendar*, beside Week, shows the week as
+  columns and your entries as blocks. Click an empty slot to add time, or
+  drag for its length; select an entry for handles that change its start
+  and end; drag it to another hour or day; click it again for Correct,
+  Split, Move and Delete, or press Delete. The week's overlaps are listed
+  under it with their fixes. Every change has its Undo and asks first in a
+  closed week.
 
 ### Fixed
 

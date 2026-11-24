@@ -43,6 +43,19 @@ const visibleText = (element: HTMLElement): string => {
 };
 
 describe("History's week", () => {
+  it('Calendar_TheSameWeek_AsBlocks_AddTimeOpensItsDialog', async () => {
+    installElectronApi({ getWorklogsRange: vi.fn().mockResolvedValue(WEEK) });
+    render(<WorklogHistoryView />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calendar' }));
+    await screen.findByRole('region', { name: 'The week as a calendar' });
+
+    expect(screen.getByRole('button', { name: 'Calendar' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: /^PF-31 Title of PF-31/ })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('region', { name: 'The week as a calendar' })).getByRole('button', { name: '+ Add time' }));
+    expect(await screen.findByRole('dialog', { name: 'Add time' })).toBeTruthy();
+  });
+
   it('Week_ReadsMondayToSunday_GroupedByProject_TheLargestOpen', async () => {
     const bridge = await weekOpen();
     const week = screen.getByRole('region', { name: 'The week' });

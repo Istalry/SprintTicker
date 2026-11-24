@@ -6,6 +6,7 @@ import { BREAKDOWN_SHOWN, describeSends, summarizeDay } from '../../../shared/da
 import { countOf, formatDayAndMonth, formatHoursAndMinutes, formatLongDay, ipcErrorMessage } from '../../utils/formatters';
 import { weekStartKey } from '../../../shared/working-days';
 import { WeekView } from './WeekView';
+import { WeekCalendar } from './WeekCalendar';
 import { InterruptionsToPlace } from '../../components/InterruptionsToPlace';
 import { useEntryActions } from '../../components/EntryActions';
 import { EntriesHead, EntryRow } from '../../components/EntryRow';
@@ -79,8 +80,9 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
   // Bumped after a change, so the day is read again.
   const [revision, setRevision] = useState(0);
   const [adding, setAdding] = useState<AddTimeStart | null>(null);
-  // The day, or the week it falls in (S15): one date for both, so switching keeps the place.
-  const [mode, setMode] = useState<'day' | 'week'>(checkWeekOf ? 'week' : 'day');
+  // The day, or the week it falls in (S15) as a sheet or a calendar (T3):
+  // one date for all three, so switching keeps the place.
+  const [mode, setMode] = useState<'day' | 'week' | 'calendar'>(checkWeekOf ? 'week' : 'day');
   // Check my week (S15b), over the week shown.
   const [checking, setChecking] = useState(Boolean(checkWeekOf));
   const [exported, setExported] = useState<{ ok: boolean; text: string } | null>(null);
@@ -125,7 +127,7 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
       err => setExported({ ok: false, text: `Not exported: ${ipcErrorMessage(err)}` })
     );
   };
-  const switchButton = (to: 'day' | 'week', label: string) => (
+  const switchButton = (to: 'day' | 'week' | 'calendar', label: string) => (
     <button
       type="button"
       aria-pressed={mode === to}
@@ -196,6 +198,7 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
           <div role="group" aria-label="Show" className="flex items-center gap-0.5 bg-dark-800 border border-border-dark rounded-lg p-0.5">
             {switchButton('day', 'Day')}
             {switchButton('week', 'Week')}
+            {switchButton('calendar', 'Calendar')}
           </div>
         </div>
       </div>
@@ -211,6 +214,7 @@ export const WorklogHistoryView: React.FC<WorklogHistoryViewProps> = ({ checkWee
       {entries.moveError && <p role="alert" className="text-xs text-accent-red">Not moved: {entries.moveError}</p>}
 
       {mode === 'week' && <WeekView monday={monday} revision={revision} onOpenDay={openDay} />}
+      {mode === 'calendar' && <WeekCalendar monday={monday} revision={revision} onChanged={() => setRevision(r => r + 1)} onAdd={setAdding} />}
 
       {mode === 'day' && <section aria-label="The day's entries" className="bg-dark-800 border border-border-dark rounded-xl p-6 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1378,8 +1378,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.46 statements / 87.14 branches / 94.21 functions / 95.83 lines across 4088
-tests in 203 files** (2026-11-24, with the AI agents' command in the installer), and the floor is
+**93.46 statements / 87.16 branches / 94.26 functions / 95.86 lines across 4151
+tests in 207 files** (2026-11-24, with work of your own in projects and History's calendar), and the floor is
 ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

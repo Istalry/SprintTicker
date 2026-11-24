@@ -688,6 +688,27 @@ A day that differs is amber and says why: *20m held*, *18m to place*,
 a day's total, or a task's time, to open that day. Weekends show when they
 have time.
 
+🗓️ **The calendar** (**Calendar**, beside **Week**): the same week as
+columns, each entry a block over the hours, the time you did not track in
+your working hours dashed, the task running green. Everything is changed on
+it, as in a calendar:
+
+- **Click an empty slot** to add time there -- half an hour, in the Add
+  time dialog -- or **drag over it** to set its length.
+- **Click an entry** to select it: handles appear at its top and bottom;
+  **drag one** to change its start or its end. **Drag the entry** to move
+  it to another hour or another day. Everything lands on a quarter of an
+  hour.
+- **Click the selected entry again** for Correct, Split in two, Move and
+  Delete; **Delete** on the keyboard deletes it, after asking. Escape lets
+  go of it.
+- **Overlaps this week** are listed under the calendar, each with its
+  fixes: *End PF-31 at 10:15*, *Start MG-12 at 10:30*, or **Correct…**.
+
+Each change is the same as from the rows: Undo on the bar for ten seconds,
+the change sent to your provider, and a question first in a week already
+closed. **+ Add time** is there too, for the keyboard.
+
 **Export CSV** saves the week as a spreadsheet where you choose: one row per
 entry with its date, start and end in your local time, its length (also in
 decimal hours), project, task, note, and whether it was sent.
