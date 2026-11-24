@@ -132,11 +132,11 @@ function read(): Promise<PickerDataDTO> {
  */
 function ownProjectHint(typed: string, own: readonly ProjectDTO[], all: readonly ProjectDTO[], providerName: string): string {
   const name = typed.trim();
-  if (!name) return 'Empty: Your own work, with no project.';
+  if (!name) return 'Leave it empty for work with no project.';
   const exists = own.find(p => sameOwnName(p.name, name));
   const online = all.some(p => p.providerId !== OWN_PROJECT_PROVIDER_ID && sameOwnName(p.name, name));
   const what = exists ? `In your project ${exists.name}.` : `A new project ${name}, kept on this computer.`;
-  return online ? `${what} ${providerName}'s project of that name stays apart.` : what;
+  return online ? `${what} Separate from ${providerName}'s ${name}: its time is never sent.` : what;
 }
 
 const TaskPickerDialog: React.FC<TaskPickerProps> = ({
@@ -162,6 +162,9 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   const [projectId, setProjectId] = useState<string | null>(null);
   const [view, setView] = useState<'groups' | 'mine'>('groups');
   const [naming, setNaming] = useState(false);
+  // "Add a project or note…" is chosen for the project: its field takes the
+  // focus, not Task (rc3's review). "A task of my own…" is for the name.
+  const [formFocus, setFormFocus] = useState<'project' | 'title'>('title');
   const [ownTitle, setOwnTitle] = useState('');
   const [ownProject, setOwnProject] = useState('');
   const [ownNote, setOwnNote] = useState('');
@@ -343,7 +346,8 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   };
 
   /** The form, filled with what the one line said. */
-  const openForm = (work: OwnWork | null) => {
+  const openForm = (work: OwnWork | null, focus: 'project' | 'title' = 'title') => {
+    setFormFocus(focus);
     if (work) {
       setOwnTitle(work.title);
       setOwnProject(work.project ?? '');
@@ -411,7 +415,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
         else openForm(null);
         return;
       case 'own-form':
-        openForm(line);
+        openForm(line ?? (trimmed ? { title: trimmed } : null), 'project');
         return;
       case 'fetch':
         fetchByKey(row.key);
@@ -475,6 +479,9 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   // The one line's syntax, shown where it is used rather than only in the
   // guide (F1): with the name typed, so it reads as what to type next.
   const syntaxTip = offersOwn && trimmed && !line?.project ? trimmed : null;
+  // A real name, where there is one, so "Project:" is never typed as it is.
+  const tipProject = (projects.find(p => p.providerId === OWN_PROJECT_PROVIDER_ID) ?? ownProjects[0])?.name ?? null;
+  const tipId = useId();
 
   const renderRow = (row: Row, i: number): React.ReactNode => {
     if (row.kind === 'heading') {
@@ -618,11 +625,12 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             <label className="block text-xs text-text-secondary" htmlFor="picker-own-project">Project</label>
             <input
               id="picker-own-project"
+              autoFocus={formFocus === 'project'}
               list={ownProjectsId}
               value={ownProject}
               onChange={e => setOwnProject(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pickOwn({ title: ownTitle, project: ownProject, note: ownNote }); }}
-              placeholder="Your own work"
+              placeholder="No project"
               className="w-full bg-dark-900 border border-border-field rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-focus"
             />
             <datalist id={ownProjectsId}>
@@ -634,7 +642,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
             <label className="block text-xs text-text-secondary" htmlFor="picker-own-title">Task</label>
             <input
               id="picker-own-title"
-              autoFocus
+              autoFocus={formFocus === 'title'}
               value={ownTitle}
               onChange={e => setOwnTitle(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && ownTitle.trim()) pickOwn({ title: ownTitle, project: ownProject, note: ownNote }); }}
@@ -692,6 +700,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                 aria-autocomplete="list"
                 aria-controls={listId}
                 aria-activedescendant={actionable[current] ? optionId(current) : undefined}
+                aria-describedby={syntaxTip ? tipId : undefined}
                 value={query}
                 onChange={e => changeQuery(e.target.value)}
                 placeholder={placeholder}
@@ -721,19 +730,26 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
               <>
                 {rows.slice(0, tailStart).map((row, i) => renderRow(row, i))}
                 {tailStart < rows.length && (
-                  <div role="presentation" className={tailStart > 0 ? 'sticky bottom-0 -mx-3 px-3 pt-1 bg-dark-800 border-t border-border-dark' : ''}>
+                  // -bottom-2 and pb-2 cover the list's own bottom padding,
+                  // where a result row showed through under these (rc3).
+                  <div role="presentation" className={tailStart > 0 ? 'sticky -bottom-2 -mx-3 px-3 pt-1 pb-2 bg-dark-800 border-t border-border-dark' : ''}>
                     {rows.slice(tailStart).map((row, i) => renderRow(row, tailStart + i))}
-                    {syntaxTip && (
-                      <p className="px-2 pt-1 pb-0.5 text-[11px] text-text-secondary">
-                        Tip: <span className="font-mono text-text-primary">Project: {syntaxTip}{takesNote ? ': note' : ''}</span>
-                        {takesNote ? ' puts it in a project, with a note.' : ' puts it in a project.'}
-                      </p>
-                    )}
                   </div>
                 )}
               </>
             )}
           </div>
+
+          {/* Outside the listbox, whose children are options, and read with
+              the search field it describes (rc3's review). */}
+          {syntaxTip && (
+            <p id={tipId} className="px-5 pb-2 text-[11px] text-text-secondary">
+              Tip: <span className="font-mono text-text-primary">
+                {tipProject ?? <i className="font-sans">project</i>}: {syntaxTip}{takesNote && <>: <i className="font-sans">note</i></>}
+              </span>
+              {takesNote ? ' puts it in a project, with a note.' : ' puts it in a project.'}
+            </p>
+          )}
 
           {problem && <p role="alert" className="px-5 pb-1 text-xs text-accent-red">{problem}</p>}
 

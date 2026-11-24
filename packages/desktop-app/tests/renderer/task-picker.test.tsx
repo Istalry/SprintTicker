@@ -47,6 +47,12 @@ const listed = () =>
 
 const search = (text: string) => fireEvent.change(screen.getByLabelText('Search tasks'), { target: { value: text } });
 
+/** The text the search field is described by: the one line's tip, or null. */
+const tip = () => {
+  const id = screen.getByLabelText('Search tasks').getAttribute('aria-describedby');
+  return id ? document.getElementById(id)?.textContent ?? null : null;
+};
+
 describe('TaskPicker', () => {
   it('Search_ManyMatches_EightPerProject_ThenMoreKeepsTheSearchInTheProject', async () => {
     // P15b: a first letter matched 881 of 1,000 tasks, all drawn.
@@ -387,10 +393,13 @@ describe('TaskPicker', () => {
       expect((screen.getByLabelText('Project') as HTMLInputElement).value).toBe('Dash');
       expect((screen.getByLabelText('Task') as HTMLInputElement).value).toBe('Backup');
       expect((screen.getByLabelText(/^Note/) as HTMLInputElement).value).toBe('before v2');
-      expect(screen.getByText(/A new project Dash, kept on this computer\. .*project of that name stays apart\./)).toBeTruthy();
+      expect(screen.getByText(/^A new project Dash, kept on this computer\. Separate from .*'s Dash: its time is never sent\.$/)).toBeTruthy();
+      // Opened for its project, the project's field has the focus.
+      expect(document.activeElement).toBe(screen.getByLabelText('Project'));
 
       fireEvent.change(screen.getByLabelText('Project'), { target: { value: '' } });
-      expect(screen.getByText('Empty: Your own work, with no project.')).toBeTruthy();
+      expect(screen.getByText('Leave it empty for work with no project.')).toBeTruthy();
+      expect(screen.getByLabelText('Project').getAttribute('placeholder')).toBe('No project');
       fireEvent.click(screen.getByRole('button', { name: 'Start it' }));
 
       expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Backup', ownNote: 'before v2', takeAlong: false });
@@ -424,14 +433,33 @@ describe('TaskPicker', () => {
 
       search('Backup files');
 
-      expect(screen.getByText('Project: Backup files: note').parentElement!.textContent)
-        .toBe('Tip: Project: Backup files: note puts it in a project, with a note.');
+      // Read with the field, and outside the list, whose children are options.
+      expect(tip()).toBe('Tip: project: Backup files: note puts it in a project, with a note.');
+      expect(within(screen.getByRole('listbox', { name: 'Tasks' })).queryByText(/^Tip:/)).toBeNull();
       expect(screen.getByRole('option', { name: 'Add a project or note…' })).toBeTruthy();
 
       search('Dash: Backup files');
 
-      expect(screen.queryByText(/^Tip:/)).toBeNull();
+      expect(tip()).toBeNull();
       expect(screen.getByRole('option', { name: 'Change project or note…' })).toBeTruthy();
+    });
+
+    it('Typed_AProjectOfYours_TheTipNamesIt', async () => {
+      open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue({ ...WITH_DASH, projects: [...WITH_DASH.projects, DASH_OWN] }) });
+      await screen.findByText('Recent');
+
+      search('Backup files');
+
+      expect(tip()).toBe('Tip: dash: Backup files: note puts it in a project, with a note.');
+    });
+
+    it('ATaskOfMyOwn_EmptyLine_TheNameHasTheFocus', async () => {
+      open({ mode: 'start' });
+      await screen.findByText('Recent');
+
+      fireEvent.click(screen.getByRole('option', { name: 'A task of my own…' }));
+
+      expect(document.activeElement).toBe(screen.getByLabelText('Task'));
     });
 
     it('Typed_InAMove_TheSyntaxHasNoNote', async () => {
@@ -440,7 +468,7 @@ describe('TaskPicker', () => {
 
       search('Backup files');
 
-      expect(screen.getByText('Project: Backup files').parentElement!.textContent).toBe('Tip: Project: Backup files puts it in a project.');
+      expect(tip()).toBe('Tip: project: Backup files puts it in a project.');
       expect(screen.getByRole('option', { name: 'Add a project…' })).toBeTruthy();
     });
 
@@ -453,6 +481,8 @@ describe('TaskPicker', () => {
       // jsdom draws nothing: the class is what keeps them in view.
       const own = screen.getByRole('option', { name: /A task of my own named "PF"/ });
       expect(own.parentElement!.className).toContain('sticky');
+      // Down into the list's bottom padding, where a result showed through (rc3).
+      expect(own.parentElement!.className).toContain('-bottom-2');
       expect(screen.getByLabelText('Search tasks').getAttribute('placeholder')).toBe('Search 6 tasks, or type a new one');
     });
 

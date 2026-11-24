@@ -7,7 +7,8 @@
 - **Work of your own in a project, in one line.** Type `Dash: Backup files:
   before v2` in the picker and *Start "Backup files" in Dash* starts it,
   with the note; *Add a project or note…* opens the fields. The picker
-  shows the syntax under what you type (*Tip: Project: Backup files: note*)
+  shows the syntax under what you type, with a project of yours where you
+  have one (*Tip: Dash: Backup files: note*)
   and says *or type a new one* in its field. A project of yours of that
   name takes the task, keyed DASH-1, DASH-2, on Enter; one you do not have
   is the second row, under the line as typed, so a colon in a name
