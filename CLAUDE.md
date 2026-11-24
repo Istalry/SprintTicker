@@ -15,6 +15,7 @@ A pnpm workspace with three packages:
 | :--- | :--- |
 | `packages/desktop-app` | Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + better-sqlite3 13. Most of the code. |
 | `packages/anim-studio` | The animation scene editor (`pnpm studio`): Vite + plain TypeScript, no React, no Electron. A development tool; nothing in it ships. |
+| `packages/agent-cli` | The `sprintticker` command and its MCP server (`sprintticker mcp`): how an AI agent asks the running app, over `/api/v1/agent/`. Node 24, bundled by Vite into one file, no dependencies. |
 | `packages/streamdeck-plugin` | A plugin for Elgato's Stream Deck app (`io.github.istalry.sprintticker.sdPlugin`): Node 24 + `@elgato/streamdeck` 3, bundled by Vite. Keys that drive the session over the app's WebSocket. Ships on its own, as a `.streamDeckPlugin`. |
 
 The desktop app tracks time against tasks, drives a physical BUSY Bar LED
@@ -25,9 +26,10 @@ display over USB, and mirrors Windows notifications onto it.
 ```bash
 pnpm dev              # Vite renderer + preload/main watchers + Electron
 pnpm dev:mock         # the same, with no hardware attached
-pnpm test             # vitest run, the app, the studio, then the Stream Deck plugin
+pnpm test             # vitest run, the app, the studio, the Stream Deck plugin, the agent client
 pnpm test:studio      # the studio's tests only; no native module involved
 pnpm test:deck        # the Stream Deck plugin's tests only; no native module either
+pnpm test:agent       # the AI agent client's tests, against the app's real routes
 pnpm test:coverage    # floor: 92% stmts / 93.5% lines / 90% funcs / 85% branches
                       # a ratchet -- raise it, never lower it to make a run pass
 pnpm typecheck        # main, renderer and renderer-test tsconfigs, the studio, the plugin
@@ -38,6 +40,7 @@ pnpm studio           # animation studio on http://127.0.0.1:5180
 pnpm dryrun:scale     # 20 projects x 50 tasks, 60 days, every screen timed (P15b)
 pnpm deck:validate    # build the Stream Deck plugin, run Elgato's validator on it -- in CI
 pnpm deck:pack        # build it into dist/*.streamDeckPlugin
+pnpm agent:build      # the sprintticker command into packages/agent-cli/dist/
 pnpm fonts:build      # compile packages/desktop-app/fonts/*.glyphs into shared/fonts/
 pnpm fonts:check      # fail if a generated font is stale -- this runs in CI
 pnpm fonts:preview "text"   # print text in every font, in the terminal
@@ -52,7 +55,7 @@ meanwhile, and a `v*` tag builds nothing. Until it is back:
 - **Before a push, run what `quality.yml` runs**: `pnpm lint`, `typecheck`,
   `preflight`, `docs:check`, `fonts:check`, `provider:check --fake`,
   `test:coverage` (the app's suite under the floor), `test:studio`,
-  `test:deck` and `deck:validate`.
+  `test:deck`, `test:agent` and `deck:validate`.
 - **A release is `build-windows.yml` by hand.** The version in both
   `package.json` files (the user's, and `preflight` holds them equal);
   `pnpm package:win` from the tagged commit, with LFS objects present;

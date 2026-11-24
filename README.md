@@ -509,11 +509,11 @@ pnpm test
 pnpm test:coverage
 ```
 
-`pnpm test` runs 3963 tests across 199 files for the app -- the main and shared
+`pnpm test` runs 4065 tests across 201 files for the app -- the main and shared
 process code, plus the renderer's views mounted in jsdom (the renderer is not
-counted in coverage) -- then the animation studio's 117 across 6 files, then
-the Stream Deck plugin's 320 across 8;
-`pnpm test:studio` and `pnpm test:deck` each run one of the latter. `pnpm test:coverage` enforces a
+counted in coverage) -- then the animation studio's 117 across 6 files, the
+Stream Deck plugin's 320 across 8, and the AI agent client's 24 in 1;
+`pnpm test:studio`, `pnpm test:deck` and `pnpm test:agent` each run one of the latter. `pnpm test:coverage` enforces a
 threshold floor of 92% statements / 93.5% lines / 90% functions / 85%
 branches.
 
@@ -631,6 +631,18 @@ builds it and runs Elgato's own validator on it, as CI does.
 
 ---
 
+## 🤖 AI agents
+
+`packages/agent-cli` is the `sprintticker` command and its MCP server, through
+which Claude Code or Claude desktop asks the running app what you worked on:
+`sprintticker day yesterday`, `sprintticker week last-week`, `sprintticker
+check`. Turn it on in **Settings › Data › AI agents** and give the agent the
+token there. It asks the app over its local port and never opens the
+database. Its [README](packages/agent-cli/README.md) lists the commands; the
+design is [AGENT-INTERFACE.md](Documentation/AGENT-INTERFACE.md).
+
+---
+
 ## 🧰 Tools
 
 - **Animation studio** — `pnpm studio` serves a scene editor at
@@ -709,7 +721,8 @@ SprintTicker/
 ├── packages/
 │   ├── desktop-app/       # Electron 44 + React 19 + Vite 8 + Vitest 5 + Tailwind + SQLite
 │   ├── anim-studio/       # Animation scene editor, Vite + TypeScript (pnpm studio)
-│   └── streamdeck-plugin/ # Elgato Stream Deck plugin (pnpm deck:pack)
+│   ├── streamdeck-plugin/ # Elgato Stream Deck plugin (pnpm deck:pack)
+│   └── agent-cli/         # The sprintticker command and MCP server, for AI agents
 ├── Animations/            # Our full-screen animations: PNG frames (LFS) + .anim
 ├── Documentation/         # User guide, architecture, API reference, hardware guide
 ├── docs/                  # Generated: those three as one page (GitHub Pages)

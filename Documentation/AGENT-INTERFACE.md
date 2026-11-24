@@ -1,6 +1,7 @@
 # An interface for AI agents
 
-**Status:** decided 2026-11-24, being built (phases A1-A5 below). First
+**Status:** decided 2026-11-24, being built: A1-A3 done (the app's reads,
+the command, the MCP server); A4 and A5 to come. First
 written as a proposal on 2026-11-13; the user's answers are in section 9.
 
 The goal: an LLM agent -- Claude Code, or Claude desktop's chat -- answers

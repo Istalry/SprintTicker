@@ -279,6 +279,56 @@ export default tseslint.config(
   },
 
   {
+    // The AI agent's client: the sprintticker command and its MCP server
+    // (AGENT-INTERFACE.md). Its own Node process, run by the app's executable
+    // under ELECTRON_RUN_AS_NODE, so floating promises are errors as in main.
+    // It imports the agent protocol and nothing else of the app: every rule
+    // an answer needs is the app's, and the bundle ships beside the app,
+    // where nothing of main or the renderer can run.
+    files: ['packages/agent-cli/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        project: ['./packages/agent-cli/tsconfig.json'],
+        tsconfigRootDir: import.meta.dirname
+      }
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/desktop-app/src/main/**', '**/desktop-app/src/renderer/**', '**/desktop-app/src/preload/**', 'electron', 'react'],
+              message: 'The agent client may import only desktop-app/src/shared/agent-protocol.ts. See Documentation/AGENT-INTERFACE.md.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
+    // Its tests run the command against the app's real local server and agent routes.
+    files: ['packages/agent-cli/tests/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/desktop-app/src/renderer/**', 'electron', 'react'],
+              message: 'The agent client tests may use the app server, never the renderer or Electron.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  {
     // Its tests run the plugin's link against the app's real socket server,
     // which lives in main; the renderer and Electron stay out of reach.
     files: ['packages/streamdeck-plugin/tests/**/*.ts'],

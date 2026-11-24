@@ -1,0 +1,19 @@
+{
+  "name": "@sprintticker/agent-cli",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The sprintticker command and MCP server: how an AI agent asks the running SprintTicker app",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
