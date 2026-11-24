@@ -1210,7 +1210,8 @@ Ordered; each says what has to be true first.
   start, stop, done, pause, resume -- through the window's own commands,
   with the ten-second Undo. On 2.0.1-rc2 (2026-11-24) the installed
   command read the user's day and `claude mcp list` shows it connected.
-  **Left:** the user's trial from Claude Code and Claude desktop.
+  Released in 2.0.1 (2026-11-24). **Left:** the user's trial from Claude
+  Code and Claude desktop.
 
 - **Stream Deck Mini, as an alternative to the bar** (planned 2026-10-16,
   revised 2026-10-22). The target is the six-key Mini: no dial, no screen,
