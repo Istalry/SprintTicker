@@ -733,8 +733,11 @@ note in Jira.
 
 ✂️ **Split an entry in two** with **Split in two…** in Correct, for the time
 you forgot to switch: slide to the moment you switched, by the minute, and
-pick the task the rest goes to -- nothing is chosen for you. The first part
-stays on its task and the rest becomes a new entry with the same note. Jira
+pick the task the rest goes to -- nothing is chosen for you. It can be work
+of your own: search for it by its name, or type a new name and choose
+*A task of my own named "…"*; that part stays in SprintTicker, never sent.
+The first part stays on its task and the rest becomes a new entry with the
+same note. Jira
 or OpenProject gets the first entry shortened, then the second as a new one,
 in that order, so it never holds the same minutes twice; a shortening it
 refuses keeps the second from being sent. Undo is there for ten seconds, and

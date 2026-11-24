@@ -699,7 +699,8 @@ async function startApplication(): Promise<void> {
       // A move follows the engine's rules for where time goes.
       getTask: taskId => taskRepo.getTaskById(taskId),
       destinationOf: taskId => engine!.sendDestinationOfTask(taskId),
-      retireAdHocIfUnused: taskId => engine!.retireAdHocTaskIfUnused(taskId)
+      retireAdHocIfUnused: taskId => engine!.retireAdHocTaskIfUnused(taskId),
+      createOwnTask: (title, taskId) => engine!.createOwnTask(title, taskId)
     }),
     windowsNotificationService,
     providerManager,

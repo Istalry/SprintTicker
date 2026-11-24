@@ -150,7 +150,8 @@ const electronAPI: IElectronAPI = {
   getWorklogsRange: (from: string, to: string) => ipcRenderer.invoke(IPCChannel.GET_WORKLOGS_RANGE, from, to),
   exportWorklogsCsv: (from: string, to: string) => ipcRenderer.invoke(IPCChannel.EXPORT_WORKLOGS_CSV, from, to),
   getWeekChanges: (day: string) => ipcRenderer.invoke(IPCChannel.GET_WEEK_CHANGES, day),
-  splitWorklog: (worklogId: string, atUtc: string, taskId: string) => ipcRenderer.invoke(IPCChannel.SPLIT_WORKLOG, worklogId, atUtc, taskId),
+  splitWorklog: (worklogId: string, atUtc: string, target: string | { ownTitle: string }) =>
+    ipcRenderer.invoke(IPCChannel.SPLIT_WORKLOG, worklogId, atUtc, target),
   getUnsortedWorklogs: () => ipcRenderer.invoke(IPCChannel.GET_UNSORTED_WORKLOGS),
   starTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.STAR_TASK, taskId),
   unstarTask: (taskId: string) => ipcRenderer.invoke(IPCChannel.UNSTAR_TASK, taskId),

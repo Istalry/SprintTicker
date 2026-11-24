@@ -61,6 +61,12 @@ export interface TaskPickerProps {
   keepOffMeaning?: string;
   /** Its own window (`#picker`): fills it, with no overlay behind. */
   asWindow?: boolean;
+  /**
+   * Work of the user's own is a place for the time too, in a mode that
+   * otherwise wants a provider's task: Split's rest (2026-11-24). Lists
+   * the own tasks and offers a new one.
+   */
+  ownWork?: boolean;
 }
 
 /**
@@ -122,7 +128,8 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
   onKeepOff,
   keepOffMeaning,
   asWindow = false,
-  runningTaskId = null
+  runningTaskId = null,
+  ownWork = false
 }) => {
   const { capabilities, providerName } = useProviderCapabilities();
   const [visibility, setVisibility] = useTaskVisibility();
@@ -151,7 +158,8 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     return () => { live = false; };
   }, []);
 
-  const realOnly = needsRealTask(mode);
+  const realOnly = needsRealTask(mode) && !ownWork;
+  const offersOwn = offersOwnTask(mode) || ownWork;
   const usable = (task: TaskDTO) => (!realOnly || task.projectId !== ADHOC_PROJECT_ID) && !(mode === 'switch' && task.id === runningTaskId);
   const snapshot = data ?? EMPTY_DATA;
   const { visible: tasks, hiddenCount } = visibleTasks(snapshot.tasks, visibility);
@@ -194,9 +202,15 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
         rows.push({ kind: 'more', project: group.project, count: group.tasks.length - PICKER_SEARCH_PER_PROJECT });
       }
     }
+    // Own work is in no project the search groups by: its own heading.
+    const ownFound = offersOwn ? (snapshot.own ?? []).filter(t => matchesSearch(t, trimmed)) : [];
+    if (ownFound.length > 0) {
+      rows.push({ kind: 'heading', label: 'Your own work', count: ownFound.length });
+      pushTasks(ownFound.slice(0, PICKER_SEARCH_PER_PROJECT));
+    }
     const found = rows.some(r => r.kind === 'task');
     if (!found && looksLikeTaskKey(trimmed) && capabilities?.canFetchByKey) rows.push({ kind: 'fetch', key: trimmed.toUpperCase() });
-    if (offersOwnTask(mode)) rows.push({ kind: 'own', title: trimmed });
+    if (offersOwn) rows.push({ kind: 'own', title: trimmed });
   } else {
     if (mode === 'switch' && snapshot.previous && usable(snapshot.previous)) {
       rows.push({ kind: 'task', task: snapshot.previous, note: 'previous task' });
@@ -239,7 +253,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
         rows.push({ kind: 'project', project: p, note: `${counts.total} tasks · ${counts.inProgress} in progress` });
       }
     }
-    if (offersOwnTask(mode)) rows.push({ kind: 'own', title: '' });
+    if (offersOwn) rows.push({ kind: 'own', title: '' });
   }
 
   const actionable = rows.filter(isActionable);
@@ -408,7 +422,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
               onClick={() => pick({ ownTitle: ownTitle.trim() })}
               className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-green text-dark-900 disabled:bg-dark-700 disabled:text-text-secondary"
             >
-              Start it
+              {mode === 'start' || mode === 'switch' ? 'Start it' : 'Choose it'}
             </button>
           </div>
         </div>

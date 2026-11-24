@@ -53,7 +53,8 @@ describe('Adding time by hand, and splitting an entry', () => {
     const targets: WorklogMoveTargets = {
       getTask: taskId => tasks.getTaskById(taskId),
       destinationOf: taskId => DESTINATIONS[taskId] ?? null,
-      retireAdHocIfUnused: () => undefined
+      retireAdHocIfUnused: () => undefined,
+      createOwnTask: (title, taskId) => tasks.createAdHocTask(title, 'ADHOC', false, taskId)
     };
     service = new WorklogCorrectionService(worklogs, manager, dispatch, Date.now, targets);
   });
@@ -241,11 +242,43 @@ describe('Adding time by hand, and splitting an entry', () => {
     expect(queue().map(r => r.task_id)).toEqual(['T-1']);
   });
 
+  it('Split_OnWorkOfTheUsersOwn_TheRestKeptHere', () => {
+    const original = twoHours();
+
+    const { second } = service.split(original.id, { atUtc: at(11), taskId: ADHOC });
+
+    expect(second).toMatchObject({ taskId: ADHOC, durationSeconds: 60 * MINUTE, syncState: 'local' });
+    expect(queue().map(r => r.task_id)).toEqual(['T-1']);
+  });
+
+  it('Split_OnNewWorkOfTheUsersOwn_MadeUnderTheIdGiven_TheRestKeptHere', () => {
+    const original = twoHours();
+
+    const { second } = service.split(original.id, { atUtc: at(11), ownTitle: ' Code review ' }, 'wl_second', 'adhoc_new');
+
+    expect(tasks.getTaskById('adhoc_new')).toMatchObject({ title: 'Code review', projectId: 'ADHOC' });
+    expect(second).toMatchObject({ taskId: 'adhoc_new', durationSeconds: 60 * MINUTE, syncState: 'local' });
+    expect(queue().map(r => r.task_id)).toEqual(['T-1']);
+  });
+
+  it('Split_NewOwnWorkButTheMomentRefused_NoTaskMade', () => {
+    const original = twoHours();
+
+    expect(() => service.split(original.id, { atUtc: at(10), ownTitle: 'Code review' }, 'wl_second', 'adhoc_new')).toThrow(/between its start/);
+
+    expect(tasks.getTaskById('adhoc_new')).toBeNull();
+  });
+
+  it('Split_NeitherATaskNorAName_Refused', () => {
+    const original = twoHours();
+
+    expect(() => service.split(original.id, { atUtc: at(11), ownTitle: '   ' })).toThrow(/taskId/);
+  });
+
   it.each([
     ['at its start', at(10), 'T-2', /between its start and its end/],
     ['after its end', at(12, 30), 'T-2', /between its start and its end/],
     ['no moment', 'soon', 'T-2', /Choose when/],
-    ['on ad-hoc work', at(11), ADHOC, /not on ad-hoc work/],
     ['on an unknown task', at(11), 'NOPE', /No task NOPE/],
     ['leaving the rest under the floor of the provider', new Date(Date.parse(at(12)) - 30_000).toISOString(), 'T-2', /at least|minute/]
   ])('Split_%s_RefusedAndNothingChanged', (_name, atUtc, taskId, why) => {

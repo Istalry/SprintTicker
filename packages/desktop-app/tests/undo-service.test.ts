@@ -183,7 +183,8 @@ describe('undoable commands', () => {
     const corrections = new WorklogCorrectionService(worklogs, manager, () => engine.getSyncWorker().dispatchAfterHold(), Date.now, {
       getTask: id => tasks.getTaskById(id),
       destinationOf: id => engine.sendDestinationOfTask(id),
-      retireAdHocIfUnused: id => engine.retireAdHocTaskIfUnused(id)
+      retireAdHocIfUnused: id => engine.retireAdHocTaskIfUnused(id),
+      createOwnTask: (title, id) => engine.createOwnTask(title, id)
     });
     edits = { db: dbConn.getDb(), undo, worklogs, corrections, onRestored: vi.fn() };
   });
@@ -409,6 +410,29 @@ describe('undoable commands', () => {
       expect(worklogs.getWorklogById(before.id)?.durationSeconds).toBe(before.durationSeconds);
       expect(worklogs.getWorklogById(second.id)).toBeNull();
       expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }]);
+    });
+
+    it('SplitOntoNewOwnWorkThenUndo_TheOwnWorkGoneToo', async () => {
+      const before = await sentWorklog();
+      const at = new Date(Date.parse(before.startedAtUtc) + 10 * 60_000).toISOString();
+
+      const { second } = splitUndoably(edits, before.id, { atUtc: at, ownTitle: 'Code review' });
+      const own = tasks.getTaskById(second.taskId);
+      expect(own).toMatchObject({ title: 'Code review', projectId: 'ADHOC' });
+      // The shortening goes to Jira; the rest, own work, goes nowhere.
+      expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }, { operation: 'UPDATE', status: 'PENDING' }]);
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(second.id)).toBeNull();
+      expect(tasks.getTaskById(second.taskId)).toBeNull();
+      expect(worklogs.getWorklogById(before.id)?.durationSeconds).toBe(before.durationSeconds);
+    });
+
+    it('SendDestinationOfTask_OwnWork_None_NeverTheActiveProvider', () => {
+      const own = engine.createOwnTask('Code review');
+
+      expect(engine.sendDestinationOfTask(own.id)).toBeNull();
+      expect(engine.sendDestinationOfTask(A.id)).not.toBeNull();
     });
 
     it('DeleteThenUndo_BringsItBack', async () => {

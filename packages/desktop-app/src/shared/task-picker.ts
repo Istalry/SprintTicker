@@ -32,6 +32,12 @@ export interface PickerDataDTO {
   starred: TaskDTO[];
   /** Every task the lists hold, whoever's, across projects; no ad-hoc work. */
   tasks: TaskDTO[];
+  /**
+   * The user's own work (ad-hoc tasks), newest first: found by the search
+   * wherever the picker offers "A task of my own" (2026-11-24). Absent from
+   * an answer of a version before it.
+   */
+  own?: TaskDTO[];
   projects: ProjectDTO[];
   /** Seconds logged per project over the last `PICKER_USAGE_DAYS`: "most used". */
   projectSeconds: Record<string, number>;

@@ -106,7 +106,10 @@ export function checkWorklogCorrection(
 /** Where an entry is split (S16c, P9e): the moment, and the task the second piece goes to. */
 export interface WorklogSplitDTO {
   atUtc: string;
-  taskId: string;
+  /** The task the rest goes on: a provider's, a project made here, or work of the user's own. */
+  taskId?: string;
+  /** Or new work of the user's own, by its name: its time stays here (2026-11-24). */
+  ownTitle?: string;
 }
 
 /**

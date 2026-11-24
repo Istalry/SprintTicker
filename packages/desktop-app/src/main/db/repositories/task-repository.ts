@@ -278,6 +278,19 @@ export class TaskRepository {
   }
 
   /**
+   * The user's own work still listed, newest first: what the picker's
+   * search finds where it offers "A task of my own". Interruptions not yet
+   * named (`unsorted`) are left out, as `getAllListed` leaves them out.
+   */
+  public getOwnListed(): TaskDTO[] {
+    return this.dbConn.getDb().prepare<[string], TaskRow>(
+      `SELECT ${TASK_COLUMNS} FROM tasks
+        WHERE archived_at_utc IS NULL AND unsorted = 0 AND project_id = ?
+        ORDER BY created_at_utc DESC`
+    ).all(ADHOC_PROJECT_ID).map(r => TaskRepository.toDto(r));
+  }
+
+  /**
    * The listed ad-hoc task with this title, if there is one: the most recent.
    * For a task started on the user's behalf every day, which would otherwise
    * leave a new row in the ad-hoc list each morning.
@@ -299,12 +312,16 @@ export class TaskRepository {
    * waits for the user to name it or move its time (migration 13). Never
    * written by `saveTask`, so a later save of the row keeps it.
    */
-  public createAdHocTask(customTitle: string, adHocKey: string = PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY], unsorted: boolean = false): TaskDTO {
+  public createAdHocTask(
+    customTitle: string,
+    adHocKey: string = PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.FALLBACK_TICKET_KEY],
+    unsorted: boolean = false,
+    taskId: string = createId(IdPrefix.ADHOC_TASK)
+  ): TaskDTO {
     if (!customTitle) {
       throw new Error('Custom title is required for ad-hoc task creation');
     }
 
-    const taskId = createId(IdPrefix.ADHOC_TASK);
     const adHocTask: TaskDTO = {
       id: taskId,
       projectId: ADHOC_PROJECT_ID,

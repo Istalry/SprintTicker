@@ -1624,7 +1624,10 @@ fallback would ask Jira about a local id and read its 404 as `gone`.
 **Ad-hoc time is never queued.** It has no ticket on any provider: queued
 for the active one, Jira was asked to log time on an issue called
 `adhoc_...`, answered 404, and the row ended in the failed queue. It stays
-in local history.
+in local history. **Ask `sendDestinationOfTask`, never the project's
+provider**: the ADHOC project names none, which reads as "not known" and
+falls back to the active provider. It answered an ad-hoc task with Jira
+until Split began accepting own work (2026-11-24); it now answers null.
 
 **A SprintTicker server's optional parts are properties, attached from
 `/capabilities`** (`CustomServerProvider.applyCapabilities`). The window

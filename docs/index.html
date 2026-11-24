@@ -1250,8 +1250,11 @@
       note in Jira.</p>
       <p>✂️ <strong>Split an entry in two</strong> with <strong>Split in two…</strong> in Correct, for the time
       you forgot to switch: slide to the moment you switched, by the minute, and
-      pick the task the rest goes to -- nothing is chosen for you. The first part
-      stays on its task and the rest becomes a new entry with the same note. Jira
+      pick the task the rest goes to -- nothing is chosen for you. It can be work
+      of your own: search for it by its name, or type a new name and choose
+      <em>A task of my own named &quot;…&quot;</em>; that part stays in SprintTicker, never sent.
+      The first part stays on its task and the rest becomes a new entry with the
+      same note. Jira
       or OpenProject gets the first entry shortened, then the second as a new one,
       in that order, so it never holds the same minutes twice; a shortening it
       refuses keeps the second from being sent. Undo is there for ten seconds, and
@@ -2538,8 +2541,8 @@
       session runs (<code>windowPickerWanted</code>), or a START on the bar opened two.</p>
       <p><strong>The window has one task picker</strong> (<code>TaskPicker</code>, redesign P7) for Start,
       Switch, Assign, Place and Move. It reads one snapshot (<code>tasks:get-picker</code>:
-      previous, recent, starred, every listed task, projects, time per project)
-      and groups it with the pure rules of <code>shared/task-picker.ts</code> -- the groups&#39;
+      previous, recent, starred, every listed task, the user&#39;s own work,
+      projects, time per project) and groups it with the pure rules of <code>shared/task-picker.ts</code> -- the groups&#39;
       order, search across projects, a project key and a space, what looks like a
       key -- within the lists&#39; order (<code>task-order.ts</code>) and visibility
       (<code>task-visibility.ts</code>). Fetch by key (<code>tasks:fetch-by-key</code>) asks the active
@@ -2549,7 +2552,9 @@
       <code>session:start-task</code> and <code>interruption:switch</code> refuse it, the picker window
       will not open in <code>start</code> mode (<code>PickerWindowManager</code>&#39;s <code>refuses</code>), and the
       deck&#39;s <code>open-picker</code> and <code>start-recent</code> answer <code>no-task</code>. The interruption
-      ends first, by Back, Stop or Discard.</p>
+      ends first, by Back, Stop or Discard. Split in two passes <code>ownWork</code>: its
+      rest may go on work of the user&#39;s own, an existing one or a new one named
+      in the picker, though Move mode otherwise wants a provider&#39;s task.</p>
       <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
       (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
       quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
@@ -4270,7 +4275,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks:get-picker</code></td>
-      <td align="left">Everything the task picker lists, in one read: <code>{ previous, recent, starred, tasks, projects, projectSeconds }</code>. <code>tasks</code> is every task the lists hold, whoever&#39;s and across projects, without ad-hoc work or archived tasks; <code>projectSeconds</code> is the time logged per project over the last 30 days, which orders &quot;most used&quot;</td>
+      <td align="left">Everything the task picker lists, in one read: <code>{ previous, recent, starred, tasks, own, projects, projectSeconds }</code>. <code>tasks</code> is every task the lists hold, whoever&#39;s and across projects, without ad-hoc work or archived tasks; <code>own</code> is the user&#39;s own work still listed, newest first, which the search finds wherever the picker offers &quot;A task of my own&quot;; <code>projectSeconds</code> is the time logged per project over the last 30 days, which orders &quot;most used&quot;</td>
       </tr>
       <tr>
       <td align="left"><code>tasks:fetch-by-key</code></td>
@@ -4331,7 +4336,7 @@
       </tr>
       <tr>
       <td align="left"><code>worklog:split</code></td>
-      <td align="left"><code>(worklogId, atUtc, taskId)</code>. Split in two (S16c, <code>WorklogCorrectionService.split</code>): the worklog shortened to end at <code>atUtc</code> -- a correction, through the queue -- and the rest a new worklog on <code>taskId</code>, from the same session and with the same note, whose first send waits for the shortening (<code>origin_sync_id</code> on its <code>CREATE</code>). Undo for ten seconds (<code>Split MG-12 · 2h 00m</code>) puts the entry back whole. Answers <code>{ first, second }</code> and resends <code>worklog:on-updated</code>. Rejects with the reason: a moment not inside the entry (<code>splitPieces</code>), ad-hoc work or an unknown task, or a piece under its provider&#39;s floor</td>
+      <td align="left"><code>(worklogId, atUtc, target)</code>, <code>target</code> a task id or <code>{ ownTitle }</code>. Split in two (S16c, <code>WorklogCorrectionService.split</code>): the worklog shortened to end at <code>atUtc</code> -- a correction, through the queue -- and the rest a new worklog on the task, or on new work of the user&#39;s own made under that name (the engine&#39;s <code>createOwnTask</code>, in the same transaction, under an id the undo covers), from the same session and with the same note, whose first send waits for the shortening (<code>origin_sync_id</code> on its <code>CREATE</code>). Undo for ten seconds (<code>Split MG-12 · 2h 00m</code>) puts the entry back whole. Answers <code>{ first, second }</code> and resends <code>worklog:on-updated</code>. Rejects with the reason: a moment not inside the entry (<code>splitPieces</code>), an unknown task or neither a task nor a name, or a piece under its provider&#39;s floor. The rest on work of the user&#39;s own is never queued</td>
       </tr>
       <tr>
       <td align="left"><code>worklog:create-manual</code></td>

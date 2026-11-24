@@ -3,7 +3,14 @@ import { ProviderManager } from '../providers/provider-manager';
 import { ITaskProvider } from '../providers/task-provider-interface';
 import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
 import { ArgumentException, ArgumentNullException, TaskDTO } from '../../shared/dtos';
-import { checkManualWorklog, checkWorklogCorrection, ManualWorklogDTO, splitPieces, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import {
+  checkManualWorklog,
+  checkWorklogCorrection,
+  ManualWorklogDTO,
+  splitPieces,
+  WorklogCorrectionDTO,
+  WorklogSplitDTO
+} from '../../shared/worklog-correction';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
 
 /** Where time logged on a task is queued, and the least that provider records. */
@@ -17,6 +24,8 @@ export interface WorklogMoveTargets {
   getTask(taskId: string): TaskDTO | null;
   /** Null for a project made in SprintTicker, whose time stays here. */
   destinationOf(taskId: string): SendDestination | null;
+  /** New work of the user's own under this id, for a split's rest: its time stays here. */
+  createOwnTask?(title: string, taskId: string): TaskDTO;
   /** Retires an ad-hoc task once nothing is logged on it, as an assigned interruption's is. */
   retireAdHocIfUnused(taskId: string): void;
 }
@@ -303,37 +312,52 @@ export class WorklogCorrectionService {
    * gets the first entry shortened and the second as a new one, in that
    * order, and never the same minutes on both.
    *
+   * The rest may go on work of the user's own -- an existing ad-hoc task,
+   * or new one named `ownTitle` -- and then stays here, queued nowhere.
+   *
    * @throws ArgumentException when the moment is outside the entry, the
-   *   task is ad-hoc or unknown, or a piece is shorter than its provider
-   *   records.
+   *   task is unknown, or a piece is shorter than its provider records.
    */
-  public split(worklogId: string, split: { atUtc: string; taskId: string }, secondId: string = createId(IdPrefix.WORKLOG)): {
+  public split(
+    worklogId: string,
+    split: WorklogSplitDTO,
+    secondId: string = createId(IdPrefix.WORKLOG),
+    ownTaskId: string = createId(IdPrefix.ADHOC_TASK)
+  ): {
     first: WorklogRecord;
     second: WorklogRecord;
   } {
     if (!worklogId) throw new ArgumentNullException('worklogId');
-    if (!split?.taskId) throw new ArgumentNullException('taskId');
+    const ownTitle = split?.ownTitle?.trim() ?? '';
+    if (!split?.taskId && !ownTitle) throw new ArgumentNullException('taskId');
     if (!this._targets) throw new Error('Splitting an entry is unavailable.');
+    const targets = this._targets;
     const worklog = this._worklogs.getWorklogById(worklogId);
     if (!worklog) throw new ArgumentException(`No worklog ${worklogId}.`, 'worklogId');
     const pieces = splitPieces(worklog, split.atUtc);
     if (typeof pieces === 'string') throw new ArgumentException(pieces, 'atUtc');
-    if (isAdHocTaskId(split.taskId)) throw new ArgumentException('Put the rest on a task, not on ad-hoc work.', 'taskId');
-    if (!this._targets.getTask(split.taskId)) throw new ArgumentException(`No task ${split.taskId}.`, 'taskId');
+    // Work of the user's own is a place for the rest too (the user's
+    // request, 2026-11-24): its time stays here. New own work is made in
+    // the split's transaction, under an id the caller's undo covers.
+    if (ownTitle && !targets.createOwnTask) throw new Error('Splitting onto new work of your own is unavailable.');
+    if (!ownTitle && !targets.getTask(split.taskId!)) throw new ArgumentException(`No task ${split.taskId}.`, 'taskId');
+    const targetId = ownTitle ? ownTaskId : split.taskId!;
 
     const comment = worklog.adHoc && worklog.taskTitle ? worklog.taskTitle : worklog.comment;
     const second: ManualWorklogDTO = {
-      taskId: split.taskId,
+      taskId: targetId,
       durationSeconds: pieces.secondSeconds,
       startedAtUtc: new Date(Date.parse(worklog.startedAtUtc) + pieces.firstSeconds * 1000).toISOString(),
       comment
     };
-    const destination = this._targets.destinationOf(split.taskId);
+    // Own work names no provider: never ask, which would answer the active one.
+    const destination = ownTitle || isAdHocTaskId(targetId) ? null : targets.destinationOf(targetId);
     // The note is kept as it is, even empty: it is the entry's own, not added time's.
     const refusal = checkManualWorklog({ ...second, comment: comment || WORKLOG_COMMENTS.ADDED }, this._now(), destination?.minimumSeconds ?? 1);
     if (refusal) throw new ArgumentException(refusal);
 
     this.transaction(() => {
+      if (ownTitle) targets.createOwnTask!(ownTitle, ownTaskId);
       this.correct(worklogId, { durationSeconds: pieces.firstSeconds, startedAtUtc: worklog.startedAtUtc, comment: worklog.comment });
       // The row the provider must have before the second piece: the
       // shortening, when the entry was sent and an UPDATE now carries it.

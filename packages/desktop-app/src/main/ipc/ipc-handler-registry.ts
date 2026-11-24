@@ -5,7 +5,7 @@ import { INITIAL_SYNC_HEALTH } from '../../shared/sync-health';
 import type { FirstRunService } from '../services/first-run-service';
 import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../../shared/first-run';
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
-import { ManualWorklogDTO, WorklogCorrectionDTO } from '../../shared/worklog-correction';
+import { ManualWorklogDTO, WorklogCorrectionDTO, WorklogSplitDTO } from '../../shared/worklog-correction';
 import { worklogsToCsv } from '../../shared/worklog-csv';
 import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
@@ -659,6 +659,7 @@ export class IPCHandlerRegistry {
         recent: this.taskRepo.getRecent(RECENT_TASKS_LIMIT),
         starred: this.taskRepo.getStarred(),
         tasks: this.taskRepo.getAllListed(),
+        own: this.taskRepo.getOwnListed(),
         projects: this.projectRepo.getAllProjects(),
         projectSeconds: this.taskRepo.getProjectSecondsSince(since)
       };
@@ -1273,13 +1274,14 @@ export class IPCHandlerRegistry {
     });
 
     // Split in two (S16c): the entry shortened, then the rest on the task chosen, both through the queue.
-    ipcMain.handle(IPCChannel.SPLIT_WORKLOG, async (_event, worklogId: unknown, atUtc: unknown, taskId: unknown) => {
+    ipcMain.handle(IPCChannel.SPLIT_WORKLOG, async (_event, worklogId: unknown, atUtc: unknown, target: unknown) => {
       if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
-      if (typeof worklogId !== 'string' || !worklogId || typeof atUtc !== 'string' || typeof taskId !== 'string' || !taskId) {
-        throw new ArgumentException('A split needs a worklog id, a moment and a task id.');
+      const split = splitTarget(atUtc, target);
+      if (typeof worklogId !== 'string' || !worklogId || !split) {
+        throw new ArgumentException('A split needs a worklog id, a moment and a task id or a name.');
       }
       const edits = this.worklogEdits();
-      const pieces = edits ? splitUndoably(edits, worklogId, { atUtc, taskId }) : this.worklogCorrections.split(worklogId, { atUtc, taskId });
+      const pieces = edits ? splitUndoably(edits, worklogId, split) : this.worklogCorrections.split(worklogId, split);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return pieces;
     });
@@ -1683,4 +1685,16 @@ export class IPCHandlerRegistry {
       win.webContents.send(channel, payload);
     }
   }
+}
+
+/**
+ * Where a split's rest goes, as the bridge sends it: a task id, or
+ * `{ ownTitle }` for new work of the user's own. Null when neither.
+ */
+function splitTarget(atUtc: unknown, target: unknown): WorklogSplitDTO | null {
+  if (typeof atUtc !== 'string') return null;
+  if (typeof target === 'string' && target) return { atUtc, taskId: target };
+  const ownTitle = (target as { ownTitle?: unknown } | null)?.ownTitle;
+  if (typeof ownTitle === 'string' && ownTitle.trim()) return { atUtc, ownTitle };
+  return null;
 }

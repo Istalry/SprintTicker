@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Split in two can put the rest on work of your own.** Its task picker
+  left out your own tasks and offered no new one, so time worked on
+  something with no ticket could not be split off. It now finds your own
+  work by its name and offers *A task of my own named "…"*; that part stays
+  in SprintTicker, never sent, and Undo takes a task it made away again.
+  Your own work is found by the search wherever the picker offers a task of
+  your own, Start and Switch too.
+
 ## 2.0.0 — 2026-11-19
 
 SprintTicker, redesigned. The window has four places -- Today, Tasks,

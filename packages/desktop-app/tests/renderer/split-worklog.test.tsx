@@ -65,6 +65,37 @@ describe('Split in two', () => {
     await waitFor(() => expect(bridge.api.getWorklogsByDate).toHaveBeenCalledTimes(3));
   });
 
+  it('WorkOfMyOwn_Found_SplitsThere_TheRestStaysHere', async () => {
+    const own = { id: 'adhoc_7', projectId: 'ADHOC', key: 'ADHOC', title: 'Code review', status: 'todo' };
+    const bridge = await openSplit(ENTRY, {
+      getPickerData: vi.fn().mockResolvedValue({ previous: null, recent: [], starred: [], tasks: [], own: [own], projects: [], projectSeconds: {} })
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Split in two…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Split in two' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Choose a task ▾' }));
+
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'code' } });
+    fireEvent.click(await screen.findByText('Code review'));
+    expect(within(dialog).getByText(/the second is kept in SprintTicker only/)).toBeTruthy();
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Split' }));
+
+    await waitFor(() => expect(bridge.api.splitWorklog).toHaveBeenCalledWith('w1', expect.any(String), 'adhoc_7'));
+  });
+
+  it('NewWorkOfMyOwn_Named_SplitsOntoIt', async () => {
+    const bridge = await openSplit();
+    fireEvent.click(screen.getByRole('button', { name: 'Split in two…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Split in two' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Choose a task ▾' }));
+
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'Team sync' } });
+    fireEvent.click(await screen.findByText(/A task of my own named/));
+    expect(within(dialog).getByRole('button', { name: /Team sync \(new, your own\)/ })).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Split' }));
+
+    await waitFor(() => expect(bridge.api.splitWorklog).toHaveBeenCalledWith('w1', expect.any(String), { ownTitle: 'Team sync' }));
+  });
+
   it('Refused_SaysWhy_AndStays', async () => {
     await openSplit(ENTRY, { splitWorklog: vi.fn().mockRejectedValue(new Error("Error invoking remote method 'worklog:split': Error: The provider records at least 1 minute(s).")) });
     fireEvent.click(screen.getByRole('button', { name: 'Split in two…' }));

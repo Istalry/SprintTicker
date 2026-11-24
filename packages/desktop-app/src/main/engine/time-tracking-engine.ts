@@ -4,6 +4,7 @@ import { WorklogRepository } from '../db/repositories/worklog-repository';
 import { TaskRepository, retireTasks } from '../db/repositories/task-repository';
 import { ProjectRepository } from '../db/repositories/project-repository';
 import { createId, IdPrefix, isAdHocTaskId } from '../db/id-generator';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 import { SettingsRepository } from '../db/repositories/settings-repository';
 import { ActiveSessionDTO, TaskDTO, ProjectDTO, PauseIntervalDTO, ArgumentException, ArgumentNullException } from '../../shared/dtos';
 import { workedSecondsUntil } from '../../shared/session-review';
@@ -1416,7 +1417,19 @@ export class TimeTrackingEngine extends EventEmitter {
   public sendDestinationOfTask(taskId: string): { providerId: string; minimumSeconds: number } | null {
     const task = this._taskRepo.getTaskById(taskId);
     if (!task) throw new ArgumentException(`No task ${taskId}.`, 'taskId');
+    // Ad-hoc time is never queued (CLAUDE.md §7). Its project names no
+    // provider, which reads as "not known" and would pick the active one.
+    if (isAdHocTaskId(taskId) || task.projectId === ADHOC_PROJECT_ID) return null;
     return this.destinationOf({ providerId: this.providerOfProject(task.projectId) });
+  }
+
+  /**
+   * New work of the user's own, named `title`, under their key for it, as
+   * "A task of my own" makes one at a start. `taskId` when the caller must
+   * know it beforehand: an undo's restore point covers its row.
+   */
+  public createOwnTask(title: string, taskId?: string): TaskDTO {
+    return this._taskRepo.createAdHocTask(checkAdHocTitle(title), this.adHocTaskKey(), false, taskId);
   }
 
   /**

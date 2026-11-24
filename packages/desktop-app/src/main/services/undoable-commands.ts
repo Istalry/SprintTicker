@@ -214,13 +214,16 @@ export function addUndoably(deps: WorklogEditDeps, entry: ManualWorklogDTO): Wor
 /** A split in two, held: Undo puts the entry back whole and takes the second piece away, with their sends. */
 export function splitUndoably(deps: WorklogEditDeps, worklogId: string, split: WorklogSplitDTO): { first: WorklogRecord; second: WorklogRecord } {
   const before = worklogOrThrow(deps, worklogId);
-  // Named before it exists, so the restore point covers the rows it adds.
+  // Named before they exist, so the restore point covers the rows they add:
+  // the second entry, and the own work it may go on, which Undo takes away.
   const secondId = createId(IdPrefix.WORKLOG);
+  const ownTaskId = createId(IdPrefix.ADHOC_TASK);
+  const targetId = split.ownTitle?.trim() ? ownTaskId : split.taskId ?? ownTaskId;
   const point = RestorePoint.capture(deps.db, [
-    ...worklogScopes(worklogId, [before.taskId, split.taskId]),
-    ...worklogScopes(secondId, [split.taskId]).slice(1)
+    ...worklogScopes(worklogId, [before.taskId, targetId]),
+    ...worklogScopes(secondId, [targetId]).slice(1)
   ]);
-  const pieces = deps.corrections.split(worklogId, split, secondId);
+  const pieces = deps.corrections.split(worklogId, split, secondId, ownTaskId);
   offerWorklogUndo(deps, point, 'split', undoLabel('split', before.taskKey ?? before.taskId, formatHoursAndMinutes(before.durationSeconds)));
   return pieces;
 }

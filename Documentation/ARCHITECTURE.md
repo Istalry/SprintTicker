@@ -165,8 +165,8 @@ session runs (`windowPickerWanted`), or a START on the bar opened two.
 
 **The window has one task picker** (`TaskPicker`, redesign P7) for Start,
 Switch, Assign, Place and Move. It reads one snapshot (`tasks:get-picker`:
-previous, recent, starred, every listed task, projects, time per project)
-and groups it with the pure rules of `shared/task-picker.ts` -- the groups'
+previous, recent, starred, every listed task, the user's own work,
+projects, time per project) and groups it with the pure rules of `shared/task-picker.ts` -- the groups'
 order, search across projects, a project key and a space, what looks like a
 key -- within the lists' order (`task-order.ts`) and visibility
 (`task-visibility.ts`). Fetch by key (`tasks:fetch-by-key`) asks the active
@@ -176,7 +176,9 @@ nothing** (the user's choice, 2026-11-12): `pickTask` refuses it, main's
 `session:start-task` and `interruption:switch` refuse it, the picker window
 will not open in `start` mode (`PickerWindowManager`'s `refuses`), and the
 deck's `open-picker` and `start-recent` answer `no-task`. The interruption
-ends first, by Back, Stop or Discard.
+ends first, by Back, Stop or Discard. Split in two passes `ownWork`: its
+rest may go on work of the user's own, an existing one or a new one named
+in the picker, though Move mode otherwise wants a provider's task.
 
 **The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
 (`windows/main-window-close.ts`) takes the dashboard's `close`: unless a

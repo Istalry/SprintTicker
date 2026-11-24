@@ -6,6 +6,7 @@ import { splitPieces } from '../../shared/worklog-correction';
 import { formatHoursAndMinutes, formatHoursMinutes, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { TaskPicker } from './TaskPicker';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 
 /** The slider moves by the minute: nobody remembers the second they switched. */
 const SPLIT_STEP_SECONDS = 60;
@@ -25,7 +26,8 @@ export interface SplitWorklogDialogProps {
 /**
  * Split in two (S16c, P9e): for the time the user forgot to switch. The
  * entry ends at the moment chosen and the rest goes on the task picked --
- * nothing is preselected. Main shortens the first, then sends the second
+ * nothing is preselected -- or on work of the user's own, an existing one
+ * or a new one named in the picker, whose time stays here. Main shortens the first, then sends the second
  * once the first has arrived (`worklog:split`), with ten seconds to undo.
  * The note is kept on both. A closed week is warned about, never refused.
  *
@@ -36,6 +38,9 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
   const lastCut = Math.floor((total - 1) / SPLIT_STEP_SECONDS) * SPLIT_STEP_SECONDS;
   const [firstSeconds, setFirstSeconds] = useState(() => Math.max(SPLIT_STEP_SECONDS, Math.round(total / 2 / SPLIT_STEP_SECONDS) * SPLIT_STEP_SECONDS));
   const [task, setTask] = useState<TaskDTO | null>(null);
+  const [ownTitle, setOwnTitle] = useState<string | null>(null);
+  const chosen = task !== null || ownTitle !== null;
+  const restStaysHere = ownTitle !== null || task?.projectId === ADHOC_PROJECT_ID;
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +56,10 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
   const key = worklog.taskKey ?? worklog.taskId;
 
   const split = () => {
-    if (!task || refusal) return;
+    if (!chosen || refusal) return;
     setBusy(true);
     setError(null);
-    window.electronAPI.splitWorklog(worklog.id, atUtc, task.id).then(onDone, err => {
+    window.electronAPI.splitWorklog(worklog.id, atUtc, task ? task.id : { ownTitle: ownTitle! }).then(onDone, err => {
       setError(ipcErrorMessage(err));
       setBusy(false);
     });
@@ -118,7 +123,9 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
                     onClick={() => setPicking(true)}
                     className="px-2.5 py-1 rounded-lg border border-border-dark text-text-primary hover:text-white hover:border-focus"
                   >
-                    {task ? <><span className="font-mono font-bold">{task.key}</span> {task.title} ▾</> : 'Choose a task ▾'}
+                    {task
+                      ? <><span className="font-mono font-bold">{task.key}</span> {task.title} ▾</>
+                      : ownTitle !== null ? <>{ownTitle} <span className="text-text-secondary">(new, your own)</span> ▾</> : 'Choose a task ▾'}
                   </button>
                 </td>
               </tr>
@@ -127,9 +134,7 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
 
           <p className="text-[11px] text-text-secondary leading-relaxed">
             The note is kept on both.{' '}
-            {worklog.syncState === 'local' || worklog.syncState === undefined
-              ? 'The first entry is kept in SprintTicker only.'
-              : `${providerName || 'Your provider'} gets the first entry shortened, then the second as a new one.`}
+            {splitHelp(worklog.syncState === 'local' || worklog.syncState === undefined, restStaysHere, providerName || 'Your provider')}
           </p>
           {isInClosedWeek(worklog.startedAtUtc, lastWeekClosed) && (
             <p role="note" className="text-[11px] text-accent-amber leading-relaxed">{closedWeekWarning(providerName)}</p>
@@ -143,10 +148,10 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
             <button
               type="button"
               onClick={split}
-              disabled={!task || busy || refusal !== null}
+              disabled={!chosen || busy || refusal !== null}
               className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-dark-900 rounded-lg text-xs font-semibold"
             >
-              {task ? 'Split' : 'Choose a task'}
+              {chosen ? 'Split' : 'Choose a task'}
             </button>
           </div>
         </div>
@@ -154,14 +159,29 @@ export const SplitWorklogDialog: React.FC<SplitWorklogDialogProps> = ({ worklog,
       <TaskPicker
         isOpen={picking}
         mode="move"
+        ownWork
         title="Put the rest on a task"
         subtitle={`${clock(atMs)} – ${clock(endMs)}, ${formatHoursAndMinutes(total - firstSeconds)}: its time goes to the task you pick`}
         onClose={() => setPicking(false)}
         onPick={picked => {
-          if (picked.task) setTask(picked.task);
+          if (picked.task) {
+            setTask(picked.task);
+            setOwnTitle(null);
+          } else if (picked.ownTitle) {
+            setTask(null);
+            setOwnTitle(picked.ownTitle);
+          }
           setPicking(false);
         }}
       />
     </>
   );
 };
+
+/** Where each piece's time goes, said under the table. */
+function splitHelp(firstStaysHere: boolean, restStaysHere: boolean, provider: string): string {
+  if (firstStaysHere && restStaysHere) return 'Both entries are kept in SprintTicker only.';
+  if (firstStaysHere) return `The first entry is kept in SprintTicker only; ${provider} gets the second as a new one.`;
+  if (restStaysHere) return `${provider} gets the first entry shortened; the second is kept in SprintTicker only.`;
+  return `${provider} gets the first entry shortened, then the second as a new one.`;
+}

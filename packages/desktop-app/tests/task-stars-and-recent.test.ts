@@ -222,6 +222,16 @@ describe('stars, recent and previous task', () => {
       expect(ids).not.toContain(adHoc.id);
     });
 
+    it('GetOwnListed_TheUsersOwnWork_NoUnnamedInterruptionNoArchived', () => {
+      const kept = tasks.createAdHocTask('Code review');
+      tasks.createAdHocTask('Interruption at 10:02', 'ADHOC', true);
+      const gone = tasks.createAdHocTask('Old errand');
+      retireTasks(dbConn.getDb(), 'id = ?', [gone.id]);
+
+      expect(tasks.getOwnListed().map(t => t.title)).toEqual(['Code review']);
+      expect(tasks.getOwnListed()[0].id).toBe(kept.id);
+    });
+
     it('GetProjectSecondsSince_SumsTheWorklogsOfEachProjectSinceThen', () => {
       start(A);
       vi.setSystemTime(new Date(2026, 10, 10, 9, minute + 10, 0));
