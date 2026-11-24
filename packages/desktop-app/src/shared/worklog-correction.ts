@@ -54,7 +54,24 @@ export type WorklogSyncState =
  * sent like any other.
  */
 export interface ManualWorklogDTO extends WorklogCorrectionDTO {
+  /** Empty when the time goes on new work of the user's own (`ownTitle`). */
   taskId: string;
+  /** New work of the user's own, by its name: its time stays here (2026-11-24). */
+  ownTitle?: string;
+}
+
+/**
+ * Where a move, added time or a split's rest goes, as the bridge sends it:
+ * a task's id -- a provider's, a project made here, or work of the user's
+ * own -- or new work of the user's own by its name.
+ */
+export type WorklogTarget = string | { ownTitle: string };
+
+/** `value` as a target, or null when it is neither a task id nor a name. */
+export function readWorklogTarget(value: unknown): WorklogTarget | null {
+  if (typeof value === 'string') return value ? value : null;
+  const ownTitle = (value as { ownTitle?: unknown } | null)?.ownTitle;
+  return typeof ownTitle === 'string' && ownTitle.trim() ? { ownTitle } : null;
 }
 
 /**
@@ -63,7 +80,7 @@ export interface ManualWorklogDTO extends WorklogCorrectionDTO {
  * worklog does (`splitWork`), since a provider files it under that day.
  */
 export function checkManualWorklog(entry: ManualWorklogDTO, nowMs: number, minimumSeconds: number = 1): string | null {
-  if (!entry.taskId) return 'Choose the task the time goes to.';
+  if (!entry.taskId && !entry.ownTitle?.trim()) return 'Choose the task the time goes to.';
   const refusal = checkWorklogCorrection(entry, nowMs, minimumSeconds);
   if (refusal) return refusal;
   const start = new Date(entry.startedAtUtc);

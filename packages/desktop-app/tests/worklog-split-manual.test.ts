@@ -98,7 +98,6 @@ describe('Adding time by hand, and splitting an entry', () => {
   });
 
   it.each([
-    ['ad-hoc work', entry({ taskId: ADHOC }), /not to ad-hoc/],
     ['an unknown task', entry({ taskId: 'nope' }), /No task/],
     ['no task', entry({ taskId: '' }), /Choose the task/],
     ['too short for the provider', entry({ durationSeconds: 30 }), /at least 1 minute/],
@@ -108,6 +107,26 @@ describe('Adding time by hand, and splitting an entry', () => {
     expect(() => service.add(refused)).toThrow(message);
     expect(dbConn.getDb().prepare('SELECT COUNT(*) AS n FROM worklogs').get()).toEqual({ n: 0 });
     expect(rows()).toEqual([]);
+  });
+
+  it('Add_OnWorkOfTheUsersOwn_KeptHere', () => {
+    expect(service.add(entry({ taskId: ADHOC })).syncState).toBe('local');
+    expect(rows()).toEqual([]);
+  });
+
+  it('Add_OnNewWorkOfTheUsersOwn_MadeUnderTheIdGiven_KeptHere', () => {
+    const added = service.add(entry({ taskId: '', ownTitle: 'Code review' }), 'wl_added', 'adhoc_new');
+
+    expect(tasks.getTaskById('adhoc_new')).toMatchObject({ title: 'Code review', projectId: 'ADHOC' });
+    expect(added).toMatchObject({ taskId: 'adhoc_new', syncState: 'local' });
+    expect(rows()).toEqual([]);
+  });
+
+  it('Add_NewOwnWorkButRefused_NoTaskMade', () => {
+    expect(() => service.add(entry({ taskId: '', ownTitle: 'Code review', startedAtUtc: at(23, 30), durationSeconds: 60 * MINUTE }), 'wl_added', 'adhoc_new'))
+      .toThrow(/ends on the day/);
+
+    expect(tasks.getTaskById('adhoc_new')).toBeNull();
   });
 
   it('Add_UpToMidnight_Accepted', () => {

@@ -222,8 +222,8 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     getRecentTasks: vi.fn().mockResolvedValue([]),
     getPreviousTask: vi.fn().mockResolvedValue(null),
     renameAdHocTask: vi.fn().mockResolvedValue(undefined),
-    moveWorklog: vi.fn().mockImplementation(async (id: string, taskId: string) => ({
-      id, sessionId: 's', taskId, durationSeconds: 900, startedAtUtc: '2026-11-09T09:00:00.000Z', comment: '',
+    moveWorklog: vi.fn().mockImplementation(async (id: string, target: string | { ownTitle: string }) => ({
+      id, sessionId: 's', taskId: typeof target === 'string' ? target : 'adhoc_new', durationSeconds: 900, startedAtUtc: '2026-11-09T09:00:00.000Z', comment: '',
       createdAtUtc: '2026-11-09T09:15:00.000Z', syncState: 'pending'
     })),
     updateWorklog: vi.fn().mockImplementation(async (id: string, correction: WorklogCorrectionDTO) => ({

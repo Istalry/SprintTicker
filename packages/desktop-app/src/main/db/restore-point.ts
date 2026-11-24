@@ -110,6 +110,11 @@ export class RestorePoint {
     if (!this._after) throw new Error('A restore point is sealed before it is restored.');
     const undo = this._db.transaction((): boolean => {
       if (!this.isUntouched()) return false;
+      // Checked at the commit, once every row is back: a row added since
+      // can be named by one the restore rewrites after deleting it -- the
+      // own work an entry was moved to, named by that entry until it is
+      // moved back. Reset by SQLite at the end of the transaction.
+      this._db.pragma('defer_foreign_keys = ON');
       const deletions = [...this._before].reverse();
       for (const { scope } of deletions) {
         const keep = new Set(this._before.find(b => b.scope === scope)!.rows.map(r => r.rowid));

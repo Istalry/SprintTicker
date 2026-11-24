@@ -1198,7 +1198,9 @@
       not missing yet, and a day off has no working hours, only its entries.</p>
       <p>➕ <strong>Add time you didn&#39;t time</strong> with <strong>+ Add time</strong>, on any day here and on
       Today: pick the task, say how long and when it started, and add a note --
-      it is what your provider shows. It opens on half an hour, ending now on
+      it is what your provider shows. The task can be work of your own, found by
+      its name or made with <em>A task of my own named &quot;…&quot;</em>; that time stays in
+      SprintTicker. It opens on half an hour, ending now on
       today and from 09:00 on another day. It is sent like any entry, after the
       same ten seconds of Undo. Before you add it, it says when it would overlap
       an entry -- <em>Overlaps PF-31, which starts at 08:45</em> -- and offers the one
@@ -1265,7 +1267,9 @@
       deleted where it was, then created on the new task -- in that order, so the
       time is never on both, and for a moment may be on neither while the move goes
       through. An entry not sent yet simply goes to the new task. Neither task&#39;s
-      status changes. An interruption waiting in <strong>Interruptions to place</strong> is
+      status changes. The task can be work of your own -- search for it by its
+      name, or type a new name and choose <em>A task of my own named &quot;…&quot;</em>: the time
+      then stays in SprintTicker, and is deleted at your provider if it was sent. An interruption waiting in <strong>Interruptions to place</strong> is
       placed rather than moved: see <a href="#-interrupt-a-timer-at-once">Interrupt</a>.</p>
       <p>Each entry is named by its task&#39;s key and title. <strong>Deleting a task or a project
       does not delete the time logged against it</strong>: the task leaves your lists and
@@ -2552,9 +2556,10 @@
       <code>session:start-task</code> and <code>interruption:switch</code> refuse it, the picker window
       will not open in <code>start</code> mode (<code>PickerWindowManager</code>&#39;s <code>refuses</code>), and the
       deck&#39;s <code>open-picker</code> and <code>start-recent</code> answer <code>no-task</code>. The interruption
-      ends first, by Back, Stop or Discard. Split in two passes <code>ownWork</code>: its
-      rest may go on work of the user&#39;s own, an existing one or a new one named
-      in the picker, though Move mode otherwise wants a provider&#39;s task.</p>
+      ends first, by Back, Stop or Discard. Split in two, Move and Add time pass
+      <code>ownWork</code>: their time may go on work of the user&#39;s own, an existing one or
+      a new one named in the picker, made by <code>WorklogCorrectionService</code> in the
+      same transaction under an id the undo&#39;s restore point covers.</p>
       <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
       (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
       quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
@@ -4340,11 +4345,11 @@
       </tr>
       <tr>
       <td align="left"><code>worklog:create-manual</code></td>
-      <td align="left"><code>(ManualWorklogDTO: { taskId, durationSeconds, startedAtUtc, comment })</code>. Adds time nobody timed (S16b, <code>WorklogCorrectionService.add</code>): a worklog here, under a session id of its own (<code>manual_…</code>), and a first send to the task&#39;s provider through the queue, held for the undo window with Undo (<code>Added to PF-31 · 30m</code>). A project made in SprintTicker keeps it here; an empty note is sent as <code>Added in SprintTicker</code>. Answers the worklog and resends <code>worklog:on-updated</code>. Rejects with the reason (<code>checkManualWorklog</code>): no task, ad-hoc work or an unknown task, under the provider&#39;s floor, ending in the future, or across local midnight. An overlap or a closed week is never refused -- the window warns, and the queue holds the later entry</td>
+      <td align="left"><code>(ManualWorklogDTO: { taskId, ownTitle?, durationSeconds, startedAtUtc, comment })</code>, <code>taskId</code> empty when <code>ownTitle</code> names new work of the user&#39;s own, made with the entry and kept here. Adds time nobody timed (S16b, <code>WorklogCorrectionService.add</code>): a worklog here, under a session id of its own (<code>manual_…</code>), and a first send to the task&#39;s provider through the queue, held for the undo window with Undo (<code>Added to PF-31 · 30m</code>). A project made in SprintTicker keeps it here; an empty note is sent as <code>Added in SprintTicker</code>. Answers the worklog and resends <code>worklog:on-updated</code>. Rejects with the reason (<code>checkManualWorklog</code>): no task nor name, an unknown task, under the provider&#39;s floor, ending in the future, or across local midnight. An overlap or a closed week is never refused -- the window warns, and the queue holds the later entry</td>
       </tr>
       <tr>
       <td align="left"><code>worklogs:move</code></td>
-      <td align="left"><code>(worklogId, taskId)</code>. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted or was refused. An ad-hoc worklog takes its task&#39;s name as its comment. Answers the worklog as it now stands. Rejects with the reason: an ad-hoc, unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
+      <td align="left"><code>(worklogId, target)</code>, <code>target</code> a task id or <code>{ ownTitle }</code> for new work of the user&#39;s own, made with the move and taken away by its Undo. Moves the worklog to another task (<code>WorklogCorrectionService.reassign</code>): here at once, and through the queue as a <code>DELETE</code> where it is then a <code>CREATE</code> on the new task&#39;s provider -- or the unsent send pointed there, when it was never attempted or was refused. An ad-hoc worklog moved to a provider&#39;s task takes its task&#39;s name as its comment. Moved to work of the user&#39;s own, nothing is created anywhere: the time stays here. Answers the worklog as it now stands. Rejects with the reason: an unknown or same task; shorter than the new provider records; or an entry at a provider that cannot be corrected from here</td>
       </tr>
       </tbody></table></div>
       <p>The rules are <code>checkWorklogCorrection</code> in <code>src/shared/worklog-correction.ts</code>,

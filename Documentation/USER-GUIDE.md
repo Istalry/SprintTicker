@@ -670,7 +670,9 @@ not missing yet, and a day off has no working hours, only its entries.
 
 ➕ **Add time you didn't time** with **+ Add time**, on any day here and on
 Today: pick the task, say how long and when it started, and add a note --
-it is what your provider shows. It opens on half an hour, ending now on
+it is what your provider shows. The task can be work of your own, found by
+its name or made with *A task of my own named "…"*; that time stays in
+SprintTicker. It opens on half an hour, ending now on
 today and from 09:00 on another day. It is sent like any entry, after the
 same ten seconds of Undo. Before you add it, it says when it would overlap
 an entry -- *Overlaps PF-31, which starts at 08:45* -- and offers the one
@@ -749,7 +751,9 @@ task, and the time is on it at once here. At Jira or OpenProject the entry is
 deleted where it was, then created on the new task -- in that order, so the
 time is never on both, and for a moment may be on neither while the move goes
 through. An entry not sent yet simply goes to the new task. Neither task's
-status changes. An interruption waiting in **Interruptions to place** is
+status changes. The task can be work of your own -- search for it by its
+name, or type a new name and choose *A task of my own named "…"*: the time
+then stays in SprintTicker, and is deleted at your provider if it was sent. An interruption waiting in **Interruptions to place** is
 placed rather than moved: see [Interrupt](#-interrupt-a-timer-at-once).
 
 Each entry is named by its task's key and title. **Deleting a task or a project

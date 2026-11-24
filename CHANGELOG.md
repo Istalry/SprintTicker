@@ -4,13 +4,14 @@
 
 ### Fixed
 
-- **Split in two can put the rest on work of your own.** Its task picker
-  left out your own tasks and offered no new one, so time worked on
-  something with no ticket could not be split off. It now finds your own
-  work by its name and offers *A task of my own named "…"*; that part stays
-  in SprintTicker, never sent, and Undo takes a task it made away again.
-  Your own work is found by the search wherever the picker offers a task of
-  your own, Start and Switch too.
+- **Split in two, Move and Add time take work of your own.** Their task
+  picker left out your own tasks and offered no new one, so time worked on
+  something with no ticket could not be split off, moved there or added.
+  It now finds your own work by its name and offers *A task of my own named
+  "…"*. That time stays in SprintTicker, never sent -- an entry moved there
+  from Jira or OpenProject is deleted there -- and Undo takes a task it made
+  away again. Your own work is found by the search wherever the picker
+  offers a task of your own, Start and Switch too.
 
 ## 2.0.0 — 2026-11-19
 

@@ -196,7 +196,8 @@ export interface IElectronAPI {
   /** Names ad-hoc work after the fact; renames the open session too when it is that task. */
   renameAdHocTask: (taskId: string, title: string) => Promise<void>;
   /** Moves a worklog to another task, here and at the providers through the queue. Rejects with the reason when refused. */
-  moveWorklog: (worklogId: string, taskId: string) => Promise<WorklogDTO>;
+  /** To a task, or to new work of the user's own by its name. */
+  moveWorklog: (worklogId: string, target: string | { ownTitle: string }) => Promise<WorklogDTO>;
   /** Adds time nobody timed (S16b), sent like any entry, with Undo. Rejects with the reason when refused. */
   addWorklog: (entry: ManualWorklogDTO) => Promise<WorklogDTO>;
   /** The time so far on the open session goes to `taskId`, which then runs (S5b). */

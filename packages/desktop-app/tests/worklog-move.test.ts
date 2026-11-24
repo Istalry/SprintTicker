@@ -63,7 +63,8 @@ describe('Moving a worklog', () => {
     const targets: WorklogMoveTargets = {
       getTask: taskId => tasks.getTaskById(taskId),
       destinationOf: taskId => DESTINATIONS[taskId] ?? null,
-      retireAdHocIfUnused: taskId => { retired.push(taskId); }
+      retireAdHocIfUnused: taskId => { retired.push(taskId); },
+      createOwnTask: (title, taskId) => tasks.createAdHocTask(title, 'ADHOC', false, taskId)
     };
     service = new WorklogCorrectionService(worklogs, manager, dispatch, Date.now, targets);
   });
@@ -278,10 +279,39 @@ describe('Moving a worklog', () => {
     });
   });
 
+  describe('to work of the user\'s own', () => {
+    it('Move_ASentEntryToOwnWork_DeletedThere_NoneMade_KeptHere', async () => {
+      await sent();
+
+      const moved = service.reassign('w1', ADHOC);
+      await deliver();
+
+      expect(moved).toMatchObject({ taskId: ADHOC, comment: 'Pairing' });
+      expect(rows().map(r => r.operation)).toEqual(['CREATE', 'DELETE']);
+      expect([...jira.entries.values()]).toEqual([]);
+    });
+
+    it('Move_ToNewOwnWork_MadeUnderTheIdGiven_NothingQueued', () => {
+      logged('w1', 'OWN-1', 2 * HOUR, null);
+
+      const moved = service.reassign('w1', { ownTitle: ' Code review ' }, 'adhoc_new');
+
+      expect(tasks.getTaskById('adhoc_new')).toMatchObject({ title: 'Code review', projectId: 'ADHOC' });
+      expect(moved.taskId).toBe('adhoc_new');
+      expect(rows()).toEqual([]);
+      expect(dispatch).not.toHaveBeenCalled();
+    });
+
+    it('Move_OwnWorkToOtherOwnWork_KeepsTheNote', () => {
+      logged('w1', ADHOC, 2 * HOUR, null);
+
+      expect(service.reassign('w1', { ownTitle: 'Code review' }, 'adhoc_new').comment).toBe('Pairing');
+    });
+  });
+
   describe('what is refused', () => {
     it.each([
       ['its own task', 'T-1', /already/],
-      ['ad-hoc work', ADHOC, /not to other ad-hoc/],
       ['no such task', 'T-404', /No task/]
     ])('Move_To%s_IsRefused', async (_label, taskId, message) => {
       await sent();

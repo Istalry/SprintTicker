@@ -176,9 +176,10 @@ nothing** (the user's choice, 2026-11-12): `pickTask` refuses it, main's
 `session:start-task` and `interruption:switch` refuse it, the picker window
 will not open in `start` mode (`PickerWindowManager`'s `refuses`), and the
 deck's `open-picker` and `start-recent` answer `no-task`. The interruption
-ends first, by Back, Stop or Discard. Split in two passes `ownWork`: its
-rest may go on work of the user's own, an existing one or a new one named
-in the picker, though Move mode otherwise wants a provider's task.
+ends first, by Back, Stop or Discard. Split in two, Move and Add time pass
+`ownWork`: their time may go on work of the user's own, an existing one or
+a new one named in the picker, made by `WorklogCorrectionService` in the
+same transaction under an id the undo's restore point covers.
 
 **The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
 (`windows/main-window-close.ts`) takes the dashboard's `close`: unless a

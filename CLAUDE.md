@@ -1499,7 +1499,11 @@ rows themselves (`RestorePoint.isUntouched`) on the same clock, so it never
 takes back here what the provider already has. Anything new that sends --
 a move to a third provider, a Done transition -- holds too, or Undo lies.
 And never hand-write an inverse of an action: the restore point records the
-rows, so a rule the action follows is not copied into its undo.
+rows, so a rule the action follows is not copied into its undo. A row the
+action makes is named before it exists and scoped (the second worklog of a
+split, new own work), and the restore defers foreign keys to its commit:
+it deletes added rows before rewriting the kept ones, so an entry moved to
+new own work still named it when that task was deleted.
 An offer says what it comes to (`outcome`, from `RestorePoint.queuesSends`
 after `seal`): the Undo bar said "Sent in 7s" for a Discard and for time
 kept here (P15a3).

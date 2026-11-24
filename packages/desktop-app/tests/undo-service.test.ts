@@ -428,6 +428,32 @@ describe('undoable commands', () => {
       expect(worklogs.getWorklogById(before.id)?.durationSeconds).toBe(before.durationSeconds);
     });
 
+    it('MoveToNewOwnWorkThenUndo_BackOnItsTask_TheOwnWorkGone', async () => {
+      const before = await sentWorklog();
+
+      const moved = moveUndoably(edits, before.id, { ownTitle: 'Code review' });
+      expect(tasks.getTaskById(moved.taskId)).toMatchObject({ title: 'Code review' });
+      expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }, { operation: 'DELETE', status: 'PENDING' }]);
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(before.id)?.taskId).toBe(A.id);
+      expect(tasks.getTaskById(moved.taskId)).toBeNull();
+      expect(queueRows()).toEqual([{ operation: 'CREATE', status: 'SYNCED' }]);
+    });
+
+    it('AddToNewOwnWorkThenUndo_LeavesNothing', () => {
+      const added = addUndoably(edits, {
+        taskId: '', ownTitle: 'Code review', durationSeconds: 1800,
+        startedAtUtc: new Date(Date.now() - 3 * 3600_000).toISOString(), comment: ''
+      });
+      expect(tasks.getTaskById(added.taskId)).toMatchObject({ title: 'Code review' });
+      expect(queueRows()).toEqual([]);
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(added.id)).toBeNull();
+      expect(tasks.getTaskById(added.taskId)).toBeNull();
+    });
+
     it('SendDestinationOfTask_OwnWork_None_NeverTheActiveProvider', () => {
       const own = engine.createOwnTask('Code review');
 

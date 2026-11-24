@@ -8,7 +8,7 @@ import { UndoService } from './undo-service';
 import { completeSession, SessionEnding } from './session-commands';
 import { undoLabel } from '../../shared/words';
 import { formatHoursAndMinutes } from '../../shared/time-format';
-import { ManualWorklogDTO, WorklogCorrectionDTO, WorklogSplitDTO } from '../../shared/worklog-correction';
+import { ManualWorklogDTO, WorklogCorrectionDTO, WorklogSplitDTO, WorklogTarget } from '../../shared/worklog-correction';
 import { createId, IdPrefix } from '../db/id-generator';
 
 /** What an undoable command reaches. */
@@ -184,10 +184,12 @@ export function correctUndoably(deps: WorklogEditDeps, worklogId: string, correc
 }
 
 /** A move to another task, held: Undo puts it back on the task it left, its ad-hoc task too. */
-export function moveUndoably(deps: WorklogEditDeps, worklogId: string, taskId: string): WorklogRecord {
+export function moveUndoably(deps: WorklogEditDeps, worklogId: string, target: WorklogTarget): WorklogRecord {
   const before = worklogOrThrow(deps, worklogId);
-  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [before.taskId, taskId]));
-  const moved = deps.corrections.reassign(worklogId, taskId);
+  // New own work is named before it exists, so Undo takes it away again.
+  const ownTaskId = createId(IdPrefix.ADHOC_TASK);
+  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [before.taskId, typeof target === 'string' ? target : ownTaskId]));
+  const moved = deps.corrections.reassign(worklogId, target, ownTaskId);
   offerWorklogUndo(deps, point, 'move', undoLabel('move', moved.taskKey ?? moved.taskId, formatHoursAndMinutes(moved.durationSeconds)));
   return moved;
 }
@@ -205,8 +207,9 @@ export function keepOffUndoably(deps: WorklogEditDeps, worklogId: string): Workl
 export function addUndoably(deps: WorklogEditDeps, entry: ManualWorklogDTO): WorklogRecord {
   // Named before it exists, so the restore point covers the rows it adds.
   const worklogId = createId(IdPrefix.WORKLOG);
-  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [entry.taskId]));
-  const added = deps.corrections.add(entry, worklogId);
+  const ownTaskId = createId(IdPrefix.ADHOC_TASK);
+  const point = RestorePoint.capture(deps.db, worklogScopes(worklogId, [entry.ownTitle?.trim() ? ownTaskId : entry.taskId]));
+  const added = deps.corrections.add(entry, worklogId, ownTaskId);
   offerWorklogUndo(deps, point, 'add', undoLabel('add', added.taskKey ?? added.taskId, formatHoursAndMinutes(added.durationSeconds)));
   return added;
 }

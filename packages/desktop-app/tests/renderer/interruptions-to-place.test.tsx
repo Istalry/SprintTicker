@@ -445,14 +445,15 @@ describe('Work History, moving time to another task', () => {
     expect((await screen.findByRole('alert')).textContent).toMatch(/Not moved: .*at least 1 minute/);
   });
 
-  it('Picker_ForAMove_OffersNoAdHocWork', async () => {
+  // Lifted at the user's request (2026-11-24): work of their own takes a move.
+  it('Picker_ForAMove_OffersWorkOfMyOwn', async () => {
     installElectronApi(withProjects({ getWorklogsByDate: vi.fn().mockResolvedValue([PROVIDER]) }));
     render(<WorklogHistoryView />);
 
     await entryMenu('MG-12', '↳ Move…');
     await screen.findByRole('dialog', { name: 'Move to a task' });
 
-    expect(screen.queryByText(/A task of my own/)).toBeNull();
+    expect(screen.getByText(/A task of my own/)).toBeTruthy();
   });
 });
 

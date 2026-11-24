@@ -124,6 +124,19 @@ describe('Add time', () => {
     expect((within(dialog).getByRole('button', { name: 'Add 30m' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('Add_NewWorkOfMyOwn_Named_SentWithItsName_TheNoteSaysItStaysHere', async () => {
+    const bridge = await historyOnYesterday([]);
+    const dialog = openAddTime();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /Search, or pick a recent task/ }));
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'Team sync' } });
+    fireEvent.click(await screen.findByText(/A task of my own named/));
+    expect(within(dialog).getByText('Note, kept in SprintTicker')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add 30m' }));
+
+    await waitFor(() => expect(bridge.api.addWorklog).toHaveBeenCalledWith(expect.objectContaining({ taskId: '', ownTitle: 'Team sync' })));
+  });
+
   it('Add_RefusedByMain_SaysWhyAndStaysOpen', async () => {
     await historyOnYesterday([], {
       addWorklog: vi.fn().mockRejectedValue(new Error("Error invoking remote method 'worklog:create-manual': ArgumentException: The provider records at least 1 minute(s); a shorter worklog cannot be sent."))

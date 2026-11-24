@@ -8,6 +8,7 @@ import { localDateKey } from '../../shared/local-date';
 import { formatHoursAndMinutes, formatHoursMinutes, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { TaskPicker } from './TaskPicker';
+import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 
 /** What Add time opens on when nothing says otherwise: half an hour. */
 export const ADD_TIME_DEFAULT_SECONDS = 30 * 60;
@@ -68,6 +69,10 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
   // not read during render.
   const [now, setNow] = useState(() => Date.now());
   const [task, setTask] = useState<TaskDTO | null>(null);
+  // Or new work of the user's own, by its name: made with the entry, kept here.
+  const [ownTitle, setOwnTitle] = useState<string | null>(null);
+  const chosen = task !== null || ownTitle !== null;
+  const keptHere = ownTitle !== null || task?.projectId === ADHOC_PROJECT_ID;
   const [picking, setPicking] = useState(false);
   const [hours, setHours] = useState(String(Math.floor(initialSeconds / 3600)));
   const [minutes, setMinutes] = useState(String(Math.floor((initialSeconds % 3600) / 60)));
@@ -108,6 +113,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
   const durationSeconds = fieldsValid ? h * 3600 + m * 60 : 0;
   const entry: ManualWorklogDTO = {
     taskId: task?.id ?? '',
+    ...(ownTitle !== null ? { ownTitle } : {}),
     durationSeconds,
     startedAtUtc: startValid ? startDate.toISOString() : '',
     comment: note
@@ -171,7 +177,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
   const closedWeek = entry.startedAtUtc !== '' && isInClosedWeek(entry.startedAtUtc, lastWeekClosed);
 
   const add = () => {
-    if (!task || refusal) return;
+    if (!chosen || refusal) return;
     setBusy(true);
     setError(null);
     api.addWorklog(entry).then(onAdded, err => {
@@ -196,6 +202,8 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
             <span id="add-time-task-value">
             {task
               ? <><span className="font-mono font-bold">{task.key}</span> <span className="text-text-secondary">{task.title}</span></>
+              : ownTitle !== null
+              ? <>{ownTitle} <span className="text-text-secondary">(new, your own)</span></>
               : <span className="text-text-secondary"><span aria-hidden="true">⌕</span> Search, or pick a recent task</span>}
             </span>
           </button>
@@ -216,7 +224,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
             <input type="datetime-local" value={start} onChange={e => { setStart(e.target.value); setNow(Date.now()); }} className={field} />
           </label>
           <label className="space-y-1 col-span-2">
-            <span className="text-text-secondary">Note, shown in {provider}</span>
+            <span className="text-text-secondary">{keptHere ? 'Note, kept in SprintTicker' : `Note, shown in ${provider}`}</span>
             <input
               type="text"
               value={note}
@@ -230,7 +238,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
 
         {overlapNote}
         {closedWeek && <p role="note" className="text-[11px] text-accent-amber leading-relaxed">{closedWeekWarning(provider)}</p>}
-        {(error || (refusal && task)) && <p role="alert" className="text-xs text-accent-red">{error ?? refusal}</p>}
+        {(error || (refusal && chosen)) && <p role="alert" className="text-xs text-accent-red">{error ?? refusal}</p>}
 
         <div className="flex justify-end gap-3 pt-1">
           <button
@@ -243,7 +251,7 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
           <button
             type="button"
             onClick={add}
-            disabled={!task || refusal !== null || busy}
+            disabled={!chosen || refusal !== null || busy}
             className="px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-50 text-dark-900 rounded-lg text-xs font-semibold"
           >
             Add {fieldsValid && durationSeconds > 0 ? formatHoursAndMinutes(durationSeconds) : 'time'}
@@ -254,12 +262,19 @@ const AddTimeForm: React.FC<AddTimeDialogProps & { opening: AddTimeStart }> = ({
       <TaskPicker
         isOpen={picking}
         mode="move"
+        ownWork
         title="Add time to a task"
-        subtitle="The time is sent there like any entry."
+        subtitle="The time is sent there like any entry; work of your own stays here."
         onClose={() => setPicking(false)}
         onPick={picked => {
           setPicking(false);
-          if (picked.task) setTask(picked.task);
+          if (picked.task) {
+            setTask(picked.task);
+            setOwnTitle(null);
+          } else if (picked.ownTitle) {
+            setTask(null);
+            setOwnTitle(picked.ownTitle);
+          }
         }}
       />
     </div>

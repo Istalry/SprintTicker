@@ -5,7 +5,7 @@ import { INITIAL_SYNC_HEALTH } from '../../shared/sync-health';
 import type { FirstRunService } from '../services/first-run-service';
 import type { ConnectionTestDTO, ConnectionTestRequestDTO, DeskDetectionDTO } from '../../shared/first-run';
 import { WorklogCorrectionService } from '../services/worklog-correction-service';
-import { ManualWorklogDTO, WorklogCorrectionDTO, WorklogSplitDTO } from '../../shared/worklog-correction';
+import { ManualWorklogDTO, readWorklogTarget, WorklogCorrectionDTO, WorklogSplitDTO } from '../../shared/worklog-correction';
 import { worklogsToCsv } from '../../shared/worklog-csv';
 import type { DayShare } from '../../shared/work-split';
 import { app, ipcMain, BrowserWindow, dialog, shell } from 'electron';
@@ -168,7 +168,9 @@ function isDateKey(value: unknown): value is string {
 }
 
 function isManualWorklog(value: unknown): value is ManualWorklogDTO {
-  return isWorklogCorrection(value) && typeof (value as Partial<ManualWorklogDTO>).taskId === 'string';
+  const ownTitle = (value as Partial<ManualWorklogDTO> | null)?.ownTitle;
+  return isWorklogCorrection(value) && typeof (value as Partial<ManualWorklogDTO>).taskId === 'string'
+    && (ownTitle === undefined || typeof ownTitle === 'string');
 }
 
 export class IPCHandlerRegistry {
@@ -1242,13 +1244,14 @@ export class IPCHandlerRegistry {
       return corrected;
     });
 
-    ipcMain.handle(IPCChannel.MOVE_WORKLOG, async (_event, worklogId: unknown, taskId: unknown) => {
+    ipcMain.handle(IPCChannel.MOVE_WORKLOG, async (_event, worklogId: unknown, value: unknown) => {
       if (!this.worklogCorrections) throw new Error('Worklog corrections are unavailable.');
-      if (typeof worklogId !== 'string' || !worklogId || typeof taskId !== 'string' || !taskId) {
-        throw new ArgumentException('A move needs a worklog id and a task id.');
+      const target = readWorklogTarget(value);
+      if (typeof worklogId !== 'string' || !worklogId || !target) {
+        throw new ArgumentException('A move needs a worklog id and a task id or a name.');
       }
       const edits = this.worklogEdits();
-      const moved = edits ? moveUndoably(edits, worklogId, taskId) : this.worklogCorrections.reassign(worklogId, taskId);
+      const moved = edits ? moveUndoably(edits, worklogId, target) : this.worklogCorrections.reassign(worklogId, target);
       this.broadcast(IPCChannel.ON_WORKLOGS_UPDATED, this.worklogRepo.getTodaysWorklogs());
       return moved;
     });
@@ -1687,14 +1690,9 @@ export class IPCHandlerRegistry {
   }
 }
 
-/**
- * Where a split's rest goes, as the bridge sends it: a task id, or
- * `{ ownTitle }` for new work of the user's own. Null when neither.
- */
-function splitTarget(atUtc: unknown, target: unknown): WorklogSplitDTO | null {
-  if (typeof atUtc !== 'string') return null;
-  if (typeof target === 'string' && target) return { atUtc, taskId: target };
-  const ownTitle = (target as { ownTitle?: unknown } | null)?.ownTitle;
-  if (typeof ownTitle === 'string' && ownTitle.trim()) return { atUtc, ownTitle };
-  return null;
+/** A split's rest, as the bridge sends it: a task id or `{ ownTitle }`. Null when neither. */
+function splitTarget(atUtc: unknown, value: unknown): WorklogSplitDTO | null {
+  const target = readWorklogTarget(value);
+  if (typeof atUtc !== 'string' || !target) return null;
+  return typeof target === 'string' ? { atUtc, taskId: target } : { atUtc, ownTitle: target.ownTitle };
 }

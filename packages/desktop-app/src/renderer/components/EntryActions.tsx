@@ -63,13 +63,15 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
   /**
    * Moves the entries to the task picked, one after the other: each is its
    * own deletion and send. A refusal stops there and is shown; the ones
-   * moved before it stay moved.
+   * moved before it stay moved. New own work is made by the first move, and
+   * the others follow it there rather than each making its own.
    */
-  const moveTo = async (worklogIds: string[], taskId: string) => {
+  const moveTo = async (worklogIds: string[], target: string | { ownTitle: string }) => {
     setMoving(null);
     setMoveError(null);
+    let to = target;
     try {
-      for (const id of worklogIds) await window.electronAPI.moveWorklog(id, taskId);
+      for (const id of worklogIds) to = (await window.electronAPI.moveWorklog(id, to)).taskId;
     } catch (err) {
       setMoveError(ipcErrorMessage(err));
     } finally {
@@ -108,9 +110,14 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
       <TaskPicker
         isOpen={moving !== null}
         mode="move"
+        ownWork
         subtitle={moving ? `${moving.label}: its time goes to the task you pick` : undefined}
         onClose={() => setMoving(null)}
-        onPick={picked => { if (moving && picked.task) void moveTo(moving.worklogIds, picked.task.id); }}
+        onPick={picked => {
+          if (!moving) return;
+          if (picked.task) void moveTo(moving.worklogIds, picked.task.id);
+          else if (picked.ownTitle) void moveTo(moving.worklogIds, { ownTitle: picked.ownTitle });
+        }}
       />
 
       {editing && (

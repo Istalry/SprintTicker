@@ -130,6 +130,33 @@ describe('Today entries', () => {
     await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w1', 'T-9'));
   });
 
+  it('Menu_Move_ToWorkOfMyOwn_FoundByItsName', async () => {
+    const own = { id: 'adhoc_7', projectId: 'ADHOC', key: 'ADHOC', title: 'Code review', status: 'todo' };
+    const bridge = installElectronApi({
+      getPickerData: vi.fn().mockResolvedValue({ previous: null, recent: [], starred: [], tasks: [], own: [own], projects: [], projectSeconds: {} })
+    });
+    render(<TodayEntries session={null} worklogs={[PF]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^More for PF-31 at / }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '↳ Move…' }));
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'code' } });
+    fireEvent.click(await screen.findByText('Code review'));
+
+    await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w1', 'adhoc_7'));
+  });
+
+  it('Menu_Move_ToNewWorkOfMyOwn_Named', async () => {
+    const bridge = installElectronApi(withProjects);
+    render(<TodayEntries session={null} worklogs={[PF]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^More for PF-31 at / }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '↳ Move…' }));
+    fireEvent.change(await screen.findByLabelText('Search tasks'), { target: { value: 'Team sync' } });
+    fireEvent.click(await screen.findByText(/A task of my own named/));
+
+    await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w1', { ownTitle: 'Team sync' }));
+  });
+
   it('Move_Refused_SaysWhy', async () => {
     installElectronApi({ ...withProjects, moveWorklog: vi.fn().mockRejectedValue(new Error('The provider records at least 1 minute(s).')) });
     render(<TodayEntries session={null} worklogs={[PF]} />);
