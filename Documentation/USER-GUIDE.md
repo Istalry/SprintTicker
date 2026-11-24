@@ -247,7 +247,7 @@ away with **×**, and does not come back that day.
 each: the task, its note, its time, when it started, and where it stands
 with your provider -- **Sent**, **Waiting to send**, **Waiting to send ·
 overlaps PF-31**, **Not sent**, or **Logged here** for work never sent. **⋯** on a row holds
-**Correct…**, **↳ Move…** and **Delete…**, as in History. ⚡ marks time
+**Correct…**, **Split in two…**, **↳ Move…** and **Delete…**, as in History. ⚡ marks time
 that started as an interruption and was placed on its task. The heading
 counts the day -- *6h 05m · 5h 20m sent · 45m to place*: everything done
 today, the session running included, what of it your provider has, and the
@@ -760,7 +760,7 @@ entry at the provider too. Entries are found at the provider by the
 `[#xxxxxxxx]` tag at the end of their note, so keep that tag if you edit the
 note in Jira.
 
-✂️ **Split an entry in two** with **Split in two…** in Correct, for the time
+✂️ **Split an entry in two** with **Split in two…** in its ⋯ (or in Correct), for the time
 you forgot to switch: slide to the moment you switched, by the minute, and
 pick the task the rest goes to -- nothing is chosen for you. It can be work
 of your own: search for it by its name, or type a new name and choose

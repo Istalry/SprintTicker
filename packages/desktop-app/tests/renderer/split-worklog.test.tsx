@@ -31,8 +31,25 @@ const openSplit = async (worklog: WorklogDTO = ENTRY, overrides: Record<string, 
   return bridge;
 };
 
-/** Split in two (S16c, P9e), from Correct. */
+/** Split in two (S16c, P9e), from the entry's menu and from Correct. */
 describe('Split in two', () => {
+  // Only a quiet link inside Correct, it went unfound (2.0.1, a user's report).
+  it('FromTheEntrysMenu_OpensIt_ShortEntriesOfferNone', async () => {
+    const short = { ...ENTRY, id: 'w2', durationSeconds: 90 };
+    installElectronApi({ getWorklogsByDate: vi.fn().mockResolvedValue([ENTRY, { ...short, startedAtUtc: new Date(`${DAY}T13:00`).toISOString() }]), ...PICKER });
+    render(<WorklogHistoryView />);
+    fireEvent.click(screen.getByRole('button', { name: 'The day before' }));
+
+    const [long, brief] = await screen.findAllByRole('button', { name: /^More for MG-12 at / });
+    fireEvent.click(brief);
+    expect(screen.queryByRole('menuitem', { name: 'Split in two…' })).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(long);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Split in two…' }));
+
+    expect(screen.getByRole('dialog', { name: 'Split in two' })).toBeTruthy();
+  });
+
   it('FromCorrect_TheMiddle_NoTaskChosen_SplitWaitsForOne', async () => {
     await openSplit();
     fireEvent.click(screen.getByRole('button', { name: 'Split in two…' }));

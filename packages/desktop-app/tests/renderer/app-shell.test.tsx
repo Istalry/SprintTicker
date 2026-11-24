@@ -115,6 +115,19 @@ describe('the app shell', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Desk devices' })).toBeTruthy();
   });
 
+  // jsdom has no layout, so the class is what a test can hold. With
+  // overflow-hidden, the header clipped the Status panel and the Mode menu,
+  // and opening the panel scrolled the header itself (2.0.1, a user's report).
+  it('Header_ClipsSidewaysOnly_SoItsMenusDropBelowIt', async () => {
+    installElectronApi({ getDeviceStatus: async () => CONNECTED_DEVICE });
+    render(<App />);
+    await screen.findByText(/Nothing logged today yet/);
+
+    const header = document.querySelector('header')!.className.split(' ');
+    expect(header).toContain('overflow-x-clip');
+    expect(header).not.toContain('overflow-hidden');
+  });
+
   it('Render_SessionRunning_StillShowsTheTodayTable', async () => {
     installElectronApi({ getCurrentSession: vi.fn().mockResolvedValue(TRACKING_SESSION) });
     render(<App />);

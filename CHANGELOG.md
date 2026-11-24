@@ -17,6 +17,11 @@
 
 ### Fixed
 
+- **The Status button no longer breaks the window.** Opening it scrolled
+  the header out of shape and cut its panel off; the panel, and the Mode
+  menu beside it, now open below the header.
+- **Split in two is in each entry's ⋯**, beside Correct. It was only a
+  link inside Correct, and could not be found there.
 - **Split in two, Move and Add time take work of your own.** Their task
   picker left out your own tasks and offered no new one, so time worked on
   something with no ticket could not be split off, moved there or added.

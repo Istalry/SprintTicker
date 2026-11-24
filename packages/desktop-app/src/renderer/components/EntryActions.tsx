@@ -4,13 +4,13 @@ import { closedWeekWarning, isInClosedWeek } from '../../shared/closed-week';
 import { formatClockTime, ipcErrorMessage } from '../utils/formatters';
 import { useProviderCapabilities } from '../hooks/useProviderCapabilities';
 import { EditWorklogModal } from './EditWorklogModal';
-import { SplitWorklogDialog } from './SplitWorklogDialog';
+import { SPLIT_MIN_SECONDS, SplitWorklogDialog } from './SplitWorklogDialog';
 import { TaskPicker } from './TaskPicker';
 import { ConfirmDialog } from './ConfirmPanel';
 import { RowMenu } from './RowMenu';
 import { keepOffLabel, Verb } from '../../shared/words';
 
-export type EntryAction = 'edit' | 'move' | 'delete' | 'keep-off';
+export type EntryAction = 'edit' | 'split' | 'move' | 'delete' | 'keep-off';
 
 interface Moving {
   worklogIds: string[];
@@ -18,7 +18,7 @@ interface Moving {
 }
 
 /**
- * Correct (and from it Split in two), Move and Delete on an entry, with their dialogs: History's rows
+ * Correct, Split in two, Move and Delete on an entry, with their dialogs: History's rows
  * and Today's (P8e) share this, so the closed-week warning and the move's
  * one-after-another rule live once.
  *
@@ -27,7 +27,7 @@ interface Moving {
  */
 export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
   const [editing, setEditing] = useState<{ worklog: WorklogDTO; mode: 'edit' | 'delete' } | null>(null);
-  // Split in two (S16c), opened from Correct.
+  // Split in two (S16c), from the entry's menu or from Correct.
   const [splitting, setSplitting] = useState<WorklogDTO | null>(null);
   const [moving, setMoving] = useState<Moving | null>(null);
   // A move of closed-week time, waiting for the user to say go on.
@@ -91,6 +91,7 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
   const run = (log: WorklogDTO, action: EntryAction) => {
     if (action === 'move') startMove([log], log.taskTitle ?? log.taskKey ?? log.taskId);
     else if (action === 'keep-off') keepOff(log);
+    else if (action === 'split') setSplitting(log);
     else setEditing({ worklog: log, mode: action });
   };
 
@@ -157,7 +158,11 @@ export function useEntryActions(sameDay: WorklogDTO[], onChanged: () => void) {
   return { run, startMove, dialogs, moveError, providerName };
 }
 
-/** ⋯ on an entry (S5): Correct, ↳ Move, Delete -- and Keep off, on one its provider refused (P11c). */
+/**
+ * ⋯ on an entry (S5): Correct, Split in two, ↳ Move, Delete -- and Keep off,
+ * on one its provider refused (P11c). Split was only a quiet link inside
+ * Correct, and a user looking for it never found it (2.0.1).
+ */
 export const EntryMenu: React.FC<{ log: WorklogDTO; onAction: (action: EntryAction) => void; providerName?: string }> = ({
   log,
   onAction,
@@ -170,6 +175,7 @@ export const EntryMenu: React.FC<{ log: WorklogDTO; onAction: (action: EntryActi
       menuName={`Entry ${name}`}
       items={[
         { label: 'Correct…', run: () => onAction('edit') },
+        ...(log.durationSeconds >= SPLIT_MIN_SECONDS ? [{ label: 'Split in two…', run: () => onAction('split') }] : []),
         { label: `↳ ${Verb.MOVE}…`, run: () => onAction('move') },
         ...(log.syncState === 'refused' ? [{ label: keepOffLabel(providerName), run: () => onAction('keep-off') }] : []),
         { label: 'Delete…', run: () => onAction('delete'), danger: true }

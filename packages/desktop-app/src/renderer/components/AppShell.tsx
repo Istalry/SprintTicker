@@ -53,10 +53,14 @@ export const AppShell: React.FC<AppShellProps> = ({ place, onNavigate, device, t
       {/*
         The header is one row at every window size, down to the 900px minimum:
         the LED preview in the middle absorbs the slack (`flex-1 min-w-0`) and
-        the groups either side are `shrink-0`. `overflow-hidden` is the
-        backstop: whatever else happens, nothing escapes the window.
+        the groups either side are `shrink-0`. `overflow-x-clip` is the
+        backstop: whatever else happens, nothing escapes the window sideways.
+        Never `overflow-hidden`: it clipped the Status panel and the Mode
+        menu, which drop below the header, and made the header a scroll
+        container -- the panel's focus scrolled it 90 px and the window
+        looked broken (2.0.1, a user's report). `clip` cannot be scrolled.
       */}
-      <header className="flex items-center gap-4 overflow-hidden px-6 py-2.5 bg-dark-800 border-b border-border-dark select-none">
+      <header className="flex items-center gap-4 overflow-x-clip px-6 py-2.5 bg-dark-800 border-b border-border-dark select-none">
         <h1 className="text-lg font-bold tracking-tight text-white shrink-0">SprintTicker</h1>
 
         <div className="flex-1 min-w-0">
