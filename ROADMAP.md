@@ -1206,7 +1206,7 @@ Ordered; each says what has to be true first.
   made there; the same name in the same project is the same task, and
   Today can show one line per task; History gets a week calendar with
   Google Calendar's gestures. Three phases, T1-T3, **done** (2026-11-24),
-  released in 2.0.2 beside 2.0.1.
+  released in 2.0.2.
 
 - **AI agents can ask SprintTicker** (asked 2026-11-24). The design and the
   user's answers are [AGENT-INTERFACE.md](Documentation/AGENT-INTERFACE.md):
@@ -1219,7 +1219,8 @@ Ordered; each says what has to be true first.
   start, stop, done, pause, resume -- through the window's own commands,
   with the ten-second Undo. On 2.0.1-rc2 (2026-11-24) the installed
   command read the user's day and `claude mcp list` shows it connected.
-  Released in 2.0.1 (2026-11-24). **Left:** the user's trial from Claude
+  Released in 2.0.2: 2.0.1 was folded into it rather than released on its
+  own (the user's choice, 2026-11-24). **Left:** the user's trial from Claude
   Code and Claude desktop.
 
 - **Stream Deck Mini, as an alternative to the bar** (planned 2026-10-16,

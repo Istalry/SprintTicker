@@ -1,6 +1,7 @@
 # An interface for AI agents
 
-**Status:** decided and built 2026-11-24 (A1-A5), for 2.0.1; to be tried
+**Status:** decided and built 2026-11-24 (A1-A5), released in 2.0.2 (2.0.1,
+which carried it first, was folded into 2.0.2 rather than released); to be tried
 from Claude Code and Claude desktop on an installed build. First
 written as a proposal on 2026-11-13; the user's answers are in section 9.
 
