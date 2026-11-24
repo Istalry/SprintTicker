@@ -1199,6 +1199,14 @@ Each phase's status is kept in the plan's last section, not here.
 
 Ordered; each says what has to be true first.
 
+- **Work of your own on the fly, one line per task, a calendar** (a user's
+  feedback on 2.0.1-rc2, decided 2026-11-24). The design and the user's
+  answers are [LOCAL-WORK-AND-CALENDAR.md](Documentation/LOCAL-WORK-AND-CALENDAR.md):
+  *Project: Task: note* started from the picker, in a project of your own
+  made there; the same name in the same project is the same task, and
+  Today can show one line per task; History gets a week calendar with
+  Google Calendar's gestures. Three phases, T1-T3, before 2.0.1 ships.
+
 - **AI agents can ask SprintTicker** (asked 2026-11-24). The design and the
   user's answers are [AGENT-INTERFACE.md](Documentation/AGENT-INTERFACE.md):
   one API in the running app, `/api/v1/agent/`, and two thin clients in

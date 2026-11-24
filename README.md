@@ -766,6 +766,9 @@ never `docs/index.html`, and CI fails the build if the two have drifted.
 
 **Reference:**
 
+- [**Work of your own and the calendar**](Documentation/LOCAL-WORK-AND-CALENDAR.md)
+  — a task on the fly in a project of your own, one line per task, and
+  History's calendar: the design, being built.
 - [**AI agents**](Documentation/AGENT-INTERFACE.md) — how Claude Code and
   Claude desktop ask the running app, and what they may change.
 - [**Provider API**](Documentation/PROVIDER-API.md) — the contract a
