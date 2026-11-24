@@ -315,8 +315,8 @@ Interrupt, and three answer keys with one meaning each -- A says yes (done,
 back, join, resume), B stops or waits, C throws away. Five keys, on a Stream
 Deck Mini's six; Previous task and three Recent keys are there to add. It talks to the app on
 this machine, and every key turns grey while SprintTicker is closed. See
-[the plugin](#-stream-deck-plugin) below. Tried on Stream Deck Mobile; not
-yet on a physical deck.
+[the plugin](#-stream-deck-plugin) below. Tried on Stream Deck Mobile and
+with the Mini's layout.
 
 ### 📅 Ceremonies and schedules
 
@@ -559,7 +559,9 @@ pnpm package:win
 ```
 
 Builds both the NSIS installer and the portable executable into
-`packages/desktop-app/dist-electron/`. Individual targets:
+`packages/desktop-app/dist-electron/`, with the Stream Deck plugin and the AI
+agents' command inside; `pnpm verify:packed` then starts the build on a
+throwaway profile and checks what it does. Individual targets:
 
 ```bash
 pnpm --filter @sprintticker/desktop-app package:installer
@@ -581,11 +583,14 @@ pnpm --filter @sprintticker/desktop-app package:portable
 ## 🔌 Local HTTP API
 
 The Electron main process hosts an HTTP server on `http://127.0.0.1:39123` for
-remote key presses, and the Stream Deck plugin's WebSocket.
+remote key presses, the Stream Deck plugin's WebSocket and the AI agents'
+command.
 
 | Route | Method | Description |
 | :--- | :--- | :--- |
 | `/api/input` | `POST` | Inject physical hardware key events (`up`, `down`, `start`, `ok`, etc.) |
+| `/api/v1/deck` | WebSocket | The Stream Deck plugin: the state pushed, the keys' requests |
+| `/api/v1/agent/<command>` | `POST` | The AI agents' reads and writes; off until turned on, and behind a bearer token |
 
 ### 🔒 Security
 
@@ -602,9 +607,10 @@ events. Requests are screened before routing:
   clients do not.
 - **Bodies are capped at 64 KB.**
 
-This is not authentication. Any local program can still call this API; what the
-checks close is the path from a web page you happen to be visiting to your
-hardware. The server binds to `127.0.0.1` only and is never reachable from the
+This is not authentication. Any local program can still call this API --
+except the AI agents' routes, which also need access turned on, a `Host`
+naming loopback and the token; what the checks close is the path from a web
+page you happen to be visiting to your hardware. The server binds to `127.0.0.1` only and is never reachable from the
 network.
 
 ---
@@ -760,6 +766,8 @@ never `docs/index.html`, and CI fails the build if the two have drifted.
 
 **Reference:**
 
+- [**AI agents**](Documentation/AGENT-INTERFACE.md) — how Claude Code and
+  Claude desktop ask the running app, and what they may change.
 - [**Provider API**](Documentation/PROVIDER-API.md) — the contract a
   task-tracking server implements to become a SprintTicker provider, beside
   Jira and OpenProject. `pnpm provider:check` tells a server's builders what

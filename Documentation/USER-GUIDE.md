@@ -1443,12 +1443,12 @@ in the window.
 
 SprintTicker has a plugin for Elgato's Stream Deck app (7.1 or later). It
 works beside the bar or without one, and leaves the rest of your deck alone.
-Releases carry it beside the installer, from 1.3.0 on, as
+The installer carries it: **Install the plugin**, in the first run or in
+Settings › Desk devices, opens it in the Stream Deck app. Releases also
+carry it beside the installer, as
 `SprintTicker-StreamDeck-<version>.streamDeckPlugin`: double-click it. Its
-version is its own, not the app's. Before that release, build it from the
-source with `pnpm deck:pack` and double-click the `.streamDeckPlugin` file
-that lands in `packages/streamdeck-plugin/dist/`. It has been tried on Stream
-Deck Mobile, not yet on a physical deck.
+version is its own, not the app's. From the source, `pnpm deck:pack` builds
+it into `packages/streamdeck-plugin/dist/`.
 
 Its actions are listed under **SprintTicker** in the Stream Deck app.
 Session, Interrupt and Answer A, B and C fill five of a Stream Deck Mini's

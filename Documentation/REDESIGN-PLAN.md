@@ -2722,7 +2722,8 @@ left once the screens are real:
   CHANGELOG per release, every picture remade.
 - **P15d, the release candidate**, on the real bar and Stream Deck Mobile:
   the user's day, with the bar trials of P14b-P14e still owed.
-- **P15e, the motion video.**
+- ~~**P15e, the motion video.**~~ Dropped on 2026-11-24, the user's choice:
+  no video is needed.
 
 **As landed: P15d, the agent's part (2026-11-13).** The candidate is the
 user's to try; before it, what REVIEW §8 left for P15d:
@@ -2903,7 +2904,7 @@ and what it finds is fixed as it comes.
 - ~~The tray's **Switch task…** shows with nothing running; `renderTaskStarted`
   (GO!) is dead code (REVIEW §8).~~ Fixed 2026-11-16: **Start a task…**
   with nothing running; GO!'s code removed.
-- Then **P15e**, the motion video.
+- ~~Then **P15e**, the motion video.~~ Dropped on 2026-11-24.
 
 **As landed: P15a1, the review (2026-11-13).**
 
@@ -3153,5 +3154,5 @@ From the reviews, kept out on purpose (proposal §38 and §40):
 | P12 | done: P12a (close hides to the tray, the menu of S26), P12b (the tray icon), P12c (toasts that lead somewhere), P12d (the mini timer's states), P12e (the four shortcuts) -- see §17 "Split" | P12a `a22383b`, P12b `aac267e`, P12c `ab2ee71`, P12d `36801e0`, P12e (2026-11-12) |
 | P13 | done 2026-11-12: P13a (protocol 2 and the app side), P13b (the plugin's keys), P13c (on the deck: the Mini and Mobile layouts, the first trial's interruption findings, the trial passed on Stream Deck Mobile), plugin 0.6.3 -- see §18 "Split" | P13a `937cb8d`, P13b `7f7644b`, P13c Mini `ff6415b`, interruptions `7aa6b71`, Mobile `54d9120` |
 | P14 | done: P14a (the paused menu); the bar rethought with the user (§19.1), P14b-P14e split again there; P14b (the buttons), revised after the bar trial (Pause twice stops, Back unused); P14c (the menu); P14d (the ⚡ icon); P14e (the words, NOTHING TIMING) | P14a `4de9fa0`, P14b `8b32784` + `725c786`, P14c `70a8d33`, P14d `8ce363c` (2026-11-12), P14e (2026-11-13) |
-| P15 | in progress: split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d: the agent's part done (the last words, the checks, the candidate), the first hour's fixes in rc2, the probe passed; the user's day on the bar and deck Monday 2026-11-16 | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d`, P15c `b6b6b94`, P15d `98ffbda`, MEETING kept `e7f0166`, probe `ac12f1d`, first hour `08c7d18`, NO TASK `d72eb14` |
+| P15 | done, released as 2.0.0 (2026-11-17); P15e, the motion video, dropped by the user on 2026-11-24. Split P15a-P15e (§20); P15a1 (the review), P15a2 (the focus), P15a3 (the words), P15a4 (colours), P15a5 (screen reader, zoom), P15a6 (behaviour), P15a7 (the second pass) done -- P15a complete; P15b (dry run at scale), P15c (documents) done; P15d: the agent's part done (the last words, the checks, the candidate), the first hour's fixes in rc2, the probe passed; the user's day on the bar and deck Monday 2026-11-16 | P15a1 `e2dafc9`, P15a2 `cfe4dca`, P15a3 `c46d65d`, P15a4 `3d99d6f`, P15a5 `83462ff`, P15a6 `311b279`, P15a7 `7fbc9ee`, P15b `1bf5e0d`, P15c `b6b6b94`, P15d `98ffbda`, MEETING kept `e7f0166`, probe `ac12f1d`, first hour `08c7d18`, NO TASK `d72eb14` |
 | P16 | done: P16a-P16f (§19b) -- the row, General, Account, My workday, Desk devices, Data and Developer, Tasks | P16a `0a36d40`, P16b `fe1c7ab`, P16c `9d22567`, P16d `de261c5`, P16e `a8c7749`, P16f (2026-11-13) |

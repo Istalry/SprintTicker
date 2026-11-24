@@ -2086,12 +2086,12 @@
       <h3 id="guide-a-stream-deck">🎹 A Stream Deck</h3>
       <p>SprintTicker has a plugin for Elgato&#39;s Stream Deck app (7.1 or later). It
       works beside the bar or without one, and leaves the rest of your deck alone.
-      Releases carry it beside the installer, from 1.3.0 on, as
+      The installer carries it: <strong>Install the plugin</strong>, in the first run or in
+      Settings › Desk devices, opens it in the Stream Deck app. Releases also
+      carry it beside the installer, as
       <code>SprintTicker-StreamDeck-&lt;version&gt;.streamDeckPlugin</code>: double-click it. Its
-      version is its own, not the app&#39;s. Before that release, build it from the
-      source with <code>pnpm deck:pack</code> and double-click the <code>.streamDeckPlugin</code> file
-      that lands in <code>packages/streamdeck-plugin/dist/</code>. It has been tried on Stream
-      Deck Mobile, not yet on a physical deck.</p>
+      version is its own, not the app&#39;s. From the source, <code>pnpm deck:pack</code> builds
+      it into <code>packages/streamdeck-plugin/dist/</code>.</p>
       <p>Its actions are listed under <strong>SprintTicker</strong> in the Stream Deck app.
       Session, Interrupt and Answer A, B and C fill five of a Stream Deck Mini&#39;s
       six keys -- the ready-made profile puts Previous task in the sixth -- and
@@ -2470,8 +2470,8 @@
         </g>
       </svg>
       </div><p>Three processes, one database, two outbound directions (the device over USB, a
-      task provider over the internet), and one inbound (remote key presses and the
-      Stream Deck plugin, on loopback).</p>
+      task provider over the internet), and one inbound (remote key presses, the
+      Stream Deck plugin and the AI agents&#39; command, on loopback).</p>
       <p>The device address is a persisted setting (<code>DeviceConfigDTO.ipAddress</code>), seeded
       from <code>10.0.4.20</code> and edited in Settings › Device. Main reads it before
       constructing <code>BusyBarDriver</code>; changing it calls <code>reconfigure()</code>, which tears the
@@ -3650,6 +3650,20 @@
       app&#39;s clock and <code>WorkingCalendar</code>, and writes each answer&#39;s text itself: the
       client prints it, so no rule lives in another process. The protocol is
       <code>src/shared/agent-protocol.ts</code>; <a href="API.md#the-ai-agents-routes">API reference</a>.</p>
+      <p>Its writes go through <code>AgentActions</code>, the window&#39;s own commands: the
+      picker&#39;s <code>engine.startTask</code>, Stop and Done through the window&#39;s
+      <code>SessionEnding</code> with their Undo, the engine&#39;s pause and resume. It refuses
+      what the window refuses -- a start during an interruption -- and Done
+      without <code>confirmed</code>. <code>AgentAccess</code> also builds, while access is on, the
+      lines Settings shows (<code>shared/agent-setup.ts</code>): the <code>claude mcp add</code> line,
+      Claude desktop&#39;s entry and the <code>.cmd</code>&#39;s path, from how the build runs the
+      command (<code>agentLaunch</code> in <code>main/index.ts</code>): the installer&#39;s
+      <code>resources/agent/</code> under <code>SprintTicker.exe</code> with <code>ELECTRON_RUN_AS_NODE</code>, or
+      <code>pnpm agent:build</code>&#39;s bundle in development, and none for the portable
+      build.</p>
+      <p>The client is <code>packages/agent-cli</code>: the <code>sprintticker</code> command and its MCP
+      server over stdio, one bundled file with no dependencies, which imports
+      <code>agent-protocol.ts</code> alone and prints the app&#39;s text.</p>
       <hr>
       <h3 id="architecture-data">4. Data</h3>
       <p>Everything lives in one SQLite file at
@@ -3959,8 +3973,10 @@
       one page cannot fail the way production failed.</p>
       <p>The animation studio has its own suite, 117 tests across 6 files, run by
       <code>pnpm test</code> after the app&#39;s and on its own by <code>pnpm test:studio</code>. So has the
-      Stream Deck plugin, 238 tests across 8 files (<code>pnpm test:deck</code>), which also
-      runs its link against the app&#39;s real <code>DeckServer</code> over loopback.</p>
+      Stream Deck plugin, 320 tests across 8 files (<code>pnpm test:deck</code>), which also
+      runs its link against the app&#39;s real <code>DeckServer</code> over loopback; and the AI
+      agents&#39; client, 24 tests in 1 file (<code>pnpm test:agent</code>), against the app&#39;s
+      real local server and agent routes.</p>
       <p>What the suite structurally <strong>cannot</strong> see: application startup, IPC wiring, and
       anything touching real hardware. Those need the app actually running — read its
       console, not just its UI.</p>

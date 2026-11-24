@@ -1154,7 +1154,8 @@ the candidate for real work. Also in 2.0: a SprintTicker server as a
 provider (`PROVIDER-API.md`). 2.0.0 was published on 2026-11-17 and, before
 anyone installed it, replaced in place on 2026-11-19 with the mini timer's
 stay-on-top fix. With CI off until 2026-12-01, both were checked and built
-by hand (CLAUDE.md §2), every gate CI runs passing locally. Left: P15e, the motion video.
+by hand (CLAUDE.md §2), every gate CI runs passing locally. P15e, the motion
+video, was dropped on 2026-11-24, the user's choice: the redesign is complete.
 
 A new face and new flows for every surface: the window, the mini timer,
 the tray, the bar and the Stream Deck. The target is drawn in
@@ -1207,8 +1208,9 @@ Ordered; each says what has to be true first.
   A3, the command and the MCP server; A4, both in the installer, run by the
   app's own executable, with the setup lines in Settings; A5, the writes --
   start, stop, done, pause, resume -- through the window's own commands,
-  with the ten-second Undo. **Left:** trying it from Claude Code and Claude
-  desktop on an installed build.
+  with the ten-second Undo. On 2.0.1-rc2 (2026-11-24) the installed
+  command read the user's day and `claude mcp list` shows it connected.
+  **Left:** the user's trial from Claude Code and Claude desktop.
 
 - **Stream Deck Mini, as an alternative to the bar** (planned 2026-10-16,
   revised 2026-10-22). The target is the six-key Mini: no dial, no screen,
@@ -1283,10 +1285,8 @@ Ordered; each says what has to be true first.
     Mobile against the same app: registration, faces, an alert on Yes with
     nothing asked, and every key OFFLINE once the app quit.
 
-  Left: the default profile, authored in the Stream Deck app on the device
-  it is for -- Stream Deck Mobile has the Mini's grid, so it can stand in --
-  and reconnecting after either app restarts. A physical Mini only for how
-  fast its keys redraw.
+  **Done: the user checked it works (2026-11-24)**, with the profile the
+  plugin ships (P13c) and the deck reconnecting after either app restarts.
 - **Start with Windows, as a setting** (asked 2026-10-22). **Built
   2026-10-22** (`LaunchAtLoginService`). The tray's old *Start with Windows
   Startup* item wrote the login item and read it back from `openAtLogin`,
@@ -1305,8 +1305,8 @@ Ordered; each says what has to be true first.
   - **Not from `pnpm dev`**, where the entry would start a bare
     electron.exe: the switch is shown disabled and says why.
 
-  Left: checking it at a real sign-in with the installed build and with
-  the portable exe. It writes the real Run key, so it waits for the user.
+  **Done: the user checked it at a real sign-in (2026-11-24).** The switch
+  has since moved to Settings › General.
 - **Stream Deck: better faces, and animated ones** (asked 2026-10-22).
   **Faces and one-shots built 2026-10-22**: the user chose "Tile" over the
   shipped faces and an LED-panel look, on a design canvas comparing nine
@@ -1332,8 +1332,8 @@ Ordered; each says what has to be true first.
   Upload median 33 ms, nothing skipped, no hang. The LOGGED scene at the
   stand-up's end is covered at once by the task it resumes; the user
   kept it so.
-  Left: a look at the keys on a physical deck. Two different things answer
-  to "animated icons", and only the first is ours to draw:
+  **Done: the user approved the faces (2026-11-24).** Two different things
+  answer to "animated icons", and only the first is ours to draw:
   - **The plugin's own keys.** Their images are what `setImage` sends, so an
     animation is the plugin's to play. Elgato's guidance for animated icons
     is 144 x 144, GIF or WebP, 10 to 20 fps, five seconds at most and under

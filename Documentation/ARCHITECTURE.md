@@ -60,8 +60,8 @@ traps.
 ```
 
 Three processes, one database, two outbound directions (the device over USB, a
-task provider over the internet), and one inbound (remote key presses and the
-Stream Deck plugin, on loopback).
+task provider over the internet), and one inbound (remote key presses, the
+Stream Deck plugin and the AI agents' command, on loopback).
 
 The device address is a persisted setting (`DeviceConfigDTO.ipAddress`), seeded
 from `10.0.4.20` and edited in Settings › Device. Main reads it before
@@ -1209,6 +1209,22 @@ app's clock and `WorkingCalendar`, and writes each answer's text itself: the
 client prints it, so no rule lives in another process. The protocol is
 `src/shared/agent-protocol.ts`; [API reference](API.md#the-ai-agents-routes).
 
+Its writes go through `AgentActions`, the window's own commands: the
+picker's `engine.startTask`, Stop and Done through the window's
+`SessionEnding` with their Undo, the engine's pause and resume. It refuses
+what the window refuses -- a start during an interruption -- and Done
+without `confirmed`. `AgentAccess` also builds, while access is on, the
+lines Settings shows (`shared/agent-setup.ts`): the `claude mcp add` line,
+Claude desktop's entry and the `.cmd`'s path, from how the build runs the
+command (`agentLaunch` in `main/index.ts`): the installer's
+`resources/agent/` under `SprintTicker.exe` with `ELECTRON_RUN_AS_NODE`, or
+`pnpm agent:build`'s bundle in development, and none for the portable
+build.
+
+The client is `packages/agent-cli`: the `sprintticker` command and its MCP
+server over stdio, one bundled file with no dependencies, which imports
+`agent-protocol.ts` alone and prints the app's text.
+
 ---
 
 ## 4. Data
@@ -1510,8 +1526,10 @@ one page cannot fail the way production failed.
 
 The animation studio has its own suite, 117 tests across 6 files, run by
 `pnpm test` after the app's and on its own by `pnpm test:studio`. So has the
-Stream Deck plugin, 238 tests across 8 files (`pnpm test:deck`), which also
-runs its link against the app's real `DeckServer` over loopback.
+Stream Deck plugin, 320 tests across 8 files (`pnpm test:deck`), which also
+runs its link against the app's real `DeckServer` over loopback; and the AI
+agents' client, 24 tests in 1 file (`pnpm test:agent`), against the app's
+real local server and agent routes.
 
 What the suite structurally **cannot** see: application startup, IPC wiring, and
 anything touching real hardware. Those need the app actually running — read its
