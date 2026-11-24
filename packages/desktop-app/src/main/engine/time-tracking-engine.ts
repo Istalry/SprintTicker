@@ -16,6 +16,7 @@ import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey } from '../../shared/prov
 import { OfflineSyncWorker } from '../sync/offline-sync-worker';
 import { OWN_PROJECT_PROVIDER_ID, UNKNOWN_PROJECT_PROVIDER_ID } from '../../shared/local-provider';
 import { WORKLOG_COMMENTS } from '../../shared/worklog-comments';
+import { nextOwnTaskKey, OwnWork, ownProjectKeyFor, sameOwnName } from '../../shared/own-work';
 import { TASK_STANDING_CHECK_MS } from '../sync/sync-constants';
 import { TaskOwnership, TaskOwnershipValue } from '../../shared/task-ownership';
 import { TaskClaim, TaskClaimReport } from '../../shared/task-claim';
@@ -70,6 +71,8 @@ export interface StopOptions {
 /** How a start begins; `startedAt` backdates it ("joined 5 min ago"). */
 export interface StartOptions {
   startedAt?: Date;
+  /** The entry's note, kept on the session until it ends (migration 18). */
+  note?: string;
 }
 
 export class TimeTrackingEngine extends EventEmitter {
@@ -1240,7 +1243,8 @@ export class TimeTrackingEngine extends EventEmitter {
       status: 'TRACKING',
       startTimeUtc,
       totalPausedSeconds: 0,
-      ...(providerId ? { providerId } : {})
+      ...(providerId ? { providerId } : {}),
+      ...(options.note?.trim() ? { note: options.note.trim() } : {})
     };
 
     this._sessionRepo.saveSession(newSession, replacedTaskId !== effectiveTaskId ? replacedTaskId : undefined);
@@ -1428,8 +1432,51 @@ export class TimeTrackingEngine extends EventEmitter {
    * "A task of my own" makes one at a start. `taskId` when the caller must
    * know it beforehand: an undo's restore point covers its row.
    */
-  public createOwnTask(title: string, taskId?: string): TaskDTO {
-    return this._taskRepo.createAdHocTask(checkAdHocTitle(title), this.adHocTaskKey(), false, taskId);
+  public createOwnTask(title: string, taskId?: string, projectName?: string): TaskDTO {
+    if (!projectName?.trim()) return this._taskRepo.createAdHocTask(checkAdHocTitle(title), this.adHocTaskKey(), false, taskId);
+    const { project, exists } = this.ownProjectFor(projectName);
+    if (!exists) this._projectRepo.saveProject(project);
+    const keys = this._taskRepo.getTasksByProjectId(project.id).map(t => t.key);
+    const task: TaskDTO = {
+      id: taskId ?? createId(IdPrefix.OWN_TASK),
+      projectId: project.id,
+      key: nextOwnTaskKey(project.key, keys),
+      title: checkAdHocTitle(title),
+      status: 'in_progress'
+    };
+    this._taskRepo.saveTask(task);
+    return task;
+  }
+
+  /**
+   * The project of the user's own named `name`, case and spacing aside --
+   * never a provider's, whose time is sent (LOCAL-WORK-AND-CALENDAR.md §3) --
+   * or the one that name would make: its key from the name, free among every
+   * provider's keys, and its id the key, as Tasks makes them.
+   */
+  public ownProjectFor(name: string): { project: ProjectDTO; exists: boolean } {
+    const trimmed = name?.trim();
+    if (!trimmed) throw new ArgumentNullException('name');
+    const projects = this._projectRepo.getAllProjects();
+    const found = projects.find(p => p.providerId === OWN_PROJECT_PROVIDER_ID && sameOwnName(p.name, trimmed));
+    if (found) return { project: found, exists: true };
+    const key = ownProjectKeyFor(trimmed, projects.flatMap(p => [p.key, p.id]));
+    return { project: { id: key, key, name: trimmed, providerId: OWN_PROJECT_PROVIDER_ID }, exists: false };
+  }
+
+  /**
+   * Starts work of the user's own picked on the fly: `Dash: Backup files:
+   * before v2` (LOCAL-WORK-AND-CALENDAR.md §2). In a project, the task is
+   * made there -- and the project, when none of the user's has that name;
+   * without one, it is work of their own as before. The note stays on the
+   * session until it ends.
+   */
+  public startOwnWork(work: OwnWork, options: StartOptions = {}): ActiveSessionDTO {
+    if (!work?.title?.trim()) throw new ArgumentNullException('title');
+    const withNote = { ...options, ...(work.note ? { note: work.note } : {}) };
+    if (!work.project?.trim()) return this.startTask('', true, work.title, undefined, undefined, withNote);
+    const task = this.createOwnTask(work.title, undefined, work.project);
+    return this.startTask(task.id, false, task.title, task.projectId, task.key, withNote);
   }
 
   /**
@@ -1846,7 +1893,11 @@ export class TimeTrackingEngine extends EventEmitter {
 
     this._sessionRepo.updateStatus(active.sessionId, 'COMPLETED', active.totalPausedSeconds);
 
-    const worklogComment = comment || WORKLOG_COMMENTS.DEFAULT;
+    // The note the session was started with is the entry's, over the words
+    // the app writes for how it ended -- a switch, the bar, lunch. A comment
+    // the user gave at Stop is theirs, and wins.
+    const appWords = !comment || (Object.values(WORKLOG_COMMENTS) as string[]).includes(comment);
+    const worklogComment = (appWords ? active.note : undefined) || comment || WORKLOG_COMMENTS.DEFAULT;
     const worklogIds = this.logSpan(active, active.startTimeUtc, endUtc, pauses, loggedSeconds, worklogComment);
 
     // An old-model interruption ending now: its worklogs wait to be placed,

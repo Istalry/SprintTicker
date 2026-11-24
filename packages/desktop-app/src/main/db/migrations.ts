@@ -541,6 +541,15 @@ const M017_INTERRUPTION_PAUSES = `
   ALTER TABLE interruptions ADD COLUMN paused_seconds INTEGER NOT NULL DEFAULT 0;
 `;
 
+/**
+ * The note a session was started with -- `Dash: Backup files: before v2`
+ * (LOCAL-WORK-AND-CALENDAR.md §2) -- kept so a restart keeps it, and the
+ * entry's comment at its end. Null for every session before it.
+ */
+const M018_SESSION_NOTE = `
+  ALTER TABLE active_sessions ADD COLUMN note TEXT;
+`;
+
 const M014_STARS_AND_PREVIOUS_TASK = `
   CREATE TABLE task_stars (
       provider_id TEXT NOT NULL,
@@ -627,7 +636,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 14, name: 'stars-and-previous-task', up: db => db.exec(M014_STARS_AND_PREVIOUS_TASK) },
   { version: 15, name: 'interruptions', up: m015Interruptions },
   { version: 16, name: 'refused-entries', up: db => db.exec(M016_REFUSED_ENTRIES) },
-  { version: 17, name: 'interruption-pauses', up: db => db.exec(M017_INTERRUPTION_PAUSES) }
+  { version: 17, name: 'interruption-pauses', up: db => db.exec(M017_INTERRUPTION_PAUSES) },
+  { version: 18, name: 'session-note', up: db => db.exec(M018_SESSION_NOTE) }
 ];
 
 /** Schema version a fully migrated database reports. */

@@ -759,4 +759,21 @@ describe('Schema Migrations', () => {
       expect(() => open('b')).toThrow(/UNIQUE/);
     });
   });
+
+  describe('migration 18: a session keeps its note', () => {
+    it('Migration018_SessionsBefore_HaveNone_ANewOneKeepsIt', () => {
+      for (const migration of MIGRATIONS.filter(m => m.version <= 17)) migration.up(db);
+      db.pragma('user_version = 17');
+      db.prepare(
+        `INSERT INTO active_sessions (id, project_id, task_id, task_key, task_title, start_time_utc, status)
+         VALUES ('old', 'P', 't', 'T-1', 'Task', '2026-11-24T09:00:00.000Z', 'TRACKING')`
+      ).run();
+
+      runMigrations(db);
+      expect(db.prepare('SELECT note FROM active_sessions').get()).toEqual({ note: null });
+      db.prepare("UPDATE active_sessions SET note = 'before v2' WHERE id = 'old'").run();
+
+      expect(db.prepare('SELECT note FROM active_sessions').get()).toEqual({ note: 'before v2' });
+    });
+  });
 });

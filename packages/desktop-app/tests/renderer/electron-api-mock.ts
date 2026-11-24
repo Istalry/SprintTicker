@@ -113,6 +113,7 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     renameSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
     assignSession: vi.fn().mockResolvedValue(TRACKING_SESSION),
     startTask: vi.fn().mockResolvedValue(TRACKING_SESSION),
+    startOwnWork: vi.fn().mockResolvedValue(TRACKING_SESSION),
     moveSessionTo: vi.fn().mockResolvedValue(TRACKING_SESSION),
     pauseSession: vi.fn().mockResolvedValue({ ...TRACKING_SESSION, status: 'PAUSED' }),
     resumeSession: vi.fn().mockResolvedValue(TRACKING_SESSION),

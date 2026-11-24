@@ -37,6 +37,11 @@ export interface ActiveSessionDTO {
    */
   providerId?: string;
   /**
+   * The note it was started with (`Project: Task: note`, migration 18): the
+   * entry's comment when it ends, unless Stop is given another.
+   */
+  note?: string;
+  /**
    * The provider stopped listing this task at the last sync: reassigned,
    * closed or moved. The session goes on and its time is logged; finishing it
    * as done asks first, since the task is no longer the user's to move.

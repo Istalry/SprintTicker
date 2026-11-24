@@ -2584,6 +2584,17 @@
       <code>ownWork</code>: their time may go on work of the user&#39;s own, an existing one or
       a new one named in the picker, made by <code>WorklogCorrectionService</code> in the
       same transaction under an id the undo&#39;s restore point covers.</p>
+      <p><strong>Work of the user&#39;s own can name its project</strong> (<code>session:start-own-work</code>,
+      LOCAL-WORK-AND-CALENDAR.md). <code>Dash: Backup files: before v2</code> is parsed by
+      <code>shared/own-work.ts</code> into a project, a task and a note; the engine&#39;s
+      <code>startOwnWork</code> finds the user&#39;s own project of that name, case and spacing
+      aside -- never a provider&#39;s, whose time is sent -- or makes it, its key from
+      the name and free among every project&#39;s (<code>DASH2</code> beside Jira&#39;s <code>DASH</code>), and
+      makes the task there (<code>own_</code> id, <code>DASH2-1</code>, then <code>DASH2-2</code>). Its time stays
+      here, as any <code>sprintticker</code> project&#39;s. With no project it is ad-hoc work as
+      before. The note is the session&#39;s (<code>active_sessions.note</code>, migration 18)
+      and becomes the entry&#39;s comment when it ends, over the words the app writes
+      for how it ended (a switch, the bar, lunch); a comment given at Stop wins.</p>
       <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
       (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
       quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
@@ -3688,7 +3699,7 @@
       </tr>
       <tr>
       <td align="left"><code>active_sessions</code></td>
-      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index. <code>provider_id</code> is where its time goes, read from its project when it starts. <code>previous_task_id</code> is the task of the session <code>startTask</code> stopped to start it (migration 14). Recent tasks are read from here, with no table of their own</td>
+      <td align="left">Every session — <code>TRACKING</code> / <code>PAUSED</code> / <code>COMPLETED</code>. At most one is open (<code>TRACKING</code> or <code>PAUSED</code>), by a partial unique index. <code>provider_id</code> is where its time goes, read from its project when it starts. <code>previous_task_id</code> is the task of the session <code>startTask</code> stopped to start it (migration 14). <code>note</code> is the note it was started with, its entry&#39;s comment (migration 18). Recent tasks are read from here, with no table of their own</td>
       </tr>
       <tr>
       <td align="left"><code>task_stars</code></td>
@@ -3783,6 +3794,8 @@
       <li><code>interruption-pauses</code> — <code>interruptions.paused_at_utc</code> and
       <code>paused_seconds</code>: an interruption pauses as a task does (2026-11-16).
       No row is rewritten; every fragment so far has no pause.</li>
+      <li><code>session-note</code> — <code>active_sessions.note</code>: the note work of the user&#39;s
+      own was started with. Null for every session before it.</li>
       </ol>
       <p><strong>A migration is checked on a copy of real data before it ships.</strong>
       <code>pnpm db:check-migration</code> copies the database, migrates the copy and compares
@@ -4019,6 +4032,10 @@
       <tr>
       <td align="left"><code>session:start-task</code></td>
       <td align="left">Start tracking a task. Refused during an interruption (<code>END_THE_INTERRUPTION_FIRST</code>): choosing a task does nothing then</td>
+      </tr>
+      <tr>
+      <td align="left"><code>session:start-own-work</code></td>
+      <td align="left"><code>{ title, project?, note? }</code>: work of your own on the fly. With <code>project</code>, the task is made in the user&#39;s own project of that name, case aside -- made too when none has it, its key from the name -- and keyed <code>KEY-n</code>; without, it is work of your own as before. <code>note</code> stays on the session (migration 18) and is the entry&#39;s comment at its end, unless Stop is given another. Refused during an interruption</td>
       </tr>
       <tr>
       <td align="left"><code>session:move-to</code></td>

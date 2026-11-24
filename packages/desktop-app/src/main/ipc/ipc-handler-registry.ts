@@ -1,4 +1,5 @@
 import { AgentService } from '../services/agent-service';
+import { checkOwnWork } from '../../shared/own-work';
 import { AgentAccess } from '../api/agent-api';
 import type { AgentAccessDTO, AgentLaunch, AgentSetupMissing } from '../../shared/agent-setup';
 import type { NoticeService } from '../services/notice-service';
@@ -415,6 +416,16 @@ export class IPCHandlerRegistry {
       // choice, 2026-11-12): it ends first, by Back, Stop or Discard.
       if (this.engine.isInterrupted()) throw new Error(END_THE_INTERRUPTION_FIRST);
       return this.engine.startTask(payload.taskId, payload.isAdHoc, payload.customTitle);
+    });
+
+    // Work of the user's own picked on the fly: `Dash: Backup files: before
+    // v2` (LOCAL-WORK-AND-CALENDAR.md §2). Refused as any start is during an
+    // interruption; main makes the project and the task.
+    ipcMain.handle(IPCChannel.START_OWN_WORK, async (_event, work: unknown) => {
+      const checked = checkOwnWork(work);
+      if (!checked) throw new ArgumentException('Work of your own needs a name, and a project and a note of 200 characters at most.', 'work');
+      if (this.engine.isInterrupted()) throw new Error(END_THE_INTERRUPTION_FIRST);
+      return this.engine.startOwnWork(checked);
     });
 
     // "↳ Move my 1h 24m…" on a task that left the list (S5b): its time so

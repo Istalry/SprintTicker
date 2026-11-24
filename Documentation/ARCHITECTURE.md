@@ -181,6 +181,18 @@ ends first, by Back, Stop or Discard. Split in two, Move and Add time pass
 a new one named in the picker, made by `WorklogCorrectionService` in the
 same transaction under an id the undo's restore point covers.
 
+**Work of the user's own can name its project** (`session:start-own-work`,
+LOCAL-WORK-AND-CALENDAR.md). `Dash: Backup files: before v2` is parsed by
+`shared/own-work.ts` into a project, a task and a note; the engine's
+`startOwnWork` finds the user's own project of that name, case and spacing
+aside -- never a provider's, whose time is sent -- or makes it, its key from
+the name and free among every project's (`DASH2` beside Jira's `DASH`), and
+makes the task there (`own_` id, `DASH2-1`, then `DASH2-2`). Its time stays
+here, as any `sprintticker` project's. With no project it is ad-hoc work as
+before. The note is the session's (`active_sessions.note`, migration 18)
+and becomes the entry's comment when it ends, over the words the app writes
+for how it ended (a switch, the bar, lunch); a comment given at Stop wins.
+
 **The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
 (`windows/main-window-close.ts`) takes the dashboard's `close`: unless a
 quit is under way or `close_to_tray` is off, it prevents it, hides the
@@ -1240,7 +1252,7 @@ testing runs against your actual worklogs.
 | :--- | :--- |
 | `projects` | Cached projects, with `provider_id`: the provider's own id, `sprintticker` for a project made in the app -- which the sync never deletes -- or `local`, the old default, meaning not known. Keys need not be unique |
 | `tasks` | Cached tasks: `status` is `todo` / `in_progress` / `done`; `priority_rank` is 0 (most urgent) to 4, or NULL; `archived_at_utc` set on a task that left the lists but has worklogs; `description` is the start of the provider's, as plain text; `ownership` is `mine`, `unassigned` or `other`, with `assignee_name` on a teammate's (migration 12); `unsorted` is 1 on an interruption's ad-hoc task until it is named or its time moved (migration 13) |
-| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts. `previous_task_id` is the task of the session `startTask` stopped to start it (migration 14). Recent tasks are read from here, with no table of their own |
+| `active_sessions` | Every session — `TRACKING` / `PAUSED` / `COMPLETED`. At most one is open (`TRACKING` or `PAUSED`), by a partial unique index. `provider_id` is where its time goes, read from its project when it starts. `previous_task_id` is the task of the session `startTask` stopped to start it (migration 14). `note` is the note it was started with, its entry's comment (migration 18). Recent tasks are read from here, with no table of their own |
 | `task_stars` | Starred tasks, keyed by `provider_id` and `task_key` so a star survives the task being retired and fetched again under a new id; an ad-hoc task is keyed by its id under `adhoc`, since every ad-hoc task shows the same key. `task_id` is the row last seen (migration 14) |
 | `paused_intervals` | Each pause, FK to the session, `ON DELETE CASCADE`; `reason` is `user`, `interruption`, `lunch` or `away` (migration 15) |
 | `interruptions` | The interruption fragments (migration 15): span, `name`, `source`, the session it held (`interrupted_session_id`, `interrupted_was_paused`), the fragment before it in its run (`after_id`), and its fate -- `placed_task_id` and `placed_worklog_id`, `kept_off`, or `discarded_at_utc`. `legacy_worklog_id` names the worklog of an interruption of the model before. `paused_at_utc` and `paused_seconds` (migration 17) are its pauses, left out of its time. At most one has no end |
@@ -1316,6 +1328,8 @@ Migrations are versioned and forward-only (`src/main/db/migrations.ts`):
 17. `interruption-pauses` — `interruptions.paused_at_utc` and
     `paused_seconds`: an interruption pauses as a task does (2026-11-16).
     No row is rewritten; every fragment so far has no pause.
+18. `session-note` — `active_sessions.note`: the note work of the user's
+    own was started with. Null for every session before it.
 
 **A migration is checked on a copy of real data before it ships.**
 `pnpm db:check-migration` copies the database, migrates the copy and compares

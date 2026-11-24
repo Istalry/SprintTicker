@@ -7,7 +7,7 @@ import type Database from 'better-sqlite3';
  * `SELECT rowid` names it otherwise.
  */
 export type RestorableTable =
-  'worklogs' | 'worklog_sync_queue' | 'tasks' | 'active_sessions' | 'interruptions' | 'paused_intervals';
+  'worklogs' | 'worklog_sync_queue' | 'tasks' | 'projects' | 'active_sessions' | 'interruptions' | 'paused_intervals';
 
 /** Some rows of one table: `where` is SQL over it, with `?` bound from `params`. */
 export interface RowScope {

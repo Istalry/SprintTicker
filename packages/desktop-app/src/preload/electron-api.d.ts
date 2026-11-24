@@ -1,4 +1,5 @@
 import type { WindowRoute } from '../shared/window-route';
+import type { OwnWork } from '../shared/own-work';
 /**
  * The contract between the preload bridge and the renderer.
  *
@@ -78,6 +79,8 @@ export interface IElectronAPI {
   /** Assigns the open ad-hoc session to a task, keeping its start: all its time goes there. */
   assignSession: (taskId: string) => Promise<ActiveSessionDTO>;
   startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) => Promise<ActiveSessionDTO>;
+  /** Work of your own on the fly: in a project of yours, made when new, with a note (LOCAL-WORK-AND-CALENDAR.md). */
+  startOwnWork: (work: OwnWork) => Promise<ActiveSessionDTO>;
   pauseSession: () => Promise<ActiveSessionDTO>;
   resumeSession: () => Promise<ActiveSessionDTO>;
   completeSession: (comment?: string, markDone?: boolean) => Promise<{ success: boolean; loggedSeconds: number }>;

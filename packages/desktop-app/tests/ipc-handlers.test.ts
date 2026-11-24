@@ -668,8 +668,22 @@ describe('IPC handlers', () => {
 
       await expect(invoke(IPCChannel.START_TASK, { taskId: 'T-1' })).rejects.toThrow(END_THE_INTERRUPTION_FIRST);
       await expect(invoke(IPCChannel.INTERRUPTION_SWITCH, 'T-1')).rejects.toThrow(END_THE_INTERRUPTION_FIRST);
+      await expect(invoke(IPCChannel.START_OWN_WORK, { title: 'Backup files' })).rejects.toThrow(END_THE_INTERRUPTION_FIRST);
 
       expect((await invoke(IPCChannel.GET_CURRENT_SESSION)) as { interruption?: unknown }).toHaveProperty('interruption');
+    });
+
+    it('StartOwnWork_InAProject_MainMakesItAndKeepsTheNote', async () => {
+      const session = (await invoke(IPCChannel.START_OWN_WORK, { project: 'Dash', title: 'Backup files', note: 'before v2' })) as {
+        taskKey: string;
+        note?: string;
+      };
+
+      expect(session).toMatchObject({ taskKey: 'DASH-1', note: 'before v2' });
+    });
+
+    it.each([[undefined], ['Backup'], [{ title: '' }], [{ title: 'Backup', project: 7 }]])('StartOwnWork_NotOne_IsRefused_%#', async work => {
+      await expect(invoke(IPCChannel.START_OWN_WORK, work)).rejects.toThrow();
     });
 
     it('RenameSession_Interruption_TakesTheTrimmedName', async () => {

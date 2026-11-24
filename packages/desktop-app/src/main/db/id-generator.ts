@@ -11,6 +11,10 @@ import { randomUUID } from 'crypto';
  */
 export const IdPrefix = {
   ADHOC_TASK: 'adhoc_',
+  // A task made on the fly in a project of the user's own. Not ad-hoc: it
+  // is that project's task, as one made in Tasks, and its project keeps it
+  // from the sync's prune (the prune walks providers' projects only).
+  OWN_TASK: 'own_',
   SESSION: 'sess_',
   WORKLOG: 'wl_',
   SYNC_ITEM: 'sync_',

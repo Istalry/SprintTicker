@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import type { OwnWork } from '../shared/own-work';
 import type { ProviderEventSettingsDTO } from '../shared/provider-events';
 import type { ManualWorklogDTO, WorklogCorrectionDTO } from '../shared/worklog-correction';
 import type { TaskVisibility } from '../shared/task-visibility';
@@ -47,6 +48,7 @@ const electronAPI: IElectronAPI = {
   assignSession: (taskId: string) => ipcRenderer.invoke(IPCChannel.ASSIGN_SESSION, taskId),
   startTask: (taskId: string, isAdHoc?: boolean, customTitle?: string) =>
     ipcRenderer.invoke(IPCChannel.START_TASK, { taskId, isAdHoc, customTitle }),
+  startOwnWork: (work: OwnWork) => ipcRenderer.invoke(IPCChannel.START_OWN_WORK, work),
   pauseSession: () => ipcRenderer.invoke(IPCChannel.PAUSE_SESSION),
   resumeSession: () => ipcRenderer.invoke(IPCChannel.RESUME_SESSION),
   completeSession: (comment?: string, markDone?: boolean) => ipcRenderer.invoke(IPCChannel.COMPLETE_SESSION, { comment, markDone }),
