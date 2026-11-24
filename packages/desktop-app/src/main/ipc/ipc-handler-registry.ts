@@ -1,3 +1,6 @@
+import { AgentService } from '../services/agent-service';
+import { AgentAccess } from '../api/agent-api';
+import type { AgentAccessDTO } from '../../shared/agent-protocol';
 import type { NoticeService } from '../services/notice-service';
 import type { NoticeKind, NoticesDTO, SyncHealthDTO } from '../../shared/sync-health';
 import { END_MY_DAY } from '../../shared/words';
@@ -54,7 +57,7 @@ import { PROVIDER_SETTING_DEFAULTS, ProviderSettingKey, ProviderSettingKeyValue 
 import { parseTaskScope } from '../../shared/task-scope';
 import { normalizeScheduleSettings, checkScheduleSettings } from '../../shared/schedule-defaults';
 import { addLocalDays, localDateKey } from '../../shared/local-date';
-import { weekStartKey } from '../../shared/working-days';
+import { weekdayOf, weekStartKey } from '../../shared/working-days';
 import { ONLY_PROJECTS_WITH_TASKS_KEY, ONLY_PROJECTS_WITH_TASKS_DEFAULT } from '../../shared/project-filter';
 import { TASK_VISIBILITY_KEY, TaskVisibility, isTaskVisibility, readTaskVisibility } from '../../shared/task-visibility';
 import { EOD_COMPLETE_DISPLAY_SECONDS } from '../../shared/render-constants';
@@ -130,6 +133,8 @@ export interface IPCHandlerRegistryDeps {
    * the mini timer's loud "Nothing timing" (P12d). Without it, never.
    */
   isWorkingNow?: () => boolean;
+  /** Whether a day is a working day, for the agent's "last-working-day"; every weekday, without it. */
+  isWorkingDay?: (dateKey: string) => boolean;
   /** Corrects and deletes worklogs; without it, both channels refuse. */
   worklogCorrections?: WorklogCorrectionService;
   windowsNotificationService?: WindowsNotificationListenerService;
@@ -205,6 +210,10 @@ export class IPCHandlerRegistry {
   private reminders?: Pick<ReminderService, 'getReminder' | 'dismiss'>;
   private morning?: Pick<MorningService, 'getMorning' | 'markSeen'>;
   private isWorkingNow?: () => boolean;
+  private isWorkingDay?: (dateKey: string) => boolean;
+  private _agentService?: AgentService;
+  /** The AI agents' switch and token (AGENT-INTERFACE.md §5). */
+  public readonly agentAccess: AgentAccess;
   private undo?: UndoService;
   /** End my day's optional shutdown, after Undo and the queue (S17). */
   private readonly endDayShutdown: EndDayShutdown;
@@ -262,6 +271,14 @@ export class IPCHandlerRegistry {
     this.reminders = deps.reminders;
     this.morning = deps.morning;
     this.isWorkingNow = deps.isWorkingNow;
+    this.isWorkingDay = deps.isWorkingDay;
+    const secrets = this.secrets;
+    this.agentAccess = new AgentAccess({
+      getSetting: (key, value) => settingsRepo.getSetting(key, value),
+      setSetting: (key, value) => settingsRepo.setSetting(key, value),
+      getSecret: key => secrets.getSecret(key),
+      setSecret: (key, value) => secrets.setSecret(key, value)
+    });
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
     // The default is never started and shows nothing: it serves the settings
@@ -343,6 +360,38 @@ export class IPCHandlerRegistry {
   /**
    * Registers all ipcMain handles and state listeners.
    */
+  /**
+   * The AI agent's answers (AGENT-INTERFACE.md §3), read through the readers
+   * the window's own channels use, so an agent and the window never count a
+   * day differently.
+   */
+  public agentService(): AgentService {
+    if (!this._agentService) {
+      const schedule = this.contextScheduleService;
+      this._agentService = new AgentService({
+        session: () => this.engine.getCurrentSession(),
+        worklogsOn: dateKey => this.worklogRepo.getWorklogsByDate(dateKey),
+        worklogsBetween: (from, to) => this.worklogRepo.getWorklogsBetween(from, to),
+        toPlace: () => this.interruptions().getToPlace(),
+        schedule: () => normalizeScheduleSettings(this.settingsRepo.getSetting('schedule_settings', {})),
+        weekChanges: monday => {
+          const closedAt = schedule?.weekClosedAt(monday);
+          return closedAt ? this.worklogRepo.getQueuedChangesBetween(monday, addLocalDays(monday, 6), closedAt.toISOString()) : null;
+        },
+        providerName: () => this.providerManager?.getActiveCapabilities().providerName
+          ?? providerDisplayName(this.settingsRepo.getSetting(
+            ProviderSettingKey.ACTIVE_PROVIDER_ID,
+            PROVIDER_SETTING_DEFAULTS[ProviderSettingKey.ACTIVE_PROVIDER_ID]
+          )),
+        isWorkingDay: dateKey => this.isWorkingDay?.(dateKey) ?? (weekdayOf(dateKey) >= 1 && weekdayOf(dateKey) <= 5),
+        listedTasks: () => this.taskRepo.getAllListed(),
+        ownTasks: () => this.taskRepo.getOwnListed(),
+        projects: () => this.projectRepo.getAllProjects()
+      });
+    }
+    return this._agentService;
+  }
+
   public registerAllHandlers(): void {
     // 1. Session Control IPC Handlers
     ipcMain.handle(IPCChannel.GET_CURRENT_SESSION, async () => {
@@ -952,6 +1001,13 @@ export class IPCHandlerRegistry {
 
     ipcMain.handle(IPCChannel.GET_WEEK_ENDED, async () => this.contextScheduleService.getWeekEnded());
     ipcMain.handle(IPCChannel.GET_LAST_WEEK_CLOSED, async () => this.contextScheduleService.getLastWeekClosed());
+
+    ipcMain.handle(IPCChannel.AGENT_ACCESS_GET, async (): Promise<AgentAccessDTO> => this.agentAccess.get());
+    ipcMain.handle(IPCChannel.AGENT_ACCESS_SET, async (_event, enabled: unknown): Promise<AgentAccessDTO> => {
+      if (typeof enabled !== 'boolean') throw new ArgumentException('Access is on or off.', 'enabled');
+      return this.agentAccess.setEnabled(enabled);
+    });
+    ipcMain.handle(IPCChannel.AGENT_ACCESS_NEW_TOKEN, async (): Promise<AgentAccessDTO> => this.agentAccess.newToken());
 
     ipcMain.handle(IPCChannel.DISMISS_WEEK_ENDED, async () => {
       this.contextScheduleService.dismissWeekEnded();

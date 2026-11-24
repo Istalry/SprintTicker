@@ -4,6 +4,7 @@ import { ProviderId } from '../../../shared/provider-names';
 import { ipcErrorMessage } from '../../utils/formatters';
 import { SettingButton, SettingProblem, SettingRow, SettingsList } from '../../components/SettingRow';
 import { useAnnounce } from '../../components/LiveAnnouncer';
+import { AgentAccessSettings } from './AgentAccessSettings';
 
 /** Where the erase stands: it asks twice before anything goes. */
 type EraseStep = 'idle' | 'first' | 'second' | 'erasing';
@@ -67,6 +68,8 @@ export const DataSettings: React.FC = () => {
       >
         {exported && <p className="text-xs text-text-secondary">{exported}</p>}
       </SettingRow>
+
+      <AgentAccessSettings />
 
       <SettingRow
         title="Erase everything on this computer"

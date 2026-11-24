@@ -1194,6 +1194,21 @@ the app, and `focus()` alone only flashes the taskbar. It never draws on the
 bar itself. The protocol is in
 `src/shared/deck-protocol.ts`; [API reference](API.md#the-stream-deck-socket).
 
+### `AgentService` and `AgentApi` — `src/main/services/`, `src/main/api/`
+
+The app's side of the AI agents' interface ([AGENT-INTERFACE.md](AGENT-INTERFACE.md)):
+POST routes under `/api/v1/agent/` on the same port. `AgentApi` checks
+access is on, the `Host`, and the bearer token (`AgentAccess`: a setting
+and a `SecretStore` secret), then runs the command. `AgentService` answers
+from the readers the window's own channels use -- the worklog repository,
+the engine's session, `InterruptionService.getToPlace`, the schedule --
+through the pure functions the window counts with (`summarizeDay`,
+`buildWeekSheet`, `checkWeek`), and words every state as the window does
+(`SYNC_STATE_WORDS`). It resolves "yesterday" and "last-working-day" on the
+app's clock and `WorkingCalendar`, and writes each answer's text itself: the
+client prints it, so no rule lives in another process. The protocol is
+`src/shared/agent-protocol.ts`; [API reference](API.md#the-ai-agents-routes).
+
 ---
 
 ## 4. Data

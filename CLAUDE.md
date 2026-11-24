@@ -350,6 +350,22 @@ CI. Six things about it cost time to find:
   the manifest with `VisibleInActionsList: false`: deleting one turns
   every key a user placed with it into a dead tile.
 
+**An AI agent reaches the app through `/api/v1/agent/`, and its client
+holds no rule** (AGENT-INTERFACE.md). The command-line tool and the MCP
+server import `shared/agent-protocol.ts` alone and print the `text` the app
+wrote: which day "yesterday" is, the totals and a state's words are
+`AgentService`'s, from the window's own functions. Three things about it:
+- **Never from the database file**, even when the app is closed: an agent's
+  shell may see another copy of it (§7), and opening it migrates it.
+- **Off until the user turns it on, and behind a token** -- after the
+  screening every POST gets, a `Host` naming loopback and this port (DNS
+  rebinding), then `Authorization: Bearer`, compared in constant time.
+  Never put the token in a URL, a log or a file the agent reads: its
+  configuration's `SPRINTTICKER_TOKEN`.
+- **A command is a reader until it is a write the window already makes.**
+  A read goes through the readers the window's channels use; a write, the
+  same commands a click, a bar press or a deck key reach.
+
 A duplicated constant is a bug waiting to happen here, not a style question:
 main and the renderer have shipped contradictory copies of the notification
 defaults and the priority rules, and which one won depended on process start

@@ -148,6 +148,10 @@ export enum IPCChannel {
   JOIN_STANDUP = 'schedule:join-standup',
   GET_WEEK_ENDED = 'schedule:get-week-ended',
   GET_LAST_WEEK_CLOSED = 'schedule:get-last-week-closed',
+  // AI agents' access (AGENT-INTERFACE.md): the switch and the token.
+  AGENT_ACCESS_GET = 'agent:get-access',
+  AGENT_ACCESS_SET = 'agent:set-access',
+  AGENT_ACCESS_NEW_TOKEN = 'agent:new-token',
   DISMISS_WEEK_ENDED = 'schedule:dismiss-week-ended',
   SNOOZE_CEREMONY = 'schedule:snooze-ceremony',
   ON_CEREMONY_PROMPT = 'schedule:on-ceremony-prompt',

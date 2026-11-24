@@ -189,7 +189,7 @@ which the window applies too, so it refuses exactly what main refuses.
 | Group | Channels |
 | :--- | :--- |
 | Device | `device:get-status`, `device:get-config`, `device:set-config`, `device:on-status-changed` |
-| Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup` (`{ shouldShutdown }`: End my day -- saves open editors, stops through `stopForWrapUp` with Undo, and with `shouldShutdown` shuts down only after the undo has passed and the queue has answered, 30 s at most), `schedule:cancel-eod-wrapup` (also cancels a shutdown on its way), `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup` (optional `joinedAt`, an ISO time: "joined 5 min ago"; anything else is refused), `schedule:answer-lunch-question` (`true` starts Lunch and ends the interruption, `false` works through lunch today; answers `false` when nothing was asked), `schedule:get-standup-task` / `schedule:set-standup-task` (`{ taskId, taskKey, title }` or null for the local Daily Standup), `schedule:get-week-ended`, `schedule:get-last-week-closed` (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, `isInClosedWeek`), `schedule:dismiss-week-ended`, `schedule:on-week-ended`, `schedule:snooze-ceremony`, `schedule:get-ceremony-prompt` (the ceremony waiting on an answer, `{ type: 'STANDUP' \| 'EOD', title, at }` with `at` its time as HH:MM, or null), `schedule:on-ceremony-prompt` (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), `schedule:update-ceremony-prompt` |
+| Ceremonies | `schedule:get-settings`, `schedule:save-settings`, `schedule:trigger-eod-prompt`, `schedule:trigger-eod-wrapup` (`{ shouldShutdown }`: End my day -- saves open editors, stops through `stopForWrapUp` with Undo, and with `shouldShutdown` shuts down only after the undo has passed and the queue has answered, 30 s at most), `schedule:cancel-eod-wrapup` (also cancels a shutdown on its way), `schedule:trigger-standup-prompt`, `schedule:cancel-standup-prompt`, `schedule:join-standup` (optional `joinedAt`, an ISO time: "joined 5 min ago"; anything else is refused), `schedule:answer-lunch-question` (`true` starts Lunch and ends the interruption, `false` works through lunch today; answers `false` when nothing was asked), `schedule:get-standup-task` / `schedule:set-standup-task` (`{ taskId, taskKey, title }` or null for the local Daily Standup), `schedule:get-week-ended`, `schedule:get-last-week-closed` (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, `isInClosedWeek`), `agent:get-access` / `agent:set-access` (`enabled`) / `agent:new-token` (AI agents' access, `{ enabled, token }`, the token empty while off; [the routes](#the-ai-agents-routes)), `schedule:dismiss-week-ended`, `schedule:on-week-ended`, `schedule:snooze-ceremony`, `schedule:get-ceremony-prompt` (the ceremony waiting on an answer, `{ type: 'STANDUP' \| 'EOD', title, at }` with `at` its time as HH:MM, or null), `schedule:on-ceremony-prompt` (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), `schedule:update-ceremony-prompt` |
 | Morning card | `morning:get` answers the morning card (`{ dateKey, lastTask: { id, key, title, stoppedAtUtc } \| null, standupAt, inProgress: [{ id, key, title }] }`), or null on a day off, once the day has begun (a session open, anything logged today) or once seen; `morning:seen` stores today as seen |
 | Reminders | `reminders:get` answers the "still...?" reminder being asked (`{ id, kind, sinceUtc, minutes, taskKey?, name?, interruptionId?, heldTaskKey? }`, `kind` one of `nothing-timing`, `long-pause`, `interruption-running`, `standup-running`, `time-away` -- the last with `untilUtc`, the span the task kept timing while the user was away), or null; `reminders:dismiss` takes its `id` and answers false when it is no longer asked; `reminders:give-away-time` takes a `time-away` reminder's `id`, makes its span an ended interruption on the task still timing, opens the place picker on it and answers true -- false when that question is no longer asked; `reminders:on-changed` pushes it to every window, again when the interruption it names is renamed, and null once answered or over |
 | Resume after lunch | `schedule:get-resume-prompt` answers the question being asked, or null; `schedule:answer-resume-prompt` takes `true` (resume) or `false` (leave it), and after an interruption the minutes to count as work since it ended (`addGapMinutes`), and answers `false` when nothing was asked; `schedule:on-resume-prompt` pushes the question, `{ taskKey, taskTitle, after }`, and null once it is answered, from the window or the bar. `after` is `lunch`, `standup` or `interruption`: what stopped the task -- or, after an interruption, what it waited paused through, with `interruptionEndedAtUtc`. After a break (`held: true`), `breakEndedAtUtc` is when it ended, which Resume times the task from. Lunch and the stand-up ask only about a task that left the user's lists; an interruption asks every time, and adds `unlisted: true` when the task has left them as well |
@@ -209,8 +209,8 @@ which the window applies too, so it refuses exactly what main refuses.
 **Source:** `src/main/api/webhook-server.ts`
 
 `http://127.0.0.1:39123`, bound to loopback and never reachable from the
-network. It takes remote key presses, and carries the Stream Deck plugin's
-WebSocket (below). It also served the Unity Editor plugin's four
+network. It takes remote key presses, carries the Stream Deck plugin's
+WebSocket (below), and answers AI agents (below). It also served the Unity Editor plugin's four
 `/api/v1/unity/*` routes until 2026-11-09; they answer `404` now, like any
 other path.
 
@@ -248,6 +248,42 @@ Responses are JSON. `200 { status: 'ACCEPTED', key }` on success,
 **This is not authentication.** Any local program can still call this API. What
 the checks close is the path from a web page you happen to be visiting to your
 hardware. `pnpm verify:packed` asserts all of it against a real packaged build.
+
+### The AI agents' routes
+
+**Source:** `src/main/api/agent-api.ts`, `src/main/services/agent-service.ts`;
+the protocol is `src/shared/agent-protocol.ts`, the one file the agent's
+client imports. The design: [AGENT-INTERFACE.md](AGENT-INTERFACE.md).
+
+`POST /api/v1/agent/<command>`, a JSON object of the command's parameters
+as the body. The commands are `AGENT_COMMANDS`:
+
+| Command | Parameters | Answers |
+| :--- | :--- | :--- |
+| `now` | -- | What runs or is paused, its time, an interruption and the task it holds |
+| `day` | `day`: `today` (default), `yesterday`, `last-working-day` or `YYYY-MM-DD` | The day's entries in the order worked, the total, each task's share, where the sends stand |
+| `week` | `week`: `this-week` (default), `last-week`, or any of its days | Time per day, project and task; what the provider holds; time to place |
+| `check` | `week`, as above | Check my week's list |
+| `to-place` | -- | Interruptions waiting to be placed |
+| `tasks` | `search`: a key or words | Matching tasks, an exact key first, the user's own work included |
+
+Every answer is `200 { protocol, readAt, text, data }`: `text` the answer
+written for a reader, `data` the same as JSON, totals given in seconds and
+as text, times local with their offset. A refusal is
+`{ protocol, error, message }`:
+
+| Status | `error` | When |
+| :--- | :--- | :--- |
+| `404` | `off` | Access is off (Settings › Data › AI agents), as for any unknown path |
+| `403` | `unauthorized` | The `Host` is not `127.0.0.1:<port>` or `localhost:<port>`: DNS rebinding |
+| `401` | `unauthorized` | No `Authorization: Bearer <token>`, or a wrong one |
+| `400` | `invalid-request` | A parameter it cannot read: a day that is not one |
+| `404` | `not-found` | No such command; no working day to go back to |
+
+The checks run after the screening every POST gets (below), so a page
+cannot reach them. The token is made when access is turned on, kept in
+`SecretStore`, compared in constant time, and replaced by "Make a new one"
+(`agent:new-token`), which refuses every agent given the old one at once.
 
 ### The Stream Deck socket
 

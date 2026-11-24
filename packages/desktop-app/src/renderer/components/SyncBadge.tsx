@@ -2,19 +2,23 @@ import React from 'react';
 import { WorklogDTO } from '../../shared/dtos';
 import { WorklogSyncState } from '../../shared/worklog-correction';
 import { refusalReason } from '../../shared/refused-entry';
-import { StateWord } from '../../shared/words';
+import { SYNC_STATE_WORDS } from '../../shared/sync-state-words';
 
-/** How each send state reads on a row, and what its tooltip adds. */
-export const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: string }> = {
-  local: { label: `${StateWord.LOGGED} here`, tone: 'text-text-secondary border-border-dark', hint: 'Kept on this computer; never sent.' },
-  pending: { label: StateWord.WAITING, tone: 'text-accent-amber border-accent-amber/40', hint: 'Sent once the 10 s to undo have passed and your provider answers.' },
-  sent: { label: StateWord.SENT, tone: 'text-accent-green border-accent-green/40', hint: 'Your provider has it.' },
-  failed: { label: 'Not sent', tone: 'text-accent-red border-accent-red/40', hint: 'Not sent yet: see Settings › Account › Entries waiting to send.' },
-  refused: { label: 'Refused', tone: 'text-accent-red border-accent-red/40', hint: 'Refused. Move it to another task, or keep it here.' },
-  'correction-pending': { label: 'Correction pending', tone: 'text-accent-amber border-accent-amber/40', hint: 'A correction waits to send.' },
-  'correction-failed': { label: 'Correction failed', tone: 'text-accent-red border-accent-red/40', hint: 'Not sent yet: see Settings › Account › Entries waiting to send.' },
-  'held-overlap': { label: StateWord.WAITING, tone: 'text-accent-amber border-accent-amber/40', hint: 'It overlaps an earlier entry, and is not sent until one of them is corrected.' }
+/** How each send state reads on a row (`SYNC_STATE_WORDS`, shared with the agent's answers), and its colour. */
+const TONE: Record<WorklogSyncState, string> = {
+  local: 'text-text-secondary border-border-dark',
+  pending: 'text-accent-amber border-accent-amber/40',
+  sent: 'text-accent-green border-accent-green/40',
+  failed: 'text-accent-red border-accent-red/40',
+  refused: 'text-accent-red border-accent-red/40',
+  'correction-pending': 'text-accent-amber border-accent-amber/40',
+  'correction-failed': 'text-accent-red border-accent-red/40',
+  'held-overlap': 'text-accent-amber border-accent-amber/40'
 };
+
+export const SYNC_BADGE: Record<WorklogSyncState, { label: string; tone: string; hint: string }> = Object.fromEntries(
+  (Object.keys(SYNC_STATE_WORDS) as WorklogSyncState[]).map(state => [state, { ...SYNC_STATE_WORDS[state], tone: TONE[state] }])
+) as Record<WorklogSyncState, { label: string; tone: string; hint: string }>;
 
 /** "Waiting to send · overlaps PF-31" for an entry an overlap holds back; the state's own label otherwise. */
 export function syncBadgeLabel(log: WorklogDTO): string {

@@ -1,3 +1,5 @@
+import { AgentApi } from './api/agent-api';
+import { AGENT_API_PREFIX } from '../shared/agent-protocol';
 import { WorklogCorrectionService } from './services/worklog-correction-service';
 import { app, BrowserWindow, globalShortcut, Notification, powerMonitor, screen, shell } from 'electron';
 import path from 'path';
@@ -691,6 +693,7 @@ async function startApplication(): Promise<void> {
     reminders: reminderService,
     morning,
     isWorkingNow: workingNow,
+    isWorkingDay: dateKey => calendar.isWorkingDay(dateKey),
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
       // Wakes the worker when the hold ends, as a stop does: a correction
       // should not wait out the five-minute interval to reach the provider.
@@ -711,6 +714,12 @@ async function startApplication(): Promise<void> {
     webhookServer
   });
   ipcRegistry.registerAllHandlers();
+
+  // The AI agents' routes (AGENT-INTERFACE.md), on the same port: off until
+  // the user turns them on, and behind a token.
+  const agentServer = webhookServer;
+  const agentApi = new AgentApi(ipcRegistry.agentService(), ipcRegistry.agentAccess, () => agentServer.getStatus().port);
+  webhookServer.onPost(AGENT_API_PREFIX, (path, body, headers) => agentApi.handle(path, body, headers));
   scheduleUpdateChecks();
 
   // The Stream Deck plugin's socket, on the same port. After the registry:

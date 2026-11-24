@@ -64,6 +64,7 @@ export const SETTINGS_ENTRIES: readonly SettingsEntry[] = [
   { label: 'Task key color', group: 'devices', keywords: ['colour', 'theme', 'color'] },
   { label: 'Connection', group: 'devices', keywords: ['address', 'ip', 'wi-fi', 'usb', 'token', 'reconnect', 'notification duration', 'polling'] },
   { label: 'When nothing runs', group: 'devices', keywords: ['idle clock', 'clock'] },
+  { label: 'AI agents', group: 'data', keywords: ['claude', 'mcp', 'llm', 'agent', 'cli', 'sprintticker command', 'token'] },
   { label: 'Use without a bar', group: 'devices', keywords: ['no bar', 'add a busy bar'] },
   { label: 'Windows notifications on the bar', group: 'devices', keywords: ['notifications', 'apps', 'mirror', 'banner', 'privacy'] },
   { label: 'What the bar shows first', group: 'devices', keywords: ['priority', 'rules', 'levels', 'preemption'] },

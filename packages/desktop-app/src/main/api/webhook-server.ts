@@ -1,7 +1,13 @@
-import http, { Server, IncomingMessage, ServerResponse } from 'http';
+import http, { Server, IncomingMessage, IncomingHttpHeaders, ServerResponse } from 'http';
 import { AddressInfo } from 'net';
 import type { Duplex } from 'stream';
 import { LOCAL_API_PORT } from '../../shared/deck-protocol';
+
+/**
+ * Answers a screened POST under a prefix -- the agent's routes. Its answer
+ * is sent as JSON; a throw answers 500.
+ */
+export type PostHandler = (path: string, body: unknown, headers: IncomingHttpHeaders) => { status: number; body: unknown };
 
 /** Takes over a connection asking to become a WebSocket, once screened. */
 export type UpgradeHandler = (req: IncomingMessage, socket: Duplex, head: Buffer) => void;
@@ -51,6 +57,7 @@ export class WebhookServer {
   private listeningAddress: string = '';
   private inputCallbacks: Set<(key: string) => void> = new Set();
   private readonly upgradeHandlers = new Map<string, UpgradeHandler>();
+  private readonly postHandlers = new Map<string, PostHandler>();
 
   constructor(port: number = LOCAL_API_PORT) {
     this.port = port;
@@ -69,6 +76,16 @@ export class WebhookServer {
   public onUpgrade(path: string, handler: UpgradeHandler): void {
     if (!path.startsWith('/')) throw new Error(`An upgrade path starts with '/': ${path}`);
     this.upgradeHandlers.set(path, handler);
+  }
+
+  /**
+   * Hands screened POSTs under `prefix` to `handler`: the agent's routes,
+   * which add their own checks (AGENT-INTERFACE.md §5) on top of this
+   * server's. One handler per prefix.
+   */
+  public onPost(prefix: string, handler: PostHandler): void {
+    if (!prefix.startsWith('/')) throw new Error(`A route prefix starts with '/': ${prefix}`);
+    this.postHandlers.set(prefix, handler);
   }
 
   /**
@@ -214,7 +231,7 @@ export class WebhookServer {
         }
       }
 
-      this.routeRequest(req.url || '/', body, res);
+      this.routeRequest(req.url || '/', body, res, req.headers);
     });
 
     req.on('error', () => {
@@ -225,9 +242,20 @@ export class WebhookServer {
   /// <summary>
   /// Routes parsed body content to the remote input handler, the one route.
   /// </summary>
-  private routeRequest(url: string, body: unknown, res: ServerResponse): void {
+  private routeRequest(url: string, body: unknown, res: ServerResponse, headers: IncomingHttpHeaders = {}): void {
     if (url.startsWith('/api/input') || url.startsWith('/api/v1/input')) {
       return this.handleApiInput(url, body, res);
+    }
+    const path = url.split('?')[0];
+    for (const [prefix, handler] of this.postHandlers) {
+      if (!path.startsWith(prefix)) continue;
+      try {
+        const answer = handler(path, body, headers);
+        return this.sendJSON(res, answer.status, answer.body);
+      } catch (err) {
+        console.error(`[Webhook] ${prefix} failed:`, err);
+        return this.sendJSON(res, 500, { error: 'INTERNAL_ERROR', message: 'The request failed in SprintTicker.' });
+      }
     }
     return this.sendJSON(res, 404, { error: 'NOT_FOUND', message: 'Endpoint Not Found' });
   }

@@ -31,6 +31,29 @@ describe('Settings · Data', () => {
     await waitFor(() => expect(screen.queryByText(/Saved\. Attach the file/)).toBeNull());
   });
 
+  it('AiAgents_OffAtFirst_OnShowsTheToken_ANewOneReplacesIt', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const bridge = installElectronApi();
+    render(<DataSettings />);
+
+    const agents = row('AI agents');
+    const toggle = within(agents).getByRole('switch', { name: 'Let AI agents use SprintTicker' }) as HTMLInputElement;
+    await waitFor(() => expect(toggle.disabled).toBe(false));
+    expect(toggle.checked).toBe(false);
+    expect(within(agents).queryByLabelText('Token')).toBeNull();
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect((within(agents).getByLabelText('Token') as HTMLInputElement).value).toBe('token-1'));
+    expect(bridge.api.setAgentAccess).toHaveBeenCalledWith(true);
+
+    fireEvent.click(within(agents).getByRole('button', { name: 'Copy' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('token-1'));
+    fireEvent.click(within(agents).getByRole('button', { name: 'Make a new one' }));
+    await waitFor(() => expect((within(agents).getByLabelText('Token') as HTMLInputElement).value).toBe('token-2'));
+    expect(within(agents).getByText(/Give it to your agents again/)).toBeTruthy();
+  });
+
   it('Erase_AsksTwiceBeforeErasing', async () => {
     const bridge = installElectronApi();
     render(<DataSettings />);

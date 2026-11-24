@@ -217,6 +217,9 @@ const electronAPI: IElectronAPI = {
   setStandupTask: (task: StandupTaskDTO | null) => ipcRenderer.invoke(IPCChannel.SET_STANDUP_TASK, task),
   getWeekEnded: () => ipcRenderer.invoke(IPCChannel.GET_WEEK_ENDED),
   getLastWeekClosed: () => ipcRenderer.invoke(IPCChannel.GET_LAST_WEEK_CLOSED),
+  getAgentAccess: () => ipcRenderer.invoke(IPCChannel.AGENT_ACCESS_GET),
+  setAgentAccess: (enabled: boolean) => ipcRenderer.invoke(IPCChannel.AGENT_ACCESS_SET, enabled),
+  newAgentToken: () => ipcRenderer.invoke(IPCChannel.AGENT_ACCESS_NEW_TOKEN),
   dismissWeekEnded: () => ipcRenderer.invoke(IPCChannel.DISMISS_WEEK_ENDED),
   onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => {
     const handler = (_event: IpcRendererEvent, week: WeekEndedDTO | null) => callback(week);

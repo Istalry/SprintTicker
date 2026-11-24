@@ -20,6 +20,7 @@ import type { TaskVisibility } from '../shared/task-visibility';
 import type { FlowSettingKeyValue, FlowSettingValues, ShortcutAction, ShortcutChord } from '../shared/flow-settings';
 import type { InterruptionSource, InterruptionToPlaceDTO } from '../shared/interruption';
 import type { PickerDataDTO } from '../shared/task-picker';
+import type { AgentAccessDTO } from '../shared/agent-protocol';
 import type { BarInputDTO } from '../shared/bar-input';
 import type {
   ActiveSessionDTO,
@@ -256,6 +257,11 @@ export interface IElectronAPI {
   getWeekEnded: () => Promise<WeekEndedDTO | null>;
   /** The Monday of the last week closed, or null: time up to its Sunday asks before it is changed. */
   getLastWeekClosed: () => Promise<string | null>;
+  /** AI agents' access (AGENT-INTERFACE.md): the switch, and the token while on. */
+  getAgentAccess: () => Promise<AgentAccessDTO>;
+  setAgentAccess: (enabled: boolean) => Promise<AgentAccessDTO>;
+  /** Replaces the token: every agent given the old one is refused. */
+  newAgentToken: () => Promise<AgentAccessDTO>;
   dismissWeekEnded: () => Promise<boolean>;
   /** Pushed when a week closes, and null once it is dismissed anywhere. */
   onWeekEnded: (callback: (week: WeekEndedDTO | null) => void) => () => void;

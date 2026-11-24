@@ -3613,6 +3613,19 @@
       the app, and <code>focus()</code> alone only flashes the taskbar. It never draws on the
       bar itself. The protocol is in
       <code>src/shared/deck-protocol.ts</code>; <a href="API.md#the-stream-deck-socket">API reference</a>.</p>
+      <h4><code>AgentService</code> and <code>AgentApi</code> — <code>src/main/services/</code>, <code>src/main/api/</code></h4>
+      <p>The app&#39;s side of the AI agents&#39; interface (<a href="AGENT-INTERFACE.md">AGENT-INTERFACE.md</a>):
+      POST routes under <code>/api/v1/agent/</code> on the same port. <code>AgentApi</code> checks
+      access is on, the <code>Host</code>, and the bearer token (<code>AgentAccess</code>: a setting
+      and a <code>SecretStore</code> secret), then runs the command. <code>AgentService</code> answers
+      from the readers the window&#39;s own channels use -- the worklog repository,
+      the engine&#39;s session, <code>InterruptionService.getToPlace</code>, the schedule --
+      through the pure functions the window counts with (<code>summarizeDay</code>,
+      <code>buildWeekSheet</code>, <code>checkWeek</code>), and words every state as the window does
+      (<code>SYNC_STATE_WORDS</code>). It resolves &quot;yesterday&quot; and &quot;last-working-day&quot; on the
+      app&#39;s clock and <code>WorkingCalendar</code>, and writes each answer&#39;s text itself: the
+      client prints it, so no rule lives in another process. The protocol is
+      <code>src/shared/agent-protocol.ts</code>; <a href="API.md#the-ai-agents-routes">API reference</a>.</p>
       <hr>
       <h3 id="architecture-data">4. Data</h3>
       <p>Everything lives in one SQLite file at
@@ -4434,7 +4447,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code> (<code>{ shouldShutdown }</code>: End my day -- saves open editors, stops through <code>stopForWrapUp</code> with Undo, and with <code>shouldShutdown</code> shuts down only after the undo has passed and the queue has answered, 30 s at most), <code>schedule:cancel-eod-wrapup</code> (also cancels a shutdown on its way), <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code> (<code>{ shouldShutdown }</code>: End my day -- saves open editors, stops through <code>stopForWrapUp</code> with Undo, and with <code>shouldShutdown</code> shuts down only after the undo has passed and the queue has answered, 30 s at most), <code>schedule:cancel-eod-wrapup</code> (also cancels a shutdown on its way), <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>agent:get-access</code> / <code>agent:set-access</code> (<code>enabled</code>) / <code>agent:new-token</code> (AI agents&#39; access, <code>{ enabled, token }</code>, the token empty while off; <a href="#the-ai-agents-routes">the routes</a>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Morning card</td>
@@ -4485,8 +4498,8 @@
       <h3 id="api-local-http-api">Local HTTP API</h3>
       <p><strong>Source:</strong> <code>src/main/api/webhook-server.ts</code></p>
       <p><code>http://127.0.0.1:39123</code>, bound to loopback and never reachable from the
-      network. It takes remote key presses, and carries the Stream Deck plugin&#39;s
-      WebSocket (below). It also served the Unity Editor plugin&#39;s four
+      network. It takes remote key presses, carries the Stream Deck plugin&#39;s
+      WebSocket (below), and answers AI agents (below). It also served the Unity Editor plugin&#39;s four
       <code>/api/v1/unity/*</code> routes until 2026-11-09; they answer <code>404</code> now, like any
       other path.</p>
       <p><code>--local-api-port=&lt;n&gt;</code> (above 1023) moves it, for a check started beside
@@ -4550,6 +4563,93 @@
       <p><strong>This is not authentication.</strong> Any local program can still call this API. What
       the checks close is the path from a web page you happen to be visiting to your
       hardware. <code>pnpm verify:packed</code> asserts all of it against a real packaged build.</p>
+      <h4>The AI agents&#39; routes</h4>
+      <p><strong>Source:</strong> <code>src/main/api/agent-api.ts</code>, <code>src/main/services/agent-service.ts</code>;
+      the protocol is <code>src/shared/agent-protocol.ts</code>, the one file the agent&#39;s
+      client imports. The design: <a href="AGENT-INTERFACE.md">AGENT-INTERFACE.md</a>.</p>
+      <p><code>POST /api/v1/agent/&lt;command&gt;</code>, a JSON object of the command&#39;s parameters
+      as the body. The commands are <code>AGENT_COMMANDS</code>:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Command</th>
+      <th align="left">Parameters</th>
+      <th align="left">Answers</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>now</code></td>
+      <td align="left">--</td>
+      <td align="left">What runs or is paused, its time, an interruption and the task it holds</td>
+      </tr>
+      <tr>
+      <td align="left"><code>day</code></td>
+      <td align="left"><code>day</code>: <code>today</code> (default), <code>yesterday</code>, <code>last-working-day</code> or <code>YYYY-MM-DD</code></td>
+      <td align="left">The day&#39;s entries in the order worked, the total, each task&#39;s share, where the sends stand</td>
+      </tr>
+      <tr>
+      <td align="left"><code>week</code></td>
+      <td align="left"><code>week</code>: <code>this-week</code> (default), <code>last-week</code>, or any of its days</td>
+      <td align="left">Time per day, project and task; what the provider holds; time to place</td>
+      </tr>
+      <tr>
+      <td align="left"><code>check</code></td>
+      <td align="left"><code>week</code>, as above</td>
+      <td align="left">Check my week&#39;s list</td>
+      </tr>
+      <tr>
+      <td align="left"><code>to-place</code></td>
+      <td align="left">--</td>
+      <td align="left">Interruptions waiting to be placed</td>
+      </tr>
+      <tr>
+      <td align="left"><code>tasks</code></td>
+      <td align="left"><code>search</code>: a key or words</td>
+      <td align="left">Matching tasks, an exact key first, the user&#39;s own work included</td>
+      </tr>
+      </tbody></table></div>
+      <p>Every answer is <code>200 { protocol, readAt, text, data }</code>: <code>text</code> the answer
+      written for a reader, <code>data</code> the same as JSON, totals given in seconds and
+      as text, times local with their offset. A refusal is
+      <code>{ protocol, error, message }</code>:</p>
+      <div class="table-wrap"><table>
+      <thead>
+      <tr>
+      <th align="left">Status</th>
+      <th align="left"><code>error</code></th>
+      <th align="left">When</th>
+      </tr>
+      </thead>
+      <tbody><tr>
+      <td align="left"><code>404</code></td>
+      <td align="left"><code>off</code></td>
+      <td align="left">Access is off (Settings › Data › AI agents), as for any unknown path</td>
+      </tr>
+      <tr>
+      <td align="left"><code>403</code></td>
+      <td align="left"><code>unauthorized</code></td>
+      <td align="left">The <code>Host</code> is not <code>127.0.0.1:&lt;port&gt;</code> or <code>localhost:&lt;port&gt;</code>: DNS rebinding</td>
+      </tr>
+      <tr>
+      <td align="left"><code>401</code></td>
+      <td align="left"><code>unauthorized</code></td>
+      <td align="left">No <code>Authorization: Bearer &lt;token&gt;</code>, or a wrong one</td>
+      </tr>
+      <tr>
+      <td align="left"><code>400</code></td>
+      <td align="left"><code>invalid-request</code></td>
+      <td align="left">A parameter it cannot read: a day that is not one</td>
+      </tr>
+      <tr>
+      <td align="left"><code>404</code></td>
+      <td align="left"><code>not-found</code></td>
+      <td align="left">No such command; no working day to go back to</td>
+      </tr>
+      </tbody></table></div>
+      <p>The checks run after the screening every POST gets (below), so a page
+      cannot reach them. The token is made when access is turned on, kept in
+      <code>SecretStore</code>, compared in constant time, and replaced by &quot;Make a new one&quot;
+      (<code>agent:new-token</code>), which refuses every agent given the old one at once.</p>
       <h4>The Stream Deck socket</h4>
       <p><strong>Source:</strong> <code>src/main/api/deck-server.ts</code>, <code>src/main/services/deck-action-service.ts</code>;
       the protocol is <code>src/shared/deck-protocol.ts</code>, the one file the plugin imports.</p>

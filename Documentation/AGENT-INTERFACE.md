@@ -122,7 +122,7 @@ A refusal is `{ protocol, error, message }` with a code: `off`,
 - **What an agent reads leaves the machine**, with the conversation, to the
   model's vendor: task keys and titles, and worklog notes (the user's
   decision: notes are read, section 9). Settings says so beside the switch.
-- **Bounded**: a range is at most 31 days; the body cap is unchanged.
+- **Bounded**: an answer covers at most a week; the body cap is unchanged.
 
 ## 6. Writes
 
