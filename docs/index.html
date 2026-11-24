@@ -720,7 +720,7 @@
       </tr>
       <tr>
       <td align="left"><strong>Data</strong></td>
-      <td align="left">export the logs; erase everything on this computer</td>
+      <td align="left">export the logs; AI agents; erase everything on this computer</td>
       </tr>
       <tr>
       <td align="left"><strong>Developer</strong></td>
@@ -730,6 +730,30 @@
       <p>The developer tools act on the real app -- the bar remote and the display
       debugger&#39;s Pause, Stop, Lunch and Away on your real timer and mode -- and
       the page says so. Without a bar, only the bar remote is there.</p>
+      <p>🤖 <strong>AI agents</strong>, in <strong>Data</strong>, lets Claude Code or Claude desktop ask
+      SprintTicker what you worked on -- &quot;what did I do yesterday?&quot;, &quot;how much
+      went on MG-12 last week?&quot;, &quot;is anything left to place?&quot; -- and start, stop,
+      pause or resume a task, or mark one done, when you ask it to. It is off
+      until you turn it on. Turned on, it shows:</p>
+      <ul>
+      <li><strong>Token</strong>, which an agent needs. <strong>Make a new one</strong> stops every agent
+      given the old one; give them the new lines below.</li>
+      <li><strong>Claude Code</strong>: one line to run once in a terminal (<code>claude mcp add sprintticker …</code>). From then on, ask Claude Code in any project.</li>
+      <li><strong>Claude desktop</strong>: an entry for <code>claude_desktop_config.json</code> (Claude
+      desktop&#39;s Settings › Developer › Edit Config). Add it under
+      <code>mcpServers</code>, beside any others there, and restart Claude desktop.</li>
+      <li><strong>The command</strong>, <code>sprintticker.cmd</code>, for an agent that runs commands
+      (<code>sprintticker.cmd day yesterday</code>).</li>
+      </ul>
+      <p>Each line carries this computer&#39;s paths and the token. The command runs
+      inside SprintTicker&#39;s own program, so nothing else needs installing, and
+      it asks the running app: with SprintTicker closed, the agent is told so.</p>
+      <p>What the agent reads -- task keys and titles, your entries and their notes
+      -- goes to the AI with your conversation. A stop it makes shows the Undo
+      bar here like one you make, for ten seconds before anything is sent, and
+      it marks a task done only after asking you. The portable build cannot give
+      an agent the command, since it runs from a folder that is gone once it
+      closes: install SprintTicker for it.</p>
       <p>🧹 <strong>Erase everything on this computer</strong>, in <strong>Data</strong>, deletes your tasks,
       projects, history, interruptions and stars here -- nothing at Jira or
       OpenProject. It asks twice: once what goes, once that it cannot be undone
@@ -3921,7 +3945,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 4079 tests across 202 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 4086 tests across 203 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -4447,7 +4471,7 @@
       </tr>
       <tr>
       <td align="left">Ceremonies</td>
-      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code> (<code>{ shouldShutdown }</code>: End my day -- saves open editors, stops through <code>stopForWrapUp</code> with Undo, and with <code>shouldShutdown</code> shuts down only after the undo has passed and the queue has answered, 30 s at most), <code>schedule:cancel-eod-wrapup</code> (also cancels a shutdown on its way), <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>agent:get-access</code> / <code>agent:set-access</code> (<code>enabled</code>) / <code>agent:new-token</code> (AI agents&#39; access, <code>{ enabled, token }</code>, the token empty while off; <a href="#the-ai-agents-routes">the routes</a>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
+      <td align="left"><code>schedule:get-settings</code>, <code>schedule:save-settings</code>, <code>schedule:trigger-eod-prompt</code>, <code>schedule:trigger-eod-wrapup</code> (<code>{ shouldShutdown }</code>: End my day -- saves open editors, stops through <code>stopForWrapUp</code> with Undo, and with <code>shouldShutdown</code> shuts down only after the undo has passed and the queue has answered, 30 s at most), <code>schedule:cancel-eod-wrapup</code> (also cancels a shutdown on its way), <code>schedule:trigger-standup-prompt</code>, <code>schedule:cancel-standup-prompt</code>, <code>schedule:join-standup</code> (optional <code>joinedAt</code>, an ISO time: &quot;joined 5 min ago&quot;; anything else is refused), <code>schedule:answer-lunch-question</code> (<code>true</code> starts Lunch and ends the interruption, <code>false</code> works through lunch today; answers <code>false</code> when nothing was asked), <code>schedule:get-standup-task</code> / <code>schedule:set-standup-task</code> (<code>{ taskId, taskKey, title }</code> or null for the local Daily Standup), <code>schedule:get-week-ended</code>, <code>schedule:get-last-week-closed</code> (the Monday of the last week closed, or null: the window warns before changing time up to its Sunday, <code>isInClosedWeek</code>), <code>agent:get-access</code> / <code>agent:set-access</code> (<code>enabled</code>) / <code>agent:new-token</code> (AI agents&#39; access, <code>{ enabled, token, setup, missing? }</code>: the token empty and <code>setup</code> null while off; <code>setup</code> the lines to give Claude Code and Claude desktop and the <code>.cmd</code>&#39;s path, or null with <code>missing</code> <code>portable</code> or <code>not-built</code>; <a href="#the-ai-agents-routes">the routes</a>), <code>schedule:dismiss-week-ended</code>, <code>schedule:on-week-ended</code>, <code>schedule:snooze-ceremony</code>, <code>schedule:get-ceremony-prompt</code> (the ceremony waiting on an answer, <code>{ type: &#39;STANDUP&#39; | &#39;EOD&#39;, title, at }</code> with <code>at</code> its time as HH:MM, or null), <code>schedule:on-ceremony-prompt</code> (the same, pushed to every window, and null once Join, Skip today, Remind me or the wrap-up answers it; it never brings a window forward), <code>schedule:update-ceremony-prompt</code></td>
       </tr>
       <tr>
       <td align="left">Morning card</td>

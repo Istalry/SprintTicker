@@ -1,4 +1,4 @@
-const { spawn, execSync } = require('child_process');
+const { spawn, spawnSync, execSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
@@ -37,6 +37,16 @@ async function verifyPackedApp() {
   if (!fs.existsSync(deckPlugin)) {
     console.error(`[VERIFY ERROR] The Stream Deck plugin is not in the build: ${deckPlugin}`);
     process.exit(1);
+  }
+
+  // The AI agents' command (AGENT-INTERFACE.md section 7): Settings hands
+  // out these paths, so a build without them gives an agent a dead line.
+  const agentDir = path.join(path.dirname(exePath), 'resources', 'agent');
+  for (const file of ['sprintticker.mjs', 'sprintticker.cmd']) {
+    if (!fs.existsSync(path.join(agentDir, file))) {
+      console.error(`[VERIFY ERROR] The AI agents' command is not in the build: ${path.join(agentDir, file)}`);
+      process.exit(1);
+    }
   }
 
   console.log(`========================================================`);
@@ -125,7 +135,7 @@ async function verifyPackedApp() {
   console.log(`\n[VERIFY] Server is up. Asserting what it actually does:`);
   let failures;
   try {
-    failures = await runBehaviourChecks(port);
+    failures = [...await runBehaviourChecks(port), ...runAgentChecks(exePath, agentDir, port)];
   } catch (err) {
     killApp(appProcess);
     console.error(`\n[VERIFY FAILED] Behaviour checks could not complete: ${err.message}`);
@@ -279,6 +289,45 @@ async function runBehaviourChecks(port) {
     `got ${browserish.status} ${browserish.body}`
   );
 
+  return failures;
+}
+
+/**
+ * The agent's command, run as an agent runs it: by the app's own
+ * executable under ELECTRON_RUN_AS_NODE, which a fuse could switch off, and
+ * through the `.cmd`, whose relative path to the executable is the
+ * installer's layout. Access is off on the throwaway profile, so `now`
+ * reaching the app is told it is off -- proof the script ran, found the
+ * port and was routed, without reading anything.
+ */
+function runAgentChecks(exePath, agentDir, port) {
+  const failures = [];
+  const check = (name, condition, detail) => {
+    if (condition) {
+      console.log(`  [OK]   ${name}`);
+    } else {
+      console.error(`  [FAIL] ${name} -- ${detail}`);
+      failures.push(name);
+    }
+  };
+
+  const now = spawnSync(exePath, [path.join(agentDir, 'sprintticker.mjs'), 'now'], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', SPRINTTICKER_PORT: String(port), SPRINTTICKER_TOKEN: 'verify-packed-app' },
+    encoding: 'utf8',
+    timeout: 15000
+  });
+  check(
+    "The agent's command runs under the app's executable and reaches the app (access off, exit 1)",
+    now.status === 1 && /off/i.test(now.stderr),
+    `got exit ${now.status}, stdout ${JSON.stringify(now.stdout)}, stderr ${JSON.stringify(now.stderr)}`
+  );
+
+  const help = spawnSync('cmd.exe', ['/d', '/c', path.join(agentDir, 'sprintticker.cmd'), '--help'], { encoding: 'utf8', timeout: 15000 });
+  check(
+    "sprintticker.cmd finds the executable beside it (--help, exit 0)",
+    help.status === 0 && help.stdout.includes('sprintticker'),
+    `got exit ${help.status}, stdout ${JSON.stringify(help.stdout)}, stderr ${JSON.stringify(help.stderr)}`
+  );
   return failures;
 }
 

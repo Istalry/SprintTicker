@@ -262,9 +262,13 @@ export function createElectronApiMock(overrides: Partial<IElectronAPI> = {}): El
     setStandupTask: vi.fn().mockResolvedValue(true),
     getWeekEnded: vi.fn().mockResolvedValue(null),
     getLastWeekClosed: vi.fn().mockResolvedValue(null),
-    getAgentAccess: vi.fn().mockResolvedValue({ enabled: false, token: '' }),
-    setAgentAccess: vi.fn().mockImplementation(async (enabled: boolean) => ({ enabled, token: enabled ? 'token-1' : '' })),
-    newAgentToken: vi.fn().mockResolvedValue({ enabled: true, token: 'token-2' }),
+    getAgentAccess: vi.fn().mockResolvedValue({ enabled: false, token: '', setup: null }),
+    setAgentAccess: vi.fn().mockImplementation(async (enabled: boolean) => ({
+      enabled,
+      token: enabled ? 'token-1' : '',
+      setup: enabled ? { claudeCode: 'claude mcp add sprintticker -- run mcp', claudeDesktop: '{ "mcpServers": {} }', command: 'C:\\SprintTicker\\resources\\agent\\sprintticker.cmd' } : null
+    })),
+    newAgentToken: vi.fn().mockResolvedValue({ enabled: true, token: 'token-2', setup: null, missing: 'not-built' }),
     dismissWeekEnded: vi.fn().mockResolvedValue(true),
     onWeekEnded: subscribe('onWeekEnded'),
     triggerEodPrompt: vi.fn().mockResolvedValue({ success: true }),

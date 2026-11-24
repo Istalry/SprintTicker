@@ -20,7 +20,7 @@ import type { TaskVisibility } from '../shared/task-visibility';
 import type { FlowSettingKeyValue, FlowSettingValues, ShortcutAction, ShortcutChord } from '../shared/flow-settings';
 import type { InterruptionSource, InterruptionToPlaceDTO } from '../shared/interruption';
 import type { PickerDataDTO } from '../shared/task-picker';
-import type { AgentAccessDTO } from '../shared/agent-protocol';
+import type { AgentAccessDTO } from '../shared/agent-setup';
 import type { BarInputDTO } from '../shared/bar-input';
 import type {
   ActiveSessionDTO,

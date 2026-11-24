@@ -4,14 +4,15 @@
 
 ### Added
 
-- **AI agents can ask SprintTicker** (in progress). Turn it on in Settings ›
-  Data › AI agents: an agent with the token -- Claude Code, Claude desktop --
-  then reads what runs now, a day, a week, Check my week, the interruptions
+- **AI agents can ask SprintTicker.** Turn it on in Settings › Data › AI
+  agents and paste the line it shows into Claude Code, or its entry into
+  Claude desktop's configuration: the agent then reads what runs now, a day, a week, Check my week, the interruptions
   to place and your tasks, worded and counted as the window does. It can
   also start, stop, pause and resume a task and mark one done when you ask
   it to: a stop shows the Undo bar as a click does, and Done waits for your
-  yes. Off until you turn it on; *Make a new one* replaces the token and
-  refuses every agent given the old one.
+  yes. The installer carries the `sprintticker` command, run by SprintTicker
+  itself, so nothing else needs installing. Off until you turn it on; *Make
+  a new one* replaces the token and refuses every agent given the old one.
 
 ### Fixed
 

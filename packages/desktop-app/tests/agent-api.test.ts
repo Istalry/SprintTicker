@@ -119,11 +119,25 @@ describe('The AI agents\' routes', () => {
     const store = memoryStore();
     const settings = new AgentAccess(store);
 
-    expect(settings.get()).toEqual({ enabled: false, token: '' });
+    expect(settings.get()).toEqual({ enabled: false, token: '', setup: null });
     const on = settings.setEnabled(true);
     expect(on.token).toMatch(/^[0-9a-f]{64}$/);
     expect(store.secrets.get(AGENT_TOKEN_SECRET_KEY)).toBe(on.token);
-    expect(settings.setEnabled(false)).toEqual({ enabled: false, token: '' });
+    expect(settings.setEnabled(false)).toEqual({ enabled: false, token: '', setup: null });
     expect(settings.setEnabled(true).token).toBe(on.token);
+  });
+
+  it('Access_On_TheSetupLinesCarryTheTokenAndPort_OrSayWhyThereAreNone', () => {
+    const launch = { exe: 'C:\\App\\SprintTicker.exe', script: 'C:\\App\\resources\\agent\\sprintticker.mjs', command: 'C:\\App\\resources\\agent\\sprintticker.cmd' };
+    const installed = new AgentAccess(memoryStore(), () => launch, () => 39187);
+    const portable = new AgentAccess(memoryStore(), () => 'portable');
+
+    const on = installed.setEnabled(true);
+
+    expect(on.setup?.claudeCode).toContain(`-e SPRINTTICKER_TOKEN=${on.token} -e SPRINTTICKER_PORT=39187`);
+    expect(on.setup?.command).toBe(launch.command);
+    expect(installed.newToken().setup?.claudeDesktop).not.toContain(on.token);
+    expect(portable.setEnabled(true)).toMatchObject({ setup: null, missing: 'portable' });
+    expect(new AgentAccess(memoryStore()).setEnabled(true)).toMatchObject({ setup: null, missing: 'not-built' });
   });
 });

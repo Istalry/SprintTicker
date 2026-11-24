@@ -180,10 +180,3 @@ export interface AgentDuration {
   /** `1h 05m`, as the window writes it. */
   text: string;
 }
-
-/** What the app's Settings shows of an agent's access: not part of the client's protocol. */
-export interface AgentAccessDTO {
-  enabled: boolean;
-  /** Empty while off: there is nothing to copy. */
-  token: string;
-}

@@ -47,11 +47,17 @@ describe('Settings · Data', () => {
     await waitFor(() => expect((within(agents).getByLabelText('Token') as HTMLInputElement).value).toBe('token-1'));
     expect(bridge.api.setAgentAccess).toHaveBeenCalledWith(true);
 
-    fireEvent.click(within(agents).getByRole('button', { name: 'Copy' }));
+    const [copyToken, copyClaudeCode] = within(agents).getAllByRole('button', { name: 'Copy' });
+    fireEvent.click(copyToken);
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('token-1'));
+    expect(within(agents).getByText('claude mcp add sprintticker -- run mcp')).toBeTruthy();
+    fireEvent.click(copyClaudeCode);
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('claude mcp add sprintticker -- run mcp'));
+    expect(within(agents).getByText('C:\\SprintTicker\\resources\\agent\\sprintticker.cmd')).toBeTruthy();
     fireEvent.click(within(agents).getByRole('button', { name: 'Make a new one' }));
     await waitFor(() => expect((within(agents).getByLabelText('Token') as HTMLInputElement).value).toBe('token-2'));
     expect(within(agents).getByText(/Give it to your agents again/)).toBeTruthy();
+    expect(within(agents).getByText(/pnpm agent:build/)).toBeTruthy();
   });
 
   it('Erase_AsksTwiceBeforeErasing', async () => {

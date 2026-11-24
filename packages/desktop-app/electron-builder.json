@@ -31,6 +31,14 @@
     {
       "from": "../streamdeck-plugin/dist/io.github.istalry.sprintticker.streamDeckPlugin",
       "to": "StreamDeck/SprintTicker.streamDeckPlugin"
+    },
+    {
+      "from": "../agent-cli/dist/sprintticker.mjs",
+      "to": "agent/sprintticker.mjs"
+    },
+    {
+      "from": "../agent-cli/launcher/sprintticker.cmd",
+      "to": "agent/sprintticker.cmd"
     }
   ],
   "electronLanguages": ["en-US"],

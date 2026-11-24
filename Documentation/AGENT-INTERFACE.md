@@ -1,7 +1,7 @@
 # An interface for AI agents
 
-**Status:** decided 2026-11-24, being built: A1-A3 and A5 done (the app's
-reads, the command, the MCP server, the writes); A4 to come. First
+**Status:** decided and built 2026-11-24 (A1-A5), for 2.0.1; to be tried
+from Claude Code and Claude desktop on an installed build. First
 written as a proposal on 2026-11-13; the user's answers are in section 9.
 
 The goal: an LLM agent -- Claude Code, or Claude desktop's chat -- answers
@@ -150,7 +150,10 @@ Shipped in the installer (the user's decision): the bundled script and a
 under `ELECTRON_RUN_AS_NODE`, so nothing else needs installing. Settings
 shows the exact lines to give Claude Code (`claude mcp add …`) and Claude
 desktop (its `claude_desktop_config.json` entry), with this machine's paths
-and the token filled in. `verify:packed` checks the files are there.
+and the token filled in (`shared/agent-setup.ts`). `verify:packed` checks
+the files are there, runs the script under the packed executable against
+the app it started, and runs the `.cmd`. The portable build gets no lines:
+it runs from a temporary folder gone at its exit.
 
 ## 8. Phases
 

@@ -185,6 +185,14 @@ through the root's `deck:pack`.
 without it. The copy is whatever plugin version the app was built with; the
 plugin's own release, and its version rule (§3), are unchanged.
 
+**The installer carries the AI agents' command too** (A4, 2026-11-24):
+`resources/agent/sprintticker.mjs`, run by `SprintTicker.exe` under
+`ELECTRON_RUN_AS_NODE` -- Electron's `RunAsNode` fuse must stay on, or every
+agent's setup breaks -- and `sprintticker.cmd` beside it, which finds the
+executable two folders up. `package:win` runs `agent:build` first and
+`verify:packed` runs both against the app it started. Never offer the
+portable build's paths: they are a temporary folder.
+
 **Git LFS is mandatory.** `Animations/` and `packages/desktop-app/build/icon.png`
 are LFS objects. Cloning without LFS leaves them as ~130-byte pointer files, and
 `package:win` will happily build an installer with a broken icon and no

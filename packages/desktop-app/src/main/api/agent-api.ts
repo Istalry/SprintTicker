@@ -1,7 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import type { IncomingHttpHeaders } from 'http';
 import { ArgumentNullException } from '../../shared/dtos';
-import { AGENT_API_PREFIX, AGENT_PROTOCOL_VERSION, AgentAccessDTO, AgentAnswer, AgentError, AgentErrorCode, AgentRequest } from '../../shared/agent-protocol';
+import { AGENT_API_PREFIX, AGENT_DEFAULT_PORT, AGENT_PROTOCOL_VERSION, AgentAnswer, AgentError, AgentErrorCode, AgentRequest } from '../../shared/agent-protocol';
+import { AgentAccessDTO, AgentLaunch, AgentSetupMissing, agentSetup } from '../../shared/agent-setup';
 import { AgentRefusal } from '../services/agent-service';
 
 /** Where the switch and the token are kept: the settings, and `SecretStore`. */
@@ -23,7 +24,15 @@ const TOKEN_BYTES = 32;
  * stops working at once, so an agent is revoked.
  */
 export class AgentAccess {
-  constructor(private readonly _store: AgentAccessStore) {
+  /**
+   * @param _launch How this build runs the command, for the setup lines.
+   * @param _port The local API's port, named in them when not the default.
+   */
+  constructor(
+    private readonly _store: AgentAccessStore,
+    private readonly _launch: () => AgentLaunch | AgentSetupMissing = () => 'not-built',
+    private readonly _port: () => number = () => AGENT_DEFAULT_PORT
+  ) {
     if (!_store) throw new ArgumentNullException('store');
   }
 
@@ -36,8 +45,12 @@ export class AgentAccess {
   }
 
   public get(): AgentAccessDTO {
-    const enabled = this.isEnabled();
-    return { enabled, token: enabled ? this.token() : '' };
+    if (!this.isEnabled()) return { enabled: false, token: '', setup: null };
+    const token = this.token();
+    const launch = this._launch();
+    return typeof launch === 'string'
+      ? { enabled: true, token, setup: null, missing: launch }
+      : { enabled: true, token, setup: agentSetup(launch, token, this._port()) };
   }
 
   /** Turns access on or off; on, with a token made if there is none. */

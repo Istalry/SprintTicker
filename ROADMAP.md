@@ -1202,11 +1202,13 @@ Ordered; each says what has to be true first.
   user's answers are [AGENT-INTERFACE.md](Documentation/AGENT-INTERFACE.md):
   one API in the running app, `/api/v1/agent/`, and two thin clients in
   `packages/agent-cli` -- the `sprintticker` command and its MCP server --
-  for Claude Code and Claude desktop. **Done:** A1, the app's reads behind a
-  switch and a token (Settings › Data › AI agents); A2 and A3, the command
-  and the MCP server; A5, the writes -- start, stop, done, pause, resume --
-  through the window's own commands, with the ten-second Undo. **Left:**
-  A4, shipping them in the installer with the setup lines in Settings.
+  for Claude Code and Claude desktop. **Done** (2026-11-24): A1, the app's
+  reads behind a switch and a token (Settings › Data › AI agents); A2 and
+  A3, the command and the MCP server; A4, both in the installer, run by the
+  app's own executable, with the setup lines in Settings; A5, the writes --
+  start, stop, done, pause, resume -- through the window's own commands,
+  with the ten-second Undo. **Left:** trying it from Claude Code and Claude
+  desktop on an installed build.
 
 - **Stream Deck Mini, as an alternative to the bar** (planned 2026-10-16,
   revised 2026-10-22). The target is the six-key Mini: no dial, no screen,
@@ -1367,8 +1369,8 @@ Ordered; each says what has to be true first.
 ## Test coverage: 80/70 reached on the honest metric
 
 **Done**, as of the Jira provider, and raised again since. The suite measures
-**93.47 statements / 87.15 branches / 94.28 functions / 95.83 lines across 4079
-tests in 202 files** (2026-11-24, with the AI agents' writes), and the floor is
+**93.46 statements / 87.14 branches / 94.21 functions / 95.83 lines across 4086
+tests in 203 files** (2026-11-24, with the AI agents' command in the installer), and the floor is
 ratcheted to 92 / 85 / 90 / 93.5.
 
 It read 80/70 once before, until `@vitest/coverage-v8` 1 became 5 and AST-aware

@@ -162,12 +162,39 @@ at the right -- a switch that says **On** or **Off**, a menu or a button:
 | **Account** | your account, with Refresh now and Change account; the tasks to fetch; what a start and a Done do there; its notifications; Advanced -- its state names, the key for tasks of your own, the entries waiting to send |
 | **My workday** | working days, the stand-up and its task, lunch, the end of day, when your week closes, how long each reminder waits, a timer left running overnight, the pause that starts a new entry |
 | **Desk devices** | the bar's line (where it answers, firmware, battery, brightness; Use without a bar), task key color, when nothing runs, Windows notifications on the bar, what the bar shows first, the connection; the Stream Deck's line. Without a bar, one line with Add |
-| **Data** | export the logs; erase everything on this computer |
+| **Data** | export the logs; AI agents; erase everything on this computer |
 | **Developer** | hidden until **Show developer tools**, in General: the bar remote, the display debugger, test notifications, the notification listener, the bar's health -- each behind **Open**, one at a time |
 
 The developer tools act on the real app -- the bar remote and the display
 debugger's Pause, Stop, Lunch and Away on your real timer and mode -- and
 the page says so. Without a bar, only the bar remote is there.
+
+🤖 **AI agents**, in **Data**, lets Claude Code or Claude desktop ask
+SprintTicker what you worked on -- "what did I do yesterday?", "how much
+went on MG-12 last week?", "is anything left to place?" -- and start, stop,
+pause or resume a task, or mark one done, when you ask it to. It is off
+until you turn it on. Turned on, it shows:
+
+- **Token**, which an agent needs. **Make a new one** stops every agent
+  given the old one; give them the new lines below.
+- **Claude Code**: one line to run once in a terminal (`claude mcp add
+  sprintticker …`). From then on, ask Claude Code in any project.
+- **Claude desktop**: an entry for `claude_desktop_config.json` (Claude
+  desktop's Settings › Developer › Edit Config). Add it under
+  `mcpServers`, beside any others there, and restart Claude desktop.
+- **The command**, `sprintticker.cmd`, for an agent that runs commands
+  (`sprintticker.cmd day yesterday`).
+
+Each line carries this computer's paths and the token. The command runs
+inside SprintTicker's own program, so nothing else needs installing, and
+it asks the running app: with SprintTicker closed, the agent is told so.
+
+What the agent reads -- task keys and titles, your entries and their notes
+-- goes to the AI with your conversation. A stop it makes shows the Undo
+bar here like one you make, for ten seconds before anything is sent, and
+it marks a task done only after asking you. The portable build cannot give
+an agent the command, since it runs from a folder that is gone once it
+closes: install SprintTicker for it.
 
 🧹 **Erase everything on this computer**, in **Data**, deletes your tasks,
 projects, history, interruptions and stars here -- nothing at Jira or

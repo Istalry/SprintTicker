@@ -1,6 +1,6 @@
 import { AgentService } from '../services/agent-service';
 import { AgentAccess } from '../api/agent-api';
-import type { AgentAccessDTO } from '../../shared/agent-protocol';
+import type { AgentAccessDTO, AgentLaunch, AgentSetupMissing } from '../../shared/agent-setup';
 import type { NoticeService } from '../services/notice-service';
 import type { NoticeKind, NoticesDTO, SyncHealthDTO } from '../../shared/sync-health';
 import { END_MY_DAY } from '../../shared/words';
@@ -135,6 +135,10 @@ export interface IPCHandlerRegistryDeps {
   isWorkingNow?: () => boolean;
   /** Whether a day is a working day, for the agent's "last-working-day"; every weekday, without it. */
   isWorkingDay?: (dateKey: string) => boolean;
+  /** How this build runs the agent's command (agent-setup.ts); none, not built. */
+  agentLaunch?: () => AgentLaunch | AgentSetupMissing;
+  /** The local API's port, for the agent's setup lines. */
+  localApiPort?: number;
   /** Corrects and deletes worklogs; without it, both channels refuse. */
   worklogCorrections?: WorklogCorrectionService;
   windowsNotificationService?: WindowsNotificationListenerService;
@@ -278,7 +282,7 @@ export class IPCHandlerRegistry {
       setSetting: (key, value) => settingsRepo.setSetting(key, value),
       getSecret: key => secrets.getSecret(key),
       setSecret: (key, value) => secrets.setSecret(key, value)
-    });
+    }, deps.agentLaunch, deps.localApiPort === undefined ? undefined : () => deps.localApiPort as number);
     this.worklogRepo = worklogRepo || new WorklogRepository(settingsRepo.getConnection());
     this.worklogCorrections = deps.worklogCorrections;
     // The default is never started and shows nothing: it serves the settings

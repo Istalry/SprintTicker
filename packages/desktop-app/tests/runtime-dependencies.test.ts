@@ -4,6 +4,7 @@ import { builtinModules } from 'module';
 import path from 'path';
 import { ELECTRON_EXTERNALS } from '../vite.config.electron';
 import { DECK_PLUGIN_PACK, DECK_PLUGIN_RESOURCE } from '../src/shared/first-run';
+import { AGENT_COMMAND_RESOURCE, AGENT_SCRIPT_RESOURCE } from '../src/shared/agent-setup';
 
 /**
  * electron-builder packs every `dependencies` entry into app.asar, and main
@@ -92,6 +93,22 @@ describe('the Stream Deck plugin in the installer', () => {
       from: `../streamdeck-plugin/dist/${DECK_PLUGIN_PACK}`,
       to: DECK_PLUGIN_RESOURCE
     });
+  });
+
+  it('ExtraResources_CarryTheAgentsCommand_WhereMainLooks', () => {
+    const builder = JSON.parse(readFileSync(path.join(__dirname, '..', 'electron-builder.json'), 'utf8'));
+
+    expect(builder.extraResources).toEqual(expect.arrayContaining([
+      { from: '../agent-cli/dist/sprintticker.mjs', to: AGENT_SCRIPT_RESOURCE },
+      { from: '../agent-cli/launcher/sprintticker.cmd', to: AGENT_COMMAND_RESOURCE }
+    ]));
+  });
+
+  it('PackageWin_BuildsTheAgentsCommandBeforeElectronBuilder', () => {
+    const script: string = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).scripts['package:win'];
+
+    expect(script.indexOf('@sprintticker/agent-cli build')).toBeGreaterThan(-1);
+    expect(script.indexOf('@sprintticker/agent-cli build')).toBeLessThan(script.indexOf('electron-builder'));
   });
 
   it('PackageWin_PacksThePluginBeforeElectronBuilder', () => {

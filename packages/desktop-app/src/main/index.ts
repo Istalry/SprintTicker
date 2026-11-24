@@ -53,6 +53,7 @@ import { ForgottenSessionService } from './services/forgotten-session-service';
 import { FirstRunService } from './services/first-run-service';
 import { NoticeService } from './services/notice-service';
 import { DECK_PLUGIN_PACK, DECK_PLUGIN_RESOURCE } from '../shared/first-run';
+import { AGENT_COMMAND_RESOURCE, AGENT_SCRIPT_RESOURCE, AgentLaunch, AgentSetupMissing } from '../shared/agent-setup';
 import { JiraProvider } from './providers/jira-provider';
 import { OpenProjectProvider } from './providers/openproject-provider';
 import { CustomServerProvider } from './providers/custom-server-provider';
@@ -694,6 +695,8 @@ async function startApplication(): Promise<void> {
     morning,
     isWorkingNow: workingNow,
     isWorkingDay: dateKey => calendar.isWorkingDay(dateKey),
+    agentLaunch,
+    localApiPort,
     worklogCorrections: new WorklogCorrectionService(worklogRepo, providerManager, () => {
       // Wakes the worker when the hold ends, as a stop does: a correction
       // should not wait out the five-minute interval to reach the provider.
@@ -815,6 +818,26 @@ function streamDeckPluginPath(): string {
   return app.isPackaged
     ? path.join(process.resourcesPath, ...DECK_PLUGIN_RESOURCE.split('/'))
     : path.resolve(__dirname, '../../../streamdeck-plugin/dist', DECK_PLUGIN_PACK);
+}
+
+/**
+ * How this build runs the agent's command (AGENT-INTERFACE.md §7): the
+ * installer's copy under the app's own executable, or `pnpm agent:build`'s
+ * in development. Never the portable build's: it runs from a temporary
+ * folder that is gone once it exits, and an agent's configuration would
+ * name a path that no longer exists.
+ */
+function agentLaunch(): AgentLaunch | AgentSetupMissing {
+  if (process.env.PORTABLE_EXECUTABLE_FILE) return 'portable';
+  if (app.isPackaged) {
+    return {
+      exe: process.execPath,
+      script: path.join(process.resourcesPath, ...AGENT_SCRIPT_RESOURCE.split('/')),
+      command: path.join(process.resourcesPath, ...AGENT_COMMAND_RESOURCE.split('/'))
+    };
+  }
+  const script = path.resolve(__dirname, '../../../agent-cli/dist/sprintticker.mjs');
+  return existsSync(script) ? { exe: process.execPath, script, command: null } : 'not-built';
 }
 
 app.on('before-quit', () => {

@@ -12,8 +12,14 @@ database file.
 
 ## Turning it on
 
-In SprintTicker, **Settings › Data › AI agents**: switch it on and copy the
-token. The agent gives it as `SPRINTTICKER_TOKEN`.
+In SprintTicker, **Settings › Data › AI agents**: switch it on, then paste
+the line it shows into a terminal for Claude Code, or its entry into
+Claude desktop's `claude_desktop_config.json`. Both carry the token, as
+`SPRINTTICKER_TOKEN`, and this machine's paths.
+
+The installer carries the bundle as `resources/agent/sprintticker.mjs`,
+run by `SprintTicker.exe` under `ELECTRON_RUN_AS_NODE`, and
+`sprintticker.cmd` beside it (`launcher/`), so nothing else is installed.
 
 ## The command
 
