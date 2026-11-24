@@ -1,8 +1,9 @@
 # Work of your own on the fly, one line per task, and a calendar
 
-**Status:** decided 2026-11-24 (section 7), to build before 2.0.1 ships,
-in three phases (section 6). **T1, T2 and T3 built** (2026-11-24);
-migration 18 waits for `pnpm db:check-migration` on the user's database. Comes from a user's feedback on 2.0.1-rc2; the mockups
+**Status:** decided 2026-11-24 (section 7), built in three phases
+(section 6), **T1, T2 and T3 done** (2026-11-24); migration 18 checked on
+the user's database (17 -> 18, nothing lost). Ships in 2.0.2, released
+beside 2.0.1. Comes from a user's feedback on 2.0.1-rc2; the mockups
 were shown in the session that wrote this note.
 
 ## 1. What the user asked

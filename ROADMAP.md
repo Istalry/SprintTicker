@@ -1205,7 +1205,8 @@ Ordered; each says what has to be true first.
   *Project: Task: note* started from the picker, in a project of your own
   made there; the same name in the same project is the same task, and
   Today can show one line per task; History gets a week calendar with
-  Google Calendar's gestures. Three phases, T1-T3, before 2.0.1 ships.
+  Google Calendar's gestures. Three phases, T1-T3, **done** (2026-11-24),
+  released in 2.0.2 beside 2.0.1.
 
 - **AI agents can ask SprintTicker** (asked 2026-11-24). The design and the
   user's answers are [AGENT-INTERFACE.md](Documentation/AGENT-INTERFACE.md):

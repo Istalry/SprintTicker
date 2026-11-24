@@ -1,7 +1,7 @@
 {
   "name": "@sprintticker/desktop-app",
   "productName": "SprintTicker",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "license": "MIT",
   "description": "SprintTicker desktop application",

@@ -1,19 +1,9 @@
 # Changelog
 
-## 2.0.1 — 2026-11-24
+## 2.0.2 — 2026-11-24
 
 ### Added
 
-- **AI agents can ask SprintTicker.** Turn it on in Settings › Data › AI
-  agents and paste the line it shows into Claude Code, or its entry into
-  Claude desktop's configuration: the agent then reads what runs now, a
-  day, a week, Check my week, the interruptions to place and your tasks,
-  worded and counted as the window does. It can
-  also start, stop, pause and resume a task and mark one done when you ask
-  it to: a stop shows the Undo bar as a click does, and Done waits for your
-  yes. The installer carries the `sprintticker` command, run by SprintTicker
-  itself, so nothing else needs installing. Off until you turn it on; *Make
-  a new one* replaces the token and refuses every agent given the old one.
 - **Work of your own in a project, in one line.** Type `Dash: Backup files:
   before v2` in the picker and *Start "Backup files" in Dash* starts it,
   with the note; *Change project or note…* opens the fields. A project of
@@ -36,6 +26,20 @@
   under it with their fixes. Every change has its Undo and asks first in a
   closed week.
 
+## 2.0.1 — 2026-11-24
+
+### Added
+
+- **AI agents can ask SprintTicker.** Turn it on in Settings › Data › AI
+  agents and paste the line it shows into Claude Code, or its entry into
+  Claude desktop's configuration: the agent then reads what runs now, a
+  day, a week, Check my week, the interruptions to place and your tasks,
+  worded and counted as the window does. It can
+  also start, stop, pause and resume a task and mark one done when you ask
+  it to: a stop shows the Undo bar as a click does, and Done waits for your
+  yes. The installer carries the `sprintticker` command, run by SprintTicker
+  itself, so nothing else needs installing. Off until you turn it on; *Make
+  a new one* replaces the token and refuses every agent given the old one.
 ### Fixed
 
 - **The Status button no longer breaks the window.** Opening it scrolled
