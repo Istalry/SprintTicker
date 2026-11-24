@@ -15,7 +15,8 @@ import { checkWeek, describeWeekCheck } from '../../shared/week-issues';
 import { weekStartKey } from '../../shared/working-days';
 import { SYNC_STATE_WORDS } from '../../shared/sync-state-words';
 import { matchesSearch } from '../../shared/task-picker';
-import type { InterruptionToPlaceDTO } from '../../shared/interruption';
+import { END_THE_INTERRUPTION_FIRST, InterruptionToPlaceDTO } from '../../shared/interruption';
+import { finishNeedsConfirmation } from '../../shared/task-left';
 import { ADHOC_PROJECT_ID } from '../../shared/adhoc-project';
 
 /** An answer the agent cannot have: its code says why, its message what to do. */
@@ -46,6 +47,24 @@ export interface AgentReadSources {
   now?(): Date;
 }
 
+/**
+ * What the agent's writes call: the commands a click, a bar press or a deck
+ * key reach, never a rule of the agent's own (AGENT-INTERFACE.md §6).
+ */
+export interface AgentActions {
+  /** `engine.startTask`: a switch when a task runs, as the window's picker. */
+  startTask(taskId: string, title: string): void;
+  isInterrupted(): boolean;
+  /**
+   * The window's Stop and Done, with Undo: `SessionEnding.complete`. Named
+   * here rather than imported so the agent's client, whose tests load this
+   * file, does not type-check the engine and the driver behind it.
+   */
+  ending: { complete(comment?: string, markDone?: boolean): { success: boolean; loggedSeconds: number } };
+  pause(): void;
+  resume(): void;
+}
+
 /** How far back "last-working-day" looks before giving up: a fortnight off. */
 const WORKING_DAY_LOOKBACK = 14;
 /** Tasks a search names before "and N more": enough to choose from, short enough to read. */
@@ -58,12 +77,14 @@ const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
  * which day "yesterday" is, the totals, a state's word -- is decided here, so
  * the command-line tool and the MCP server only forward and print.
  *
- * Reads only: nothing here writes (the test holds its sources to readers).
+ * The reads go through `AgentReadSources`, readers only; the writes through
+ * `AgentActions`, the window's own commands. Without actions, every write
+ * is refused.
  */
 export class AgentService {
   private readonly _now: () => Date;
 
-  constructor(private readonly _sources: AgentReadSources) {
+  constructor(private readonly _sources: AgentReadSources, private readonly _actions: AgentActions | null = null) {
     if (!_sources) throw new ArgumentNullException('sources');
     this._now = _sources.now ?? (() => new Date());
   }
@@ -89,6 +110,11 @@ export class AgentService {
       case 'check': return this.check(text('week'));
       case 'to-place': return this.toPlace();
       case 'tasks': return this.tasks(text('search'));
+      case 'start': return this.start(text('task'));
+      case 'stop': return this.stop(text('note'));
+      case 'done': return this.done(request.confirmed === true);
+      case 'pause': return this.pause();
+      case 'resume': return this.resume();
       default: throw new AgentRefusal('not-found', `No command "${name}".`);
     }
   }
@@ -269,6 +295,96 @@ export class AgentService {
       count: found.length,
       tasks: shown.map(task => taskData(task, projects.get(task.projectId)))
     });
+  }
+
+  // ---- writes
+
+  private actions(): AgentActions {
+    if (!this._actions) throw new AgentRefusal('refused', 'SprintTicker cannot change the timer from here.');
+    return this._actions;
+  }
+
+  private start(taskName: string | undefined): AgentAnswer {
+    if (!taskName) throw new AgentRefusal('invalid-request', 'Name the task to start: its key, or its id.');
+    const actions = this.actions();
+    // As the window, the picker and the deck (2026-11-12): an interruption ends first.
+    if (actions.isInterrupted()) throw new AgentRefusal('refused', END_THE_INTERRUPTION_FIRST);
+    const task = this.findTask(taskName);
+    const before = this._sources.session();
+    if (before?.taskId === task.id) {
+      return this.answer(`${task.key} ${task.title} is already being timed. ${describeSession(before)}`, { running: sessionData(before) });
+    }
+    actions.startTask(task.id, task.title);
+    const after = this._sources.session();
+    const switched = before ? `Stopped ${before.taskKey} ${before.taskTitle} after ${formatHoursAndMinutes(before.elapsedSeconds)}, logged. ` : '';
+    return this.answer(`${switched}${describeSession(after)}`, { stopped: before ? sessionData(before) : null, running: after ? sessionData(after) : null });
+  }
+
+  private stop(note: string | undefined): AgentAnswer {
+    const session = this._sources.session();
+    if (!session) throw new AgentRefusal('refused', 'Nothing is being timed.');
+    const interruption = session.interruption;
+    const result = this.actions().ending.complete(note, false);
+    if (!result.success) throw new AgentRefusal('refused', 'SprintTicker did not stop it.');
+    const after = this._sources.session();
+    const text = interruption
+      ? `Ended the interruption "${interruption.title}" after ${formatHoursAndMinutes(session.elapsedSeconds)}: it waits to be placed. ${describeSession(after)}`
+      : `Stopped ${session.taskKey} ${session.taskTitle}: ${formatHoursAndMinutes(result.loggedSeconds)} logged. `
+        + 'The user can undo it in SprintTicker for ten seconds; after that it is sent.';
+    return this.answer(text, { stopped: sessionData(session), logged: duration(result.loggedSeconds), running: after ? sessionData(after) : null });
+  }
+
+  private done(confirmed: boolean): AgentAnswer {
+    const session = this._sources.session();
+    if (!session) throw new AgentRefusal('refused', 'Nothing is being timed.');
+    if (session.interruption) throw new AgentRefusal('refused', 'An interruption is no task to mark done: stop it instead.');
+    // Done moves the ticket at the provider: asked always, as the deck's
+    // second press (S29). An agent's call is not the user's word.
+    if (!confirmed) {
+      const notTheirs = finishNeedsConfirmation(session) ? ' It is no longer theirs at the provider.' : '';
+      throw new AgentRefusal('needs-confirmation',
+        `Marking ${session.taskKey} done changes it at ${this._sources.providerName()}.${notTheirs} Ask the user, then call again with confirmed.`);
+    }
+    const result = this.actions().ending.complete(undefined, true);
+    if (!result.success) throw new AgentRefusal('refused', 'SprintTicker did not finish it.');
+    return this.answer(
+      `Done: ${session.taskKey} ${session.taskTitle}, ${formatHoursAndMinutes(result.loggedSeconds)} logged. `
+        + 'The user can undo it in SprintTicker for ten seconds.',
+      { finished: sessionData(session), logged: duration(result.loggedSeconds) }
+    );
+  }
+
+  private pause(): AgentAnswer {
+    const session = this._sources.session();
+    if (session?.status !== 'TRACKING') throw new AgentRefusal('refused', session ? 'It is paused already.' : 'Nothing is being timed.');
+    this.actions().pause();
+    return this.answer(describeSession(this._sources.session()), { running: sessionData(this._sources.session() ?? session) });
+  }
+
+  private resume(): AgentAnswer {
+    const session = this._sources.session();
+    if (session?.status !== 'PAUSED') throw new AgentRefusal('refused', session ? 'It is not paused.' : 'Nothing is paused.');
+    this.actions().resume();
+    return this.answer(describeSession(this._sources.session()), { running: sessionData(this._sources.session() ?? session) });
+  }
+
+  /**
+   * The task named by its id, or by its key among the listed tasks and the
+   * user's own work. A key several tasks share -- the user's own work all
+   * carries one -- is refused with them, to choose by id.
+   */
+  private findTask(name: string): TaskDTO {
+    const all = [...this._sources.listedTasks(), ...this._sources.ownTasks()];
+    const byId = all.find(t => t.id === name);
+    if (byId) return byId;
+    const byKey = all.filter(t => t.key.toLowerCase() === name.toLowerCase());
+    if (byKey.length === 1) return byKey[0];
+    const projects = new Map(this._sources.projects().map(p => [p.id, p]));
+    if (byKey.length > 1) {
+      throw new AgentRefusal('invalid-request', `Several tasks are ${name}: start one by its id.\n`
+        + byKey.map(t => `- ${describeTask(t, projects.get(t.projectId))}`).join('\n'));
+    }
+    throw new AgentRefusal('not-found', `No task ${name} in the lists: search with find_tasks.`);
   }
 
   // ---- days and weeks

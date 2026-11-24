@@ -168,6 +168,7 @@ describe('sprintticker, the AI agent\'s client', () => {
       const findTasks = answer.result.tools.find(t => t.name === 'find_tasks')!;
       expect(findTasks.inputSchema).toMatchObject({ type: 'object', required: ['search'] });
       expect(answer.result.tools.filter(t => !AGENT_COMMANDS.find(c => c.tool === t.name)!.writes).every(t => t.annotations.readOnlyHint)).toBe(true);
+      expect(answer.result.tools.find(t => t.name === 'stop_task')!.annotations.readOnlyHint).toBe(false);
     });
 
     it('ToolsCall_ForwardsToTheApp_TextAndStructuredContent', async () => {

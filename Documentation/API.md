@@ -266,6 +266,14 @@ as the body. The commands are `AGENT_COMMANDS`:
 | `check` | `week`, as above | Check my week's list |
 | `to-place` | -- | Interruptions waiting to be placed |
 | `tasks` | `search`: a key or words | Matching tasks, an exact key first, the user's own work included |
+| `start` | `task`: a key, or the id `tasks` gives | Starts it; with one running, switches (the one running is stopped and logged). Refused during an interruption |
+| `stop` | `note` (optional): the entry's note | Stops and logs, held ten seconds for the user's Undo; during an interruption, ends it and takes the held task up again |
+| `done` | `confirmed`: true once the user said yes | Stop, then Done at the provider, with the same Undo; without `confirmed`, nothing happens |
+| `pause`, `resume` | -- | The pause button |
+
+The writes are the window's own commands: the picker's start, Stop and
+Done through `SessionEnding` with their Undo, the engine's pause. An
+agent's stop shows the Undo bar in the app like a click's.
 
 Every answer is `200 { protocol, readAt, text, data }`: `text` the answer
 written for a reader, `data` the same as JSON, totals given in seconds and
@@ -277,8 +285,10 @@ as text, times local with their offset. A refusal is
 | `404` | `off` | Access is off (Settings › Data › AI agents), as for any unknown path |
 | `403` | `unauthorized` | The `Host` is not `127.0.0.1:<port>` or `localhost:<port>`: DNS rebinding |
 | `401` | `unauthorized` | No `Authorization: Bearer <token>`, or a wrong one |
-| `400` | `invalid-request` | A parameter it cannot read: a day that is not one |
-| `404` | `not-found` | No such command; no working day to go back to |
+| `400` | `invalid-request` | A parameter it cannot read: a day that is not one; a key several tasks share (the user's own work), listed to choose by id |
+| `404` | `not-found` | No such command; no working day to go back to; no task by that key |
+| `409` | `refused` | A write that does not apply now: nothing to stop, already paused, a start during an interruption |
+| `409` | `needs-confirmation` | `done` without `confirmed`: ask the user, then call again |
 
 The checks run after the screening every POST gets (below), so a page
 cannot reach them. The token is made when access is turned on, kept in

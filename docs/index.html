@@ -3921,7 +3921,7 @@
       <code>isValidDeviceHost</code> live.</p>
       <hr>
       <h3 id="architecture-testing">8. Testing</h3>
-      <p>Vitest, 4065 tests across 201 files, in two projects: <code>main</code> in Node for
+      <p>Vitest, 4079 tests across 202 files, in two projects: <code>main</code> in Node for
       <code>src/main</code> and <code>src/shared</code>, and <code>renderer</code> in jsdom for React smoke tests
       (<code>tests/renderer/</code>). The renderer&#39;s tests mount every view against a mock
       bridge typed as the whole <code>IElectronAPI</code>, so bridge drift fails the typecheck.
@@ -4607,7 +4607,30 @@
       <td align="left"><code>search</code>: a key or words</td>
       <td align="left">Matching tasks, an exact key first, the user&#39;s own work included</td>
       </tr>
+      <tr>
+      <td align="left"><code>start</code></td>
+      <td align="left"><code>task</code>: a key, or the id <code>tasks</code> gives</td>
+      <td align="left">Starts it; with one running, switches (the one running is stopped and logged). Refused during an interruption</td>
+      </tr>
+      <tr>
+      <td align="left"><code>stop</code></td>
+      <td align="left"><code>note</code> (optional): the entry&#39;s note</td>
+      <td align="left">Stops and logs, held ten seconds for the user&#39;s Undo; during an interruption, ends it and takes the held task up again</td>
+      </tr>
+      <tr>
+      <td align="left"><code>done</code></td>
+      <td align="left"><code>confirmed</code>: true once the user said yes</td>
+      <td align="left">Stop, then Done at the provider, with the same Undo; without <code>confirmed</code>, nothing happens</td>
+      </tr>
+      <tr>
+      <td align="left"><code>pause</code>, <code>resume</code></td>
+      <td align="left">--</td>
+      <td align="left">The pause button</td>
+      </tr>
       </tbody></table></div>
+      <p>The writes are the window&#39;s own commands: the picker&#39;s start, Stop and
+      Done through <code>SessionEnding</code> with their Undo, the engine&#39;s pause. An
+      agent&#39;s stop shows the Undo bar in the app like a click&#39;s.</p>
       <p>Every answer is <code>200 { protocol, readAt, text, data }</code>: <code>text</code> the answer
       written for a reader, <code>data</code> the same as JSON, totals given in seconds and
       as text, times local with their offset. A refusal is
@@ -4638,12 +4661,22 @@
       <tr>
       <td align="left"><code>400</code></td>
       <td align="left"><code>invalid-request</code></td>
-      <td align="left">A parameter it cannot read: a day that is not one</td>
+      <td align="left">A parameter it cannot read: a day that is not one; a key several tasks share (the user&#39;s own work), listed to choose by id</td>
       </tr>
       <tr>
       <td align="left"><code>404</code></td>
       <td align="left"><code>not-found</code></td>
-      <td align="left">No such command; no working day to go back to</td>
+      <td align="left">No such command; no working day to go back to; no task by that key</td>
+      </tr>
+      <tr>
+      <td align="left"><code>409</code></td>
+      <td align="left"><code>refused</code></td>
+      <td align="left">A write that does not apply now: nothing to stop, already paused, a start during an interruption</td>
+      </tr>
+      <tr>
+      <td align="left"><code>409</code></td>
+      <td align="left"><code>needs-confirmation</code></td>
+      <td align="left"><code>done</code> without <code>confirmed</code>: ask the user, then call again</td>
       </tr>
       </tbody></table></div>
       <p>The checks run after the screening every POST gets (below), so a page

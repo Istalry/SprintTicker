@@ -104,6 +104,41 @@ export const AGENT_COMMANDS: readonly AgentCommandSpec[] = [
     description: "Finds tasks by key or by words of their title, the user's own work included. Use it to get a task's key before starting it.",
     writes: false,
     params: { search: { type: 'string', description: 'A key (MG-12) or words of the title.', required: true } }
+  },
+  {
+    name: 'start',
+    tool: 'start_task',
+    description: 'Starts timing a task, by its key (MG-12) or its id from find_tasks. With a task running, switches to it: the one running stops and its time is logged. Refused during an interruption. The user can undo a stop in SprintTicker for ten seconds.',
+    writes: true,
+    params: { task: { type: 'string', description: 'The task\'s key, or its id when several tasks share the key (the user\'s own work).', required: true } }
+  },
+  {
+    name: 'stop',
+    tool: 'stop_task',
+    description: 'Stops the task being timed and logs its time, which is sent to the provider after ten seconds the user can undo in SprintTicker. During an interruption, ends the interruption and takes the held task up again.',
+    writes: true,
+    params: { note: { type: 'string', description: 'The entry\'s note, shown at the provider. Left out, SprintTicker writes its own.' } }
+  },
+  {
+    name: 'done',
+    tool: 'mark_done',
+    description: 'Stops the task being timed, logs its time, and marks the task done at the provider (Jira, OpenProject). Ask the user first, then call it with confirmed: without it, nothing happens.',
+    writes: true,
+    params: { confirmed: { type: 'boolean', description: 'True once the user said yes to marking the task done.' } }
+  },
+  {
+    name: 'pause',
+    tool: 'pause_task',
+    description: 'Pauses the task being timed; nothing is logged.',
+    writes: true,
+    params: {}
+  },
+  {
+    name: 'resume',
+    tool: 'resume_task',
+    description: 'Resumes the paused task.',
+    writes: true,
+    params: {}
   }
 ];
 

@@ -25,19 +25,24 @@ sprintticker week last-week
 sprintticker check
 sprintticker to-place
 sprintticker tasks lantern glow
+sprintticker start MG-12
+sprintticker stop "Pairing with Rin"
+sprintticker done --confirmed
+sprintticker pause
 sprintticker --help
 ```
 
 Each command takes its parameters in order, or as `--name value`; `--json`
 prints the whole answer. Exit codes: 0 answered, 1 refused (access off, a
-wrong token, a day that is not one), 2 not understood, 3 SprintTicker not
+wrong token, a day that is not one, Done not confirmed), 2 not understood, 3 SprintTicker not
 running.
 
 ## The MCP server
 
 `sprintticker mcp` speaks MCP over stdio: the same commands as tools
 (`get_running`, `get_day`, `get_week`, `check_week`, `get_to_place`,
-`find_tasks`), each returning the app's text, and its JSON as structured
+`find_tasks`, and the writes `start_task`, `stop_task`, `mark_done`,
+`pause_task`, `resume_task`), each returning the app's text, and its JSON as structured
 content. No SDK: newline-delimited JSON-RPC, in `src/mcp.ts`.
 
 ## Building and testing

@@ -387,6 +387,14 @@ export class IPCHandlerRegistry {
         listedTasks: () => this.taskRepo.getAllListed(),
         ownTasks: () => this.taskRepo.getOwnListed(),
         projects: () => this.projectRepo.getAllProjects()
+      }, {
+        // The window's own commands (AGENT-INTERFACE.md §6): the picker's
+        // start, Stop and Done with their Undo, the pause button.
+        startTask: (taskId, title) => { this.engine.startTask(taskId, false, title); },
+        isInterrupted: () => this.engine.isInterrupted(),
+        ending: this.sessionEnding,
+        pause: () => { this.engine.pauseSession(); },
+        resume: () => { this.engine.resumeSession(); }
       });
     }
     return this._agentService;
