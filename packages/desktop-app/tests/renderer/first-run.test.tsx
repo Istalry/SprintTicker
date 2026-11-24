@@ -187,6 +187,9 @@ describe('First run', () => {
 
     it('Deck_InstallThePlugin_OpensIt', async () => {
       const { bridge } = await toDesk();
+      // The desk's detection answers late under load, and its answer sets the
+      // boxes: ticked before it, the deck's box was reset and the button gone.
+      await waitFor(() => expect(box(/A BUSY Bar/).checked).toBe(true));
       fireEvent.click(box(/A Stream Deck/));
 
       click('Install the plugin');
