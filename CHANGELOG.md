@@ -22,6 +22,12 @@
   project too, and Undo takes away what they made. The note shows under the
   running task and becomes the entry's comment. A project of yours and an
   online one of the same name are told apart by a mark.
+- **One task per name.** Work of your own of the same name in the same
+  project, case aside, is one task: starting it again takes it up, and the
+  picker says *already yours · 2 entries today, 48m*.
+- **Today by task.** *Entries | By task* at the top right of Today shows one
+  line per task with the day's sum, unfolding into its entries. Today still
+  opens on the entries.
 
 ### Fixed
 

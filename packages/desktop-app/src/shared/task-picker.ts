@@ -1,4 +1,4 @@
-import { ArgumentNullException, ProjectDTO, TaskDTO } from './dtos';
+import { ArgumentNullException, ProjectDTO, TaskDTO, WorklogDTO } from './dtos';
 import { orderTasksForSelection } from './task-order';
 import { TaskOwnership } from './task-ownership';
 
@@ -39,6 +39,8 @@ export interface PickerDataDTO {
    */
   own?: TaskDTO[];
   projects: ProjectDTO[];
+  /** Today's entries and seconds per task: "already yours · 2 entries today, 48m". Absent before 2.0.1. */
+  today?: Record<string, { entries: number; seconds: number }>;
   /** Seconds logged per project over the last `PICKER_USAGE_DAYS`: "most used". */
   projectSeconds: Record<string, number>;
 }
@@ -220,4 +222,16 @@ export function recentWithJustChosen(
     out.push(task);
   }
   return out;
+}
+
+/** Today's entries and seconds per task id, for the picker's "already yours". */
+export function todayByTask(worklogs: readonly WorklogDTO[]): Record<string, { entries: number; seconds: number }> {
+  if (!worklogs) throw new ArgumentNullException('worklogs');
+  const days: Record<string, { entries: number; seconds: number }> = {};
+  for (const log of worklogs) {
+    const day = (days[log.taskId] ??= { entries: 0, seconds: 0 });
+    day.entries += 1;
+    day.seconds += log.durationSeconds;
+  }
+  return days;
 }

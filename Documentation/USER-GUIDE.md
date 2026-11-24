@@ -254,6 +254,11 @@ today, the session running included, what of it your provider has, and the
 interruptions of today still to place. A long day shows its five newest
 entries; **show all** shows the rest.
 
+**Entries | By task**, at the top right of Today, switches to one line per
+task: its key, its name and project, the day's sum, and *2 entries ▸*,
+which unfolds into the entries, each with its own note, ⋯ and send. Today
+opens on the entries every time.
+
 🔀 **A task that leaves your list while you track it** -- reassigned to someone
 else, closed or moved on Jira or OpenProject -- keeps running, and your time
 is logged as usual. The task you are timing is checked every minute, so a
@@ -343,6 +348,11 @@ Arrow keys and Enter pick from the keyboard; Escape closes.
   task while it runs and becomes the entry's comment when you stop.
   Add time, Split and Move take a project the same way; there the note stays
   in the task's name.
+- **The same name in the same project is the same task**, case aside:
+  *Dash: Backup files* a second time takes up DASH-1 rather than making
+  DASH-2, and the row says *already yours · 2 entries today, 48m*. Your own
+  work with no project follows the same rule, and so do Add time, Split and
+  Move.
 - **A project of yours and an online one of the same name** are both
   listed, apart: the one on this computer shows a small computer beside its
   name, the online one your provider's name. Its time is never sent.

@@ -27,6 +27,8 @@ export interface WorklogMoveTargets {
   destinationOf(taskId: string): SendDestination | null;
   /** New work of the user's own under this id, for a move, added time or a split's rest: its time stays here. */
   createOwnTask?(title: string, taskId: string, projectName?: string): TaskDTO;
+  /** The user's own task of that name and project, when there is one: the time goes on it, none is made. */
+  findOwnTask?(title: string, projectName?: string): TaskDTO | null;
   /** Retires an ad-hoc task once nothing is logged on it, as an assigned interruption's is. */
   retireAdHocIfUnused(taskId: string): void;
 }
@@ -395,6 +397,8 @@ export class WorklogCorrectionService {
     if (ownTitle) {
       if (!this._targets?.createOwnTask) throw new Error('New work of your own is unavailable here.');
       const ownProject = target.ownProject?.trim();
+      const existing = this._targets.findOwnTask?.(ownTitle, ownProject);
+      if (existing) return { taskId: existing.id, ownTitle: null };
       return { taskId: ownTaskId, ownTitle, ...(ownProject ? { ownProject } : {}) };
     }
     if (!target.taskId || !this._targets?.getTask(target.taskId)) throw new ArgumentException(`No task ${target.taskId}.`, 'taskId');

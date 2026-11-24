@@ -202,6 +202,17 @@ away a project the action made. Two projects of one name, one of the
 user's and one online, carry a mark (`shared/project-mark.ts`,
 `ProjectMark`): a computer, or the provider's name.
 
+**The same name in the same project is the same task** (§4 of the note).
+`TaskRepository.findOwnTaskByName` compares names case and spacing aside,
+skipping an interruption's task still unsorted; the engine's
+`findOwnTask` and `createOwnTask` take up the task it finds, and the
+correction service asks `findOwnTask` before naming a new one, so Add
+time, Split and Move go on it too. `tasks:get-picker` carries `today`, the
+day's entries per task, for the picker's *already yours*. Today's *By
+task* groups the entries with `shared/entry-groups.ts`: a provider's task
+by its id, work of the user's own by project and name, so the duplicate
+rows made before this rule still read as one line.
+
 **The window's close hides it to the tray** (P12a). `MainWindowCloseGuard`
 (`windows/main-window-close.ts`) takes the dashboard's `close`: unless a
 quit is under way or `close_to_tray` is off, it prevents it, hides the

@@ -382,6 +382,28 @@ describe('TaskPicker', () => {
       expect(onPick).toHaveBeenCalledWith({ ownTitle: 'Backup', ownNote: 'before v2', takeAlong: false });
     });
 
+    it('TheSameName_AlreadyYours_SaysTodaysEntries', async () => {
+      const backup = task('DASH2-1', DASH_OWN, 'Backup files');
+      const data = { ...WITH_DASH, tasks: [...WITH_DASH.tasks, backup], projects: [...WITH_DASH.projects, DASH_OWN], today: { [backup.id]: { entries: 2, seconds: 2880 } } };
+      open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue(data) });
+      await screen.findByText('Recent');
+
+      search('Dash: backup FILES');
+
+      const first = within(screen.getByRole('listbox', { name: 'Tasks' })).getAllByRole('option')[0];
+      expect(first.textContent).toContain('already yours · 2 entries today, 48m');
+      expect(first.textContent).not.toContain('new project');
+    });
+
+    it('TheSameName_InYourOwnWork_AlreadyYours', async () => {
+      open({ mode: 'start' }, { getPickerData: vi.fn().mockResolvedValue({ ...DATA, own: [ADHOC] }) });
+      await screen.findByText('Recent');
+
+      search('code review');
+
+      expect(screen.getByRole('option', { name: /A task of my own named "code review"/ }).textContent).toContain('already yours');
+    });
+
     it('NoColon_AsBefore_ATaskOfYourOwn', async () => {
       const { onPick } = open({ mode: 'start' });
       await screen.findByText('Recent');

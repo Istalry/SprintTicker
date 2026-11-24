@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { sameOwnName } from '../../../shared/own-work';
 import { DatabaseConnection } from '../database-connection';
 import { createId, IdPrefix, isAdHocTaskId } from '../id-generator';
 import { TOMBSTONE_PROJECT_ID } from '../migrations';
@@ -288,6 +289,22 @@ export class TaskRepository {
         WHERE archived_at_utc IS NULL AND unsorted = 0 AND project_id = ?
         ORDER BY created_at_utc DESC`
     ).all(ADHOC_PROJECT_ID).map(r => TaskRepository.toDto(r));
+  }
+
+  /**
+   * The listed task of `projectId` named `title`, case and spacing aside,
+   * the most recent -- never an interruption's still unsorted. Work of the
+   * user's own is one task per name and project (LOCAL-WORK-AND-CALENDAR.md
+   * §4): this is the one a second start of that name takes up.
+   */
+  public findOwnTaskByName(projectId: string, title: string): TaskDTO | null {
+    if (!projectId || !title?.trim()) return null;
+    const row = this.dbConn.getDb().prepare<[string], TaskRow>(
+      `SELECT ${TASK_COLUMNS} FROM tasks
+        WHERE project_id = ? AND archived_at_utc IS NULL AND unsorted = 0
+        ORDER BY created_at_utc DESC`
+    ).all(projectId).find(r => sameOwnName(r.title, title));
+    return row ? TaskRepository.toDto(row) : null;
   }
 
   /**

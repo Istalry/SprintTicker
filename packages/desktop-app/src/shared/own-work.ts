@@ -43,10 +43,11 @@ export function parseOwnWorkLine(line: string): OwnWork {
 
 /** The same name, whatever its case and spacing: "Backup  files" is "backup files". */
 export function sameOwnName(a: string, b: string): boolean {
-  return normalise(a) === normalise(b);
+  return ownNameKey(a) === ownNameKey(b);
 }
 
-function normalise(name: string): string {
+/** A name as `sameOwnName` compares it: trimmed, its spaces one, in lower case. */
+export function ownNameKey(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
 }
 

@@ -706,7 +706,8 @@ async function startApplication(): Promise<void> {
       getTask: taskId => taskRepo.getTaskById(taskId),
       destinationOf: taskId => engine!.sendDestinationOfTask(taskId),
       retireAdHocIfUnused: taskId => engine!.retireAdHocTaskIfUnused(taskId),
-      createOwnTask: (title, taskId, projectName) => engine!.createOwnTask(title, taskId, projectName)
+      createOwnTask: (title, taskId, projectName) => engine!.createOwnTask(title, taskId, projectName),
+      findOwnTask: (title, projectName) => engine!.findOwnTask(title, projectName)
     }),
     windowsNotificationService,
     providerManager,

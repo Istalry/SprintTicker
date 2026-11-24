@@ -169,6 +169,25 @@ describe('Today entries', () => {
     await waitFor(() => expect(bridge.api.moveWorklog).toHaveBeenCalledWith('w1', { ownTitle: 'Backup files', ownProject: 'Dash' }));
   });
 
+  it('ByTask_OneLinePerTask_TheDaysSum_UnfoldsIntoItsEntries', () => {
+    installElectronApi();
+    const again = entry('w3', 'PF-31', 16, 20, { comment: 'Second pass' });
+    render(<TodayEntries session={null} worklogs={[PF, OPS, again]} />);
+    // Opens on the entries, as before.
+    expect(screen.getByRole('button', { name: 'Entries' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Second pass')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'By task' }));
+
+    expect(screen.queryByText('Second pass')).toBeNull();
+    const pf = screen.getByRole('button', { name: '2 entries of PF-31' });
+    expect(pf.closest('tr')!.textContent).toContain('2h 00m');
+    fireEvent.click(pf);
+    expect(pf.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('Second pass')).toBeTruthy();
+    expect(screen.getByText('Hammer and quench sounds')).toBeTruthy();
+  });
+
   it('Move_Refused_SaysWhy', async () => {
     installElectronApi({ ...withProjects, moveWorklog: vi.fn().mockRejectedValue(new Error('The provider records at least 1 minute(s).')) });
     render(<TodayEntries session={null} worklogs={[PF]} />);

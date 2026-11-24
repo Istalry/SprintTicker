@@ -804,6 +804,10 @@
       today, the session running included, what of it your provider has, and the
       interruptions of today still to place. A long day shows its five newest
       entries; <strong>show all</strong> shows the rest.</p>
+      <p><strong>Entries | By task</strong>, at the top right of Today, switches to one line per
+      task: its key, its name and project, the day&#39;s sum, and <em>2 entries ▸</em>,
+      which unfolds into the entries, each with its own note, ⋯ and send. Today
+      opens on the entries every time.</p>
       <p>🔀 <strong>A task that leaves your list while you track it</strong> -- reassigned to someone
       else, closed or moved on Jira or OpenProject -- keeps running, and your time
       is logged as usual. The task you are timing is checked every minute, so a
@@ -885,6 +889,11 @@
       task while it runs and becomes the entry&#39;s comment when you stop.
       Add time, Split and Move take a project the same way; there the note stays
       in the task&#39;s name.</li>
+      <li><strong>The same name in the same project is the same task</strong>, case aside:
+      <em>Dash: Backup files</em> a second time takes up DASH-1 rather than making
+      DASH-2, and the row says <em>already yours · 2 entries today, 48m</em>. Your own
+      work with no project follows the same rule, and so do Add time, Split and
+      Move.</li>
       <li><strong>A project of yours and an online one of the same name</strong> are both
       listed, apart: the one on this computer shows a small computer beside its
       name, the online one your provider&#39;s name. Its time is never sent.</li>
@@ -2616,6 +2625,16 @@
       away a project the action made. Two projects of one name, one of the
       user&#39;s and one online, carry a mark (<code>shared/project-mark.ts</code>,
       <code>ProjectMark</code>): a computer, or the provider&#39;s name.</p>
+      <p><strong>The same name in the same project is the same task</strong> (§4 of the note).
+      <code>TaskRepository.findOwnTaskByName</code> compares names case and spacing aside,
+      skipping an interruption&#39;s task still unsorted; the engine&#39;s
+      <code>findOwnTask</code> and <code>createOwnTask</code> take up the task it finds, and the
+      correction service asks <code>findOwnTask</code> before naming a new one, so Add
+      time, Split and Move go on it too. <code>tasks:get-picker</code> carries <code>today</code>, the
+      day&#39;s entries per task, for the picker&#39;s <em>already yours</em>. Today&#39;s <em>By
+      task</em> groups the entries with <code>shared/entry-groups.ts</code>: a provider&#39;s task
+      by its id, work of the user&#39;s own by project and name, so the duplicate
+      rows made before this rule still read as one line.</p>
       <p><strong>The window&#39;s close hides it to the tray</strong> (P12a). <code>MainWindowCloseGuard</code>
       (<code>windows/main-window-close.ts</code>) takes the dashboard&#39;s <code>close</code>: unless a
       quit is under way or <code>close_to_tray</code> is off, it prevents it, hides the
@@ -4371,7 +4390,7 @@
       </tr>
       <tr>
       <td align="left"><code>tasks:get-picker</code></td>
-      <td align="left">Everything the task picker lists, in one read: <code>{ previous, recent, starred, tasks, own, projects, projectSeconds }</code>. <code>tasks</code> is every task the lists hold, whoever&#39;s and across projects, without ad-hoc work or archived tasks; <code>own</code> is the user&#39;s own work still listed, newest first, which the search finds wherever the picker offers &quot;A task of my own&quot;; <code>projectSeconds</code> is the time logged per project over the last 30 days, which orders &quot;most used&quot;</td>
+      <td align="left">Everything the task picker lists, in one read: <code>{ previous, recent, starred, tasks, own, projects, projectSeconds, today }</code>. <code>tasks</code> is every task the lists hold, whoever&#39;s and across projects, without ad-hoc work or archived tasks; <code>own</code> is the user&#39;s own work still listed, newest first, which the search finds wherever the picker offers &quot;A task of my own&quot;; <code>projectSeconds</code> is the time logged per project over the last 30 days, which orders &quot;most used&quot;; <code>today</code> is today&#39;s entries and seconds per task id, for &quot;already yours · 2 entries today&quot;</td>
       </tr>
       <tr>
       <td align="left"><code>tasks:fetch-by-key</code></td>

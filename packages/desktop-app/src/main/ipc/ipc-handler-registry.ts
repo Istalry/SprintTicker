@@ -40,7 +40,7 @@ import { DiagnosticExporter } from '../diagnostics/diagnostic-exporter';
 import { SystemAutomationService, ISystemAutomationService } from '../services/system-automation-service';
 import { StandupTaskDTO, SyncQueueSnapshotDTO, ActiveSessionDTO, DeviceStatusDTO, WindowsNotificationSettingsDTO, BitmapIconId, DeviceConfigDTO, ColorThemeId, UpdateStatusDTO, ProviderSyncResult, PreviewScreenId, ArgumentException, DiscardSessionResultDTO, ForgottenSessionReviewDTO, ForgottenSessionResolutionDTO, LaunchAtLoginStatusDTO, ShortcutsStatusDTO, ProviderCapabilitiesDTO, TaskDTO, UndoStateDTO, WeekChangeDTO, StandupRunningDTO } from '../../shared/dtos';
 import { RECENT_TASKS_LIMIT } from '../../shared/previous-task';
-import { PickerDataDTO, pickerUsageSince } from '../../shared/task-picker';
+import { PickerDataDTO, pickerUsageSince, todayByTask } from '../../shared/task-picker';
 import { checkAdHocTitle } from '../../shared/interruption';
 import { MiniWindowController } from '../windows/mini-window-manager';
 import { openTaskPickerInMainWindow, openWindowOn } from '../windows/main-window-actions';
@@ -738,7 +738,8 @@ export class IPCHandlerRegistry {
         tasks: this.taskRepo.getAllListed(),
         own: this.taskRepo.getOwnListed(),
         projects: this.projectRepo.getAllProjects(),
-        projectSeconds: this.taskRepo.getProjectSecondsSince(since)
+        projectSeconds: this.taskRepo.getProjectSecondsSince(since),
+        today: todayByTask(this.worklogRepo.getTodaysWorklogs())
       };
     });
     // Kept like any task the sync brings, so starting it, its worklog and its

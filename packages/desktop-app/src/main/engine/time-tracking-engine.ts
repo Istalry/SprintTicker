@@ -1433,6 +1433,8 @@ export class TimeTrackingEngine extends EventEmitter {
    * know it beforehand: an undo's restore point covers its row.
    */
   public createOwnTask(title: string, taskId?: string, projectName?: string): TaskDTO {
+    const found = this.findOwnTask(title, projectName);
+    if (found) return found;
     if (!projectName?.trim()) return this._taskRepo.createAdHocTask(checkAdHocTitle(title), this.adHocTaskKey(), false, taskId);
     const { project, exists } = this.ownProjectFor(projectName);
     if (!exists) this._projectRepo.saveProject(project);
@@ -1446,6 +1448,19 @@ export class TimeTrackingEngine extends EventEmitter {
     };
     this._taskRepo.saveTask(task);
     return task;
+  }
+
+  /**
+   * The task of the user's own of that name in that project of theirs --
+   * Your own work without one -- case and spacing aside: the same name in
+   * the same project is the same task (LOCAL-WORK-AND-CALENDAR.md §4). Null
+   * when there is none, or no such project yet.
+   */
+  public findOwnTask(title: string, projectName?: string): TaskDTO | null {
+    if (!title?.trim()) return null;
+    if (!projectName?.trim()) return this._taskRepo.findOwnTaskByName(ADHOC_PROJECT_ID, title);
+    const { project, exists } = this.ownProjectFor(projectName);
+    return exists ? this._taskRepo.findOwnTaskByName(project.id, title) : null;
   }
 
   /**
@@ -1474,7 +1489,11 @@ export class TimeTrackingEngine extends EventEmitter {
   public startOwnWork(work: OwnWork, options: StartOptions = {}): ActiveSessionDTO {
     if (!work?.title?.trim()) throw new ArgumentNullException('title');
     const withNote = { ...options, ...(work.note ? { note: work.note } : {}) };
-    if (!work.project?.trim()) return this.startTask('', true, work.title, undefined, undefined, withNote);
+    if (!work.project?.trim()) {
+      // A second start of a name takes up its task, named as it was made.
+      const found = this.findOwnTask(work.title);
+      return this.startTask(found?.id ?? '', true, found?.title ?? work.title, undefined, undefined, withNote);
+    }
     const task = this.createOwnTask(work.title, undefined, work.project);
     return this.startTask(task.id, false, task.title, task.projectId, task.key, withNote);
   }

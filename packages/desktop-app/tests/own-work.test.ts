@@ -105,6 +105,33 @@ describe('work of your own on the fly', () => {
       expect(second.taskKey).toBe('DASH2-2');
     });
 
+    it('StartOwnWork_TheSameNameAgain_TakesUpItsTask_CaseAside', () => {
+      const first = engine.startOwnWork({ project: 'Dash', title: 'Backup files' });
+      vi.advanceTimersByTime(20 * 60_000);
+      const again = engine.startOwnWork({ project: 'dash', title: ' backup  FILES ' });
+
+      expect(again.taskId).toBe(first.taskId);
+      expect(again).toMatchObject({ taskKey: 'DASH2-1', taskTitle: 'Backup files' });
+      expect(tasks.getTasksByProjectId('DASH2')).toHaveLength(1);
+    });
+
+    it('StartOwnWork_NoProject_TheSameNameAgain_OneTask', () => {
+      const first = engine.startOwnWork({ title: 'Code review' });
+      vi.advanceTimersByTime(20 * 60_000);
+      const again = engine.startOwnWork({ title: 'code review' });
+
+      expect(again.taskId).toBe(first.taskId);
+      expect(again.taskTitle).toBe('Code review');
+    });
+
+    it('FindOwnTask_TheSameNameInAnotherProject_IsAnotherTask', () => {
+      engine.startOwnWork({ project: 'Dash', title: 'Backup files' });
+
+      expect(engine.findOwnTask('Backup files', 'Prisme')).toBeNull();
+      expect(engine.findOwnTask('Backup files')).toBeNull();
+      expect(engine.findOwnTask('backup files', 'DASH')?.key).toBe('DASH2-1');
+    });
+
     it('StartOwnWork_NoProject_IsWorkOfYourOwnAsBefore', () => {
       const session = engine.startOwnWork({ title: 'Backup files', note: 'before v2' });
 

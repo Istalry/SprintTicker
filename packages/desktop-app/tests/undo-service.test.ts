@@ -184,7 +184,8 @@ describe('undoable commands', () => {
       getTask: id => tasks.getTaskById(id),
       destinationOf: id => engine.sendDestinationOfTask(id),
       retireAdHocIfUnused: id => engine.retireAdHocTaskIfUnused(id),
-      createOwnTask: (title, id, project) => engine.createOwnTask(title, id, project)
+      createOwnTask: (title, id, project) => engine.createOwnTask(title, id, project),
+      findOwnTask: (title, project) => engine.findOwnTask(title, project)
     });
     edits = { db: dbConn.getDb(), undo, worklogs, corrections, ownProjectIdFor: name => engine.ownProjectFor(name).project.id, onRestored: vi.fn() };
   });
@@ -482,6 +483,21 @@ describe('undoable commands', () => {
       expect(worklogs.getWorklogById(before.id)?.taskId).toBe(A.id);
       expect(tasks.getTaskById(moved.taskId)).toBeNull();
       expect(engine.ownProjectFor('Dash').exists).toBe(true);
+    });
+
+    it('AddToAnOwnTaskOfThatName_TakesItUp_UndoKeepsIt', () => {
+      const existing = engine.createOwnTask('Backup files', undefined, 'Dash');
+
+      const added = addUndoably(edits, {
+        taskId: '', ownTitle: 'backup files', ownProject: 'dash', durationSeconds: 1800,
+        startedAtUtc: new Date(Date.now() - 3 * 3600_000).toISOString(), comment: ''
+      });
+      expect(added.taskId).toBe(existing.id);
+      expect(tasks.getTasksByProjectId('DASH')).toHaveLength(1);
+      expect(undo.run()).toBe(true);
+
+      expect(worklogs.getWorklogById(added.id)).toBeNull();
+      expect(tasks.getTaskById(existing.id)).not.toBeNull();
     });
 
     it('SendDestinationOfTask_OwnWork_None_NeverTheActiveProvider', () => {

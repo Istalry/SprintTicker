@@ -310,6 +310,27 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
     onClose();
   };
 
+  /**
+   * The user's own task this name already is, in that project of theirs or
+   * in Your own work: a start takes it up rather than making a second
+   * (LOCAL-WORK-AND-CALENDAR.md §4), and the row says so.
+   */
+  const ownTaskNamed = (title: string, projectName?: string): TaskDTO | null => {
+    if (!projectName) return (snapshot.own ?? []).find(t => sameOwnName(t.title, title)) ?? null;
+    const own = ownProjects.find(p => sameOwnName(p.name, projectName));
+    return own ? snapshot.tasks.find(t => t.projectId === own.id && sameOwnName(t.title, title)) ?? null : null;
+  };
+
+  /** "already yours · 2 entries today, 48m", "new project", and the note, for an own row. */
+  const ownRowNote = (row: { title: string; project?: string; note?: string }): string => {
+    const existing = row.title ? ownTaskNamed(row.title, row.project) : null;
+    const day = existing ? snapshot.today?.[existing.id] : undefined;
+    const standing = existing
+      ? `already yours${day ? ` · ${day.entries} ${day.entries === 1 ? 'entry' : 'entries'} today, ${formatHoursAndMinutes(day.seconds)}` : ''}`
+      : row.project && !ownProjects.some(p => sameOwnName(p.name, row.project!)) ? 'new project' : null;
+    return [standing, row.note ? `note: ${row.note}` : null].filter(Boolean).join(' · ');
+  };
+
   const pickOwn = (work: OwnWork) => {
     const project = work.project?.trim();
     const note = takesNote ? work.note?.trim() : undefined;
@@ -656,12 +677,7 @@ const TaskPickerDialog: React.FC<TaskPickerProps> = ({
                             ? <>{takesNote ? 'Start' : 'A task of my own:'} &quot;{row.title}&quot; in {row.project}</>
                             : row.title ? <>A task of my own named &quot;{row.title}&quot;</> : 'A task of my own…'}
                         </span>
-                        <span className="ml-auto shrink-0 text-[11px] text-text-secondary">
-                          {[
-                            row.project && !ownProjects.some(p => sameOwnName(p.name, row.project!)) ? 'new project' : null,
-                            row.note ? `note: ${row.note}` : null
-                          ].filter(Boolean).join(' · ')}
-                        </span>
+                        <span className="ml-auto shrink-0 text-[11px] text-text-secondary">{ownRowNote(row)}</span>
                       </button>
                     );
                   case 'own-form':
